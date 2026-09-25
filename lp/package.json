@@ -1,0 +1,20 @@
+{
+  "name": "overseas-recruit-lp",
+  "private": true,
+  "type": "module",
+  "description": "海外バイヤー・海外営業 採用LP（静的サイト / 日本語・英語・中国語）",
+  "scripts": {
+    "build": "node build.mjs",
+    "check": "node build.mjs --check",
+    "images": "node scripts/make-images.mjs",
+    "test": "node build.mjs && node test/site.test.mjs",
+    "preview": "node build.mjs && npx --yes serve dist -l 4173"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "axe-core": "^4.13.0",
+    "playwright": "1.56.1"
+  }
+}

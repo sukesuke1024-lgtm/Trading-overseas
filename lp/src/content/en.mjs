@@ -1,0 +1,192 @@
+// English content. Items marked `todo: true` must be replaced with the actual terms before launch.
+export default {
+  meta: {
+    title: 'Overseas Buyer & Overseas Sales Jobs | Connecting Japan and the World',
+    description:
+      'Careers as an Overseas Buyer or Overseas Sales representative. Learn what each role does, a typical day, the skills you will gain, job details and FAQs, with a 90-second introduction video.',
+    ogAlt: 'Overseas Buyer & Overseas Sales careers — Connecting Japan and the world.',
+    siteName: 'Overseas Buyer & Overseas Sales Careers',
+    breadcrumbHome: 'Home',
+    breadcrumb: 'Overseas Buyer & Overseas Sales Careers',
+  },
+  ui: {
+    skip: 'Skip to main content',
+    menu: 'Menu',
+    language: 'Language',
+    entry: 'Apply',
+    entryNow: 'Apply now',
+    watch: 'Watch the video (90 sec)',
+    updated: 'Last updated',
+    recruit: 'CAREERS',
+    backToTop: 'Back to top',
+    privacy: 'Privacy Policy',
+    companySite: 'Corporate site',
+    transcript: 'Read the video transcript',
+    videoFallback: 'Your browser does not support video playback.',
+    entryPending: 'Applications will open soon. Thank you for your patience.',
+  },
+  nav: [
+    ['about', 'The roles'],
+    ['video', 'Video'],
+    ['jobs', 'What you do'],
+    ['day', 'A day'],
+    ['skills', 'Skills'],
+    ['requirements', 'Job details'],
+    ['faq', 'FAQ'],
+  ],
+  hero: {
+    kicker: 'OVERSEAS BUYER / OVERSEAS SALES',
+    h1: ['Connecting Japan', 'and the world.'],
+    sub: 'Now hiring: Overseas Buyer & Overseas Sales',
+    lead: 'Discover great products around the world and bring them to Japan. Take Japanese quality to markets worldwide. Join us and move goods on a global scale.',
+    badges: ['Grow your English on the job', 'No prior experience required', 'Work with the world every day'],
+  },
+  about: {
+    heading: 'What are Overseas Buyers and Overseas Sales?',
+    lead: 'Both roles move goods across borders — just in opposite directions. Negotiation, language and numbers matter in both.',
+    items: [
+      {
+        term: 'Overseas Buyer',
+        def: 'Sources products from overseas markets, negotiates price, quality and delivery, and brings them to customers in Japan. You build the flow from the world to Japan.',
+      },
+      {
+        term: 'Overseas Sales',
+        def: 'Communicates the value of Japanese products and technology to overseas clients and manages everything from contract and export to after-sales support. You build the flow from Japan to the world.',
+      },
+    ],
+  },
+  video: {
+    heading: 'The job in 90 seconds',
+    lead: 'The workflow, a typical day and the skills you will gain — all in one short video that works even with the sound off.',
+    title: 'Overseas Buyer & Overseas Sales — Recruitment Video (90 sec)',
+    description:
+      'A 90-second recruitment video introducing the work, rewards, daily schedule and skills of Overseas Buyers and Overseas Sales representatives.',
+  },
+  jobs: {
+    heading: 'What you do',
+    items: [
+      {
+        id: 'buyer',
+        no: '01',
+        en: 'OVERSEAS BUYER',
+        name: 'Overseas Buyer',
+        tagline: 'From the world, to Japan.',
+        desc: 'Find great products around the world and deliver them to customers in Japan.',
+        steps: [
+          ['Market & product research', 'Spot products that will sell, based on trends and demand.'],
+          ['Supplier development', 'Find overseas partners at trade shows and online.'],
+          ['Price & quality negotiation', 'Negotiate price, lot size and lead time in English.'],
+          ['Import & quality control', 'Arrange logistics and deliver to Japan with quality intact.'],
+        ],
+        reward: 'Seeing a product you discovered on store shelves in Japan.',
+        fit: ['You love discovering new products and trends', 'You like making decisions based on data', 'You negotiate with persistence'],
+      },
+      {
+        id: 'sales',
+        no: '02',
+        en: 'OVERSEAS SALES',
+        name: 'Overseas Sales',
+        tagline: 'From Japan, to the world.',
+        desc: 'Communicate the value of Japanese products and technology, and open up markets worldwide.',
+        steps: [
+          ['Overseas market research', 'Analyze needs and competitors in each country.'],
+          ['Meetings & proposals', 'Present products online and in person.'],
+          ['Contracts & export', 'Finalize terms and manage everything up to shipment.'],
+          ['Long-term relationships', 'Build trust through follow-up and win the next deal.'],
+        ],
+        reward: 'Being there when Japanese quality is chosen by the world.',
+        fit: ['You enjoy talking with people and getting a message across', 'You are curious about other cultures', 'You take action toward goals'],
+      },
+    ],
+    rewardLabel: 'The reward',
+    fitLabel: 'A good fit if',
+  },
+  day: {
+    heading: 'A typical day',
+    lead: 'Using time differences, you connect with partners in Asia, Europe and the Americas in a single day.',
+    items: [
+      ['9:00', 'Check overseas email', 'Catch up on messages that arrived overnight from other time zones.'],
+      ['10:30', 'Online meeting with an Asian partner', 'Align specifications and pricing for a new product.'],
+      ['13:00', 'Internal team meeting', 'Share inventory, logistics and sales plans.'],
+      ['15:00', 'Quotes & proposals', 'Build persuasive proposals backed by numbers.'],
+      ['17:00', 'Video call with Europe', 'Confirm shipping schedules as their morning begins.'],
+    ],
+    note: '* This is an example. Schedules vary by role and season.',
+  },
+  skills: {
+    heading: 'Skills you will gain',
+    items: [
+      ['Practical language skills', 'Daily meetings and emails are the best teacher.'],
+      ['Negotiation', 'Learn to reach win-win outcomes.'],
+      ['Cross-cultural understanding', 'Learn business customs and values through real deals.'],
+      ['Numbers & trade know-how', 'Understand exchange rates, costs and logistics end to end.'],
+    ],
+    note: 'Your English does not have to be perfect. The desire to communicate is your greatest asset.',
+  },
+  requirements: {
+    heading: 'Job details',
+    rows: [
+      { label: 'Positions', value: 'Overseas Buyer / Overseas Sales' },
+      { label: 'Responsibilities', value: 'Developing overseas partners, meetings and negotiation, purchasing and import/export arrangements, relationship building' },
+      { label: 'Employment type', value: 'Full-time', todo: true },
+      { label: 'Location', value: 'Details will be provided at the interview', todo: true },
+      { label: 'Salary', value: 'Based on experience and skills', todo: true },
+      { label: 'Working hours', value: 'Details will be provided at the interview', todo: true },
+      { label: 'Holidays & leave', value: 'Details will be provided at the interview', todo: true },
+      { label: 'Requirements', value: 'Anyone eager to work with overseas partners. You can develop your language skills after joining.', todo: true },
+    ],
+  },
+  flow: {
+    heading: 'Selection process',
+    steps: ['Application', 'Document screening', 'Interview', 'Offer'],
+    note: 'Online interviews are available on request.',
+  },
+  faq: {
+    heading: 'Frequently asked questions',
+    items: [
+      {
+        q: 'How good does my English need to be?',
+        a: 'It does not need to be perfect when you join. You will build practical language skills through daily email and meetings. What matters most is the desire to communicate.',
+      },
+      {
+        q: 'What is the difference between an Overseas Buyer and Overseas Sales?',
+        a: 'An Overseas Buyer sources products from abroad and brings them to Japan; Overseas Sales sells Japanese products and technology overseas. The flow of goods runs in opposite directions, but both rely on negotiation, language and numbers.',
+      },
+      {
+        q: 'Can I apply without experience?',
+        a: 'Yes. We welcome people who want to work with overseas partners, even without trade or sales experience. You will learn trade practices and negotiation on the job.',
+      },
+      {
+        q: 'Are there business trips abroad?',
+        a: 'Depending on your accounts and the season, you may travel abroad for trade shows or on-site meetings. Day-to-day meetings are mostly online.',
+      },
+      {
+        q: 'What skills will I gain?',
+        a: 'Practical language skills, negotiation, cross-cultural understanding, and know-how in numbers and trade including exchange rates, costs and logistics — skills that transfer to any industry.',
+      },
+      {
+        q: 'Can I apply for both roles?',
+        a: 'Yes. Let us know you are interested in both when you apply, and we will discuss the best fit with you during the interview.',
+      },
+    ],
+  },
+  cta: {
+    heading: 'Your words can cross borders.',
+    lead: 'We are looking for people ready to take on the world.',
+  },
+  captions: [
+    [0.6, 7, 'Connecting Japan and the world.'],
+    [7.3, 13, 'Open positions: Overseas Buyer (from the world to Japan) / Overseas Sales (from Japan to the world)'],
+    [13.2, 16, '01 Overseas Buyer: find great products around the world and deliver them to customers in Japan.'],
+    [16.2, 28, 'Market research → Supplier development → Price & quality negotiation → Import & quality control'],
+    [28, 33, 'Seeing a product you discovered on store shelves in Japan.'],
+    [33.2, 36, '02 Overseas Sales: communicate the value of Japanese products and open up markets worldwide.'],
+    [36.2, 48, 'Market research → Meetings & proposals → Contracts & export → Long-term relationships'],
+    [48, 53, 'Being there when Japanese quality is chosen by the world.'],
+    [53.3, 66, 'A day: 9:00 email / 10:30 online meeting / 13:00 team meeting / 15:00 proposals / 17:00 call with Europe'],
+    [66.2, 70.5, 'Skills you gain: language, negotiation, cross-cultural understanding, numbers & trade'],
+    [70.6, 77, 'Your English does not have to be perfect. The desire to communicate is your greatest asset.'],
+    [77.6, 84, 'Your words can cross borders.'],
+    [84.3, 90, 'We are looking for people ready to take on the world.'],
+  ],
+};

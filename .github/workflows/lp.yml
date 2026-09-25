@@ -1,0 +1,64 @@
+name: Recruitment LP
+
+on:
+  push:
+    branches: [main, claude/overseas-buyer-sales-recruitment-video-idqyvw]
+    paths: ['lp/**', 'recruit-video/out/**', '.github/workflows/lp.yml']
+  pull_request:
+    paths: ['lp/**', 'recruit-video/out/**', '.github/workflows/lp.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: lp-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: lp
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: lp/package-lock.json
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm test
+      - run: npm run check
+
+  deploy:
+    # GitHub Pages を「Source: GitHub Actions」で有効にすると公開されます
+    if: github.event_name != 'pull_request'
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - id: pages
+        uses: actions/configure-pages@v5
+      - name: Build
+        working-directory: lp
+        env:
+          SITE_URL: ${{ vars.SITE_URL || format('{0}/', steps.pages.outputs.base_url) }}
+          CNAME: ${{ vars.CNAME }}
+        run: node build.mjs
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: lp/dist
+      - id: deployment
+        uses: actions/deploy-pages@v4
