@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>海外バイヤー・海外営業 採用動画</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;700;800&family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --navy: #07142e;
+    --navy2: #0d2350;
+    --teal: #36d6c8;
+    --orange: #ffa94d;
+    --white: #f6f8ff;
+    --muted: #9fb0d4;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 1920px; height: 1080px; overflow: hidden; background: var(--navy); }
+  body {
+    font-family: "Noto Sans JP", "IPAPGothic", sans-serif;
+    color: var(--white);
+    position: relative;
+  }
+  #bg { position: absolute; inset: 0; }
+  .scene { position: absolute; inset: 0; visibility: hidden; }
+  .a { position: absolute; opacity: 0; will-change: transform, opacity; }
+  .en { font-family: "Montserrat", sans-serif; letter-spacing: .18em; font-weight: 700; }
+  .teal { color: var(--teal); }
+  .orange { color: var(--orange); }
+  .center { left: 0; right: 0; text-align: center; }
+
+  /* S1 */
+  .kicker { font-size: 30px; color: var(--muted); }
+  .hero { font-size: 104px; font-weight: 900; line-height: 1.25; letter-spacing: .04em; text-shadow: 0 8px 40px rgba(0,0,0,.45); }
+
+  /* S2 */
+  .label { font-size: 32px; color: var(--muted); }
+  .role-card {
+    width: 700px; padding: 40px 48px; border-radius: 28px;
+    background: rgba(255,255,255,.06); border: 2px solid rgba(255,255,255,.12);
+    backdrop-filter: blur(6px);
+  }
+  .role-card .en { font-size: 26px; }
+  .role-card .jp { font-size: 76px; font-weight: 900; margin-top: 6px; }
+  .role-card .desc { font-size: 30px; color: var(--muted); margin-top: 10px; }
+  .role-card.buyer { border-color: rgba(54,214,200,.55); }
+  .role-card.sales { border-color: rgba(255,169,77,.55); }
+
+  /* Role scenes */
+  .num { font-size: 180px; font-weight: 800; font-family: "Montserrat", sans-serif; line-height: 1; opacity: .9; }
+  .role-title { font-size: 84px; font-weight: 900; }
+  .role-en { font-size: 28px; }
+  .lead { font-size: 50px; font-weight: 700; line-height: 1.5; }
+  .step {
+    width: 400px; height: 300px; padding: 34px 32px; border-radius: 24px;
+    background: rgba(7,20,46,.72); border: 2px solid rgba(255,255,255,.14);
+  }
+  .step .no { font-family: "Montserrat", sans-serif; font-weight: 800; font-size: 26px; letter-spacing: .12em; }
+  .step svg { width: 64px; height: 64px; margin: 18px 0 12px; }
+  .step .t { font-size: 38px; font-weight: 900; }
+  .step .d { font-size: 24px; color: var(--muted); margin-top: 8px; line-height: 1.5; }
+  .buyer-s .step { border-color: rgba(54,214,200,.4); }
+  .buyer-s .step .no, .buyer-s svg { color: var(--teal); }
+  .sales-s .step { border-color: rgba(255,169,77,.45); }
+  .sales-s .step .no, .sales-s svg { color: var(--orange); }
+  .arrow { font-size: 44px; color: var(--muted); font-family: "Montserrat", sans-serif; }
+  .quote-box { padding: 0 60px; }
+  .quote-box .q { font-size: 34px; letter-spacing: .2em; }
+  .quote-box .big { font-size: 80px; font-weight: 900; line-height: 1.4; margin-top: 20px; }
+
+  /* Day */
+  .day-title { font-size: 72px; font-weight: 900; }
+  .tl-line { width: 6px; background: linear-gradient(var(--teal), var(--orange)); border-radius: 3px; }
+  .tl-item { display: flex; align-items: center; gap: 36px; }
+  .tl-item .time { font-family: "Montserrat", sans-serif; font-weight: 800; font-size: 46px; width: 170px; text-align: right; }
+  .tl-item .dot { width: 30px; height: 30px; border-radius: 50%; background: var(--navy); border: 6px solid var(--teal); flex: none; }
+  .tl-item .body .t { font-size: 40px; font-weight: 700; }
+  .tl-item .body .d { font-size: 26px; color: var(--muted); margin-top: 4px; }
+  .clock { width: 250px; padding: 22px 26px; border-radius: 20px; background: rgba(255,255,255,.06); border: 2px solid rgba(255,255,255,.12); }
+  .clock .city { font-family: "Montserrat", sans-serif; font-size: 22px; letter-spacing: .15em; color: var(--muted); }
+  .clock .hm { font-family: "Montserrat", sans-serif; font-size: 60px; font-weight: 800; }
+
+  /* Skills */
+  .skill {
+    width: 760px; height: 190px; padding: 32px 44px; border-radius: 26px;
+    background: rgba(255,255,255,.06); border: 2px solid rgba(255,255,255,.14);
+    display: flex; align-items: center; gap: 36px;
+  }
+  .skill .ic { width: 110px; height: 110px; border-radius: 50%; display: grid; place-items: center; flex: none; font-family: "Montserrat", sans-serif; font-size: 44px; font-weight: 800; color: var(--navy); }
+  .skill .t { font-size: 46px; font-weight: 900; }
+  .skill .d { font-size: 26px; color: var(--muted); margin-top: 6px; }
+  .note { font-size: 42px; font-weight: 700; line-height: 1.6; }
+
+  /* Message / CTA */
+  .msg { font-size: 118px; font-weight: 900; line-height: 1.35; text-shadow: 0 10px 50px rgba(0,0,0,.55); }
+  .cta-roles { font-size: 56px; font-weight: 900; }
+  .badge { display: inline-block; padding: 10px 30px; border-radius: 999px; font-size: 30px; font-weight: 700; border: 2px solid currentColor; }
+  .entry {
+    display: inline-block; padding: 30px 110px; border-radius: 999px;
+    background: linear-gradient(90deg, var(--teal), var(--orange));
+    color: var(--navy); font-family: "Montserrat", sans-serif; font-size: 64px; font-weight: 800; letter-spacing: .2em;
+    box-shadow: 0 20px 60px rgba(255,169,77,.35);
+  }
+  .company { font-size: 36px; font-weight: 700; letter-spacing: .2em; color: var(--muted); }
+</style>
+</head>
+<body>
+<canvas id="bg" width="1920" height="1080"></canvas>
+
+<!-- ===== S1: Opening 0–7s ===== -->
+<section class="scene" data-t="0,7.2">
+  <div class="a center en kicker" style="top:330px" data-t="0.6,6.8" data-fx="fade">WORLD &times; JAPAN</div>
+  <div class="a center hero" style="top:400px" data-t="1.3,6.8" data-fx="up">世界と日本を、<br>つなぐ仕事。</div>
+</section>
+
+<!-- ===== S2: Roles 7–13s ===== -->
+<section class="scene" data-t="7,13.2">
+  <div class="a label" style="left:150px;top:190px" data-t="7.3,12.8" data-fx="left">募集職種</div>
+  <div class="a role-card buyer" style="left:150px;top:260px" data-t="7.8,12.8" data-fx="left">
+    <div class="en teal">OVERSEAS BUYER</div>
+    <div class="jp">海外バイヤー</div>
+    <div class="desc">世界から、日本へ。</div>
+  </div>
+  <div class="a role-card sales" style="left:150px;top:560px" data-t="8.6,12.8" data-fx="left">
+    <div class="en orange">OVERSEAS SALES</div>
+    <div class="jp">海外営業</div>
+    <div class="desc">日本から、世界へ。</div>
+  </div>
+  <div class="a lead" style="left:150px;top:880px;font-size:40px" data-t="9.8,12.8" data-fx="fade">モノの流れを、世界規模で動かす。</div>
+</section>
+
+<!-- ===== S3: Buyer 13–33s ===== -->
+<section class="scene buyer-s" data-t="13,33.2">
+  <div class="a num teal" style="left:120px;top:90px" data-t="13.2,27.6" data-fx="left">01</div>
+  <div class="a" style="left:360px;top:110px" data-t="13.4,27.6" data-fx="left">
+    <div class="en role-en teal">OVERSEAS BUYER</div>
+    <div class="role-title">海外バイヤー</div>
+  </div>
+  <div class="a lead" style="left:124px;top:320px" data-t="14.2,27.6" data-fx="up">世界中から「いいもの」を見つけ出し、<br>日本のお客様へ届ける仕事。</div>
+
+  <div class="a step" style="left:120px;top:560px" data-t="16.2,27.6" data-fx="up">
+    <div class="no">STEP 01</div>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
+    <div class="t">市場・商品調査</div>
+    <div class="d">トレンドと需要から<br>売れる商品を見極める</div>
+  </div>
+  <div class="a step" style="left:562px;top:560px" data-t="18.2,27.6" data-fx="up">
+    <div class="no">STEP 02</div>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/></svg>
+    <div class="t">サプライヤー開拓</div>
+    <div class="d">展示会やオンラインで<br>海外の取引先を探す</div>
+  </div>
+  <div class="a step" style="left:1004px;top:560px" data-t="20.2,27.6" data-fx="up">
+    <div class="no">STEP 03</div>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 8h13l-3-3M20 16H7l3 3"/></svg>
+    <div class="t">価格・品質の交渉</div>
+    <div class="d">価格・ロット・納期を<br>英語で交渉する</div>
+  </div>
+  <div class="a step" style="left:1446px;top:560px" data-t="22.2,27.6" data-fx="up">
+    <div class="no">STEP 04</div>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 15l2 5h14l2-5H3zM6 15V9h12v6M12 9V4M9 6h6"/></svg>
+    <div class="t">輸入・品質管理</div>
+    <div class="d">物流を手配し、<br>品質を守って届ける</div>
+  </div>
+
+  <div class="a center quote-box" style="top:350px" data-t="28,33" data-fx="scale">
+    <div class="en q teal">REWARD</div>
+    <div class="big">自分が見つけた商品が、<br>日本の店頭に並ぶ。</div>
+  </div>
+</section>
+
+<!-- ===== S4: Sales 33–53s ===== -->
+<section class="scene sales-s" data-t="33,53.2">
+  <div class="a num orange" style="left:120px;top:90px" data-t="33.2,47.6" data-fx="left">02</div>
+  <div class="a" style="left:380px;top:110px" data-t="33.4,47.6" data-fx="left">
+    <div class="en role-en orange">OVERSEAS SALES</div>
+    <div class="role-title">海外営業</div>
+  </div>
+  <div class="a lead" style="left:124px;top:320px" data-t="34.2,47.6" data-fx="up">日本の商品・技術の価値を伝え、<br>世界のマーケットを切り拓く仕事。</div>
+
+  <div class="a step" style="left:120px;top:560px" data-t="36.2,47.6" data-fx="up">
+    <div class="no">STEP 01</div>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>
+    <div class="t">海外市場リサーチ</div>
+    <div class="d">国ごとのニーズと<br>競合を分析する</div>
+  </div>
+  <div class="a step" style="left:562px;top:560px" data-t="38.2,47.6" data-fx="up">
+    <div class="no">STEP 02</div>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="5" width="18" height="12" rx="2"/><path d="M8 21h8M12 17v4M7 13l3-3 2 2 5-5"/></svg>
+    <div class="t">商談・提案</div>
+    <div class="d">オンラインや現地で<br>魅力をプレゼンする</div>
+  </div>
+  <div class="a step" style="left:1004px;top:560px" data-t="40.2,47.6" data-fx="up">
+    <div class="no">STEP 03</div>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 3h9l4 4v14H6zM15 3v4h4M9 12h7M9 16h5"/></svg>
+    <div class="t">契約・輸出手配</div>
+    <div class="d">条件をまとめ、<br>出荷までを管理する</div>
+  </div>
+  <div class="a step" style="left:1446px;top:560px" data-t="42.2,47.6" data-fx="up">
+    <div class="no">STEP 04</div>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 21s-8-5-8-11a4.5 4.5 0 0 1 8-3 4.5 4.5 0 0 1 8 3c0 6-8 11-8 11z"/></svg>
+    <div class="t">長期的な関係構築</div>
+    <div class="d">アフターフォローで<br>信頼と次の取引へ</div>
+  </div>
+
+  <div class="a center quote-box" style="top:350px" data-t="48,53" data-fx="scale">
+    <div class="en q orange">REWARD</div>
+    <div class="big">日本の品質が、<br>世界で選ばれる瞬間に立ち会える。</div>
+  </div>
+</section>
+
+<!-- ===== S5: A Day 53–66s ===== -->
+<section class="scene" data-t="53,66.2">
+  <div class="a en label" style="left:150px;top:110px" data-t="53.3,65.8" data-fx="left">ONE DAY</div>
+  <div class="a day-title" style="left:150px;top:150px" data-t="53.5,65.8" data-fx="left">ある1日の流れ</div>
+  <div class="a tl-line" style="left:368px;top:300px;height:600px" data-t="54,65.8" data-fx="grow"></div>
+  <div class="a tl-item" style="left:150px;top:300px" data-t="54.4,65.8" data-fx="left">
+    <div class="time">9:00</div><div class="dot"></div>
+    <div class="body"><div class="t">海外からのメールをチェック</div><div class="d">時差のある取引先から、夜のうちに届いた連絡を確認</div></div>
+  </div>
+  <div class="a tl-item" style="left:150px;top:440px" data-t="56.2,65.8" data-fx="left">
+    <div class="time">10:30</div><div class="dot"></div>
+    <div class="body"><div class="t">アジアの取引先とオンライン商談</div><div class="d">新商品の仕様・価格をすり合わせ</div></div>
+  </div>
+  <div class="a tl-item" style="left:150px;top:580px" data-t="58,65.8" data-fx="left">
+    <div class="time">13:00</div><div class="dot"></div>
+    <div class="body"><div class="t">社内チームと打ち合わせ</div><div class="d">在庫・物流・販売計画を共有</div></div>
+  </div>
+  <div class="a tl-item" style="left:150px;top:720px" data-t="59.8,65.8" data-fx="left">
+    <div class="time">15:00</div><div class="dot"></div>
+    <div class="body"><div class="t">見積書・提案資料の作成</div><div class="d">数字の裏付けで説得力のある提案へ</div></div>
+  </div>
+  <div class="a tl-item" style="left:150px;top:860px" data-t="61.6,65.8" data-fx="left">
+    <div class="time">17:00</div><div class="dot"></div>
+    <div class="body"><div class="t">ヨーロッパとWeb会議</div><div class="d">朝を迎えた現地と、出荷スケジュールを確認</div></div>
+  </div>
+  <div class="a clock" style="left:1560px;top:300px" data-t="54.6,65.8" data-fx="up"><div class="city">TOKYO</div><div class="hm" data-clock="0">09:00</div></div>
+  <div class="a clock" style="left:1560px;top:470px" data-t="55,65.8" data-fx="up"><div class="city">SINGAPORE</div><div class="hm" data-clock="-1">08:00</div></div>
+  <div class="a clock" style="left:1560px;top:640px" data-t="55.4,65.8" data-fx="up"><div class="city">LONDON</div><div class="hm" data-clock="-8">01:00</div></div>
+  <div class="a clock" style="left:1560px;top:810px" data-t="55.8,65.8" data-fx="up"><div class="city">NEW YORK</div><div class="hm" data-clock="-13">20:00</div></div>
+</section>
+
+<!-- ===== S6: Skills 66–77s ===== -->
+<section class="scene" data-t="66,77.2">
+  <div class="a center en label" style="top:90px" data-t="66.2,76.8" data-fx="fade">SKILLS YOU GAIN</div>
+  <div class="a center day-title" style="top:140px" data-t="66.4,76.8" data-fx="up">この仕事で、身につく力。</div>
+  <div class="a skill" style="left:170px;top:300px" data-t="67.2,76.8" data-fx="up">
+    <div class="ic" style="background:var(--teal)">Aa</div>
+    <div><div class="t">実践的な語学力</div><div class="d">毎日の商談・メールが最高の教材に</div></div>
+  </div>
+  <div class="a skill" style="left:990px;top:300px" data-t="67.8,76.8" data-fx="up">
+    <div class="ic" style="background:var(--orange)"><svg viewBox="0 0 24 24" width="58" height="58" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h14l-3-3M20 16H6l3 3"/></svg></div>
+    <div><div class="t">交渉力</div><div class="d">相手とWin-Winの着地点をつくる力</div></div>
+  </div>
+  <div class="a skill" style="left:170px;top:530px" data-t="68.4,76.8" data-fx="up">
+    <div class="ic" style="background:var(--orange)">&#9678;</div>
+    <div><div class="t">異文化理解</div><div class="d">国ごとの商習慣・価値観を知る</div></div>
+  </div>
+  <div class="a skill" style="left:990px;top:530px" data-t="69,76.8" data-fx="up">
+    <div class="ic" style="background:var(--teal)">%</div>
+    <div><div class="t">数字・貿易の知識</div><div class="d">為替・原価・物流まで一気通貫で</div></div>
+  </div>
+  <div class="a center note" style="top:800px" data-t="70.6,76.8" data-fx="up">英語が完璧でなくても大丈夫。<br><span class="orange">「伝えたい」という気持ちが、いちばんの武器になる。</span></div>
+</section>
+
+<!-- ===== S7: Message 77–84s ===== -->
+<section class="scene" data-t="77,84.2">
+  <div class="a center msg" style="top:330px" data-t="77.6,83.8" data-fx="up">あなたの一言が、<br><span style="background:linear-gradient(90deg,var(--teal),var(--orange));-webkit-background-clip:text;background-clip:text;color:transparent">国境を越える。</span></div>
+</section>
+
+<!-- ===== S8: CTA 84–90s ===== -->
+<section class="scene" data-t="84,90.5">
+  <div class="a center" style="top:220px" data-t="84.3,90.5" data-fx="fade">
+    <span class="badge teal">海外バイヤー</span>&nbsp;&nbsp;<span class="badge orange">海外営業</span>
+  </div>
+  <div class="a center cta-roles" style="top:320px" data-t="84.6,90.5" data-fx="up">世界を舞台に挑戦する仲間を、募集しています。</div>
+  <div class="a center" style="top:480px" data-t="85.4,90.5" data-fx="scale"><span class="entry">ENTRY</span></div>
+  <div class="a center company" style="top:720px" data-t="86.2,90.5" data-fx="fade" id="company"></div>
+</section>
+
+
+<script>
+/* ============================================================
+   設定：会社名などはここを書き換えてください（空ならCTAに表示しない）
+   ============================================================ */
+const CONFIG = {
+  company: new URLSearchParams(location.search).get('company') || '',
+  duration: 90,
+};
+document.getElementById('company').textContent = CONFIG.company;
+
+/* ---------- helpers ---------- */
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const ease = x => 1 - Math.pow(1 - x, 3);            // easeOutCubic
+const smooth = x => x * x * (3 - 2 * x);
+const lerp = (a, b, k) => a + (b - a) * k;
+const IN = 0.7, OUT = 0.45;
+
+const scenes = [...document.querySelectorAll('.scene')].map(el => {
+  const [a, b] = el.dataset.t.split(',').map(Number);
+  return { el, a, b };
+});
+const items = [...document.querySelectorAll('.a')].map(el => {
+  const [a, b] = el.dataset.t.split(',').map(Number);
+  return { el, a, b, fx: el.dataset.fx || 'fade' };
+});
+const clocks = [...document.querySelectorAll('[data-clock]')];
+
+/* ---------- globe background ---------- */
+const cv = document.getElementById('bg');
+const ctx = cv.getContext('2d');
+const D = Math.PI / 180;
+const CITIES = {
+  tokyo: [139.7, 35.7], la: [-118.2, 34.1], ny: [-74, 40.7], london: [-0.1, 51.5],
+  singapore: [103.8, 1.35], shanghai: [121.5, 31.2], dubai: [55.3, 25.2], sydney: [151.2, -33.9],
+  saopaulo: [-46.6, -23.5], paris: [2.35, 48.85], bangkok: [100.5, 13.75], seoul: [127, 37.5],
+  mumbai: [72.9, 19.1], frankfurt: [8.7, 50.1], hochiminh: [106.7, 10.8],
+};
+// [from, to, color('t' = inbound/buyer, 'o' = outbound/sales), phase]
+const ROUTES = [
+  ['shanghai', 'tokyo', 't', 0.0], ['bangkok', 'tokyo', 't', 0.3], ['hochiminh', 'tokyo', 't', 0.55],
+  ['paris', 'tokyo', 't', 0.8], ['la', 'tokyo', 't', 0.15], ['mumbai', 'tokyo', 't', 0.65],
+  ['tokyo', 'ny', 'o', 0.1], ['tokyo', 'london', 'o', 0.4], ['tokyo', 'singapore', 'o', 0.7],
+  ['tokyo', 'sydney', 'o', 0.25], ['tokyo', 'dubai', 'o', 0.9], ['tokyo', 'saopaulo', 'o', 0.5],
+  ['tokyo', 'frankfurt', 'o', 0.35], ['tokyo', 'seoul', 'o', 0.6],
+];
+const vec = ([lon, lat]) => [Math.cos(lat * D) * Math.cos(lon * D), Math.cos(lat * D) * Math.sin(lon * D), Math.sin(lat * D)];
+function slerp(p, q, s) {
+  const dot = clamp(p[0] * q[0] + p[1] * q[1] + p[2] * q[2], -1, 1);
+  const om = Math.acos(dot), so = Math.sin(om) || 1e-6;
+  const a = Math.sin((1 - s) * om) / so, b = Math.sin(s * om) / so;
+  return [a * p[0] + b * q[0], a * p[1] + b * q[1], a * p[2] + b * q[2]];
+}
+
+// Globe placement keyframes: [t, cx, cy, r, alpha, routeMode(0 none,1 buyer,2 sales,3 both)]
+const GK = [
+  [0, 960, 560, 330, 0.0, 3], [1.0, 960, 560, 400, 0.45, 3], [6.6, 960, 560, 430, 0.45, 3],
+  [7.6, 1400, 560, 380, 0.9, 3], [12.8, 1420, 560, 400, 0.9, 3],
+  [13.6, 1560, 250, 260, 0.45, 1], [27.4, 1560, 250, 280, 0.45, 1], [28.2, 960, 540, 470, 0.35, 1], [32.8, 960, 540, 500, 0.35, 1],
+  [33.6, 1560, 250, 260, 0.45, 2], [47.4, 1560, 250, 280, 0.45, 2], [48.2, 960, 540, 470, 0.35, 2], [52.8, 960, 540, 500, 0.35, 2],
+  [53.6, 1150, 640, 330, 0.16, 3], [65.8, 1150, 640, 350, 0.16, 3],
+  [66.6, 960, 1250, 620, 0.2, 3], [76.6, 960, 1230, 640, 0.2, 3],
+  [77.6, 960, 540, 480, 0.6, 3], [83.8, 960, 540, 520, 0.6, 3],
+  [84.6, 960, 980, 520, 0.4, 3], [90, 960, 960, 540, 0.4, 3],
+];
+function globeAt(t) {
+  for (let i = 0; i < GK.length - 1; i++) {
+    const A = GK[i], B = GK[i + 1];
+    if (t >= A[0] && t <= B[0]) {
+      const k = smooth(clamp((t - A[0]) / (B[0] - A[0])));
+      return { cx: lerp(A[1], B[1], k), cy: lerp(A[2], B[2], k), r: lerp(A[3], B[3], k), al: lerp(A[4], B[4], k), mode: k < 0.5 ? A[5] : B[5] };
+    }
+  }
+  const L = GK[GK.length - 1];
+  return { cx: L[1], cy: L[2], r: L[3], al: L[4], mode: L[5] };
+}
+
+function drawBackground(t) {
+  const g = ctx.createLinearGradient(0, 0, 1920, 1080);
+  const h = Math.sin(t * 0.07) * 0.5 + 0.5;
+  g.addColorStop(0, '#061129');
+  g.addColorStop(0.55 + 0.1 * h, '#0b2150');
+  g.addColorStop(1, '#10204a');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, 1920, 1080);
+  // soft glows
+  const glow = (x, y, r, c) => {
+    const rg = ctx.createRadialGradient(x, y, 0, x, y, r);
+    rg.addColorStop(0, c); rg.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = rg; ctx.fillRect(x - r, y - r, r * 2, r * 2);
+  };
+  glow(300 + 120 * Math.sin(t * 0.21), 200 + 60 * Math.cos(t * 0.17), 700, 'rgba(54,214,200,0.10)');
+  glow(1650 + 100 * Math.cos(t * 0.19), 900 + 60 * Math.sin(t * 0.23), 750, 'rgba(255,169,77,0.09)');
+  // drifting particles
+  for (let i = 0; i < 90; i++) {
+    const sx = (i * 733.1) % 1920, sy = (i * 389.7) % 1080;
+    const x = (sx + t * (8 + (i % 7) * 3)) % 1920;
+    const y = (sy - t * (4 + (i % 5) * 2) + 1080 * 4) % 1080;
+    ctx.fillStyle = `rgba(200,220,255,${0.08 + (i % 4) * 0.04})`;
+    ctx.beginPath(); ctx.arc(x, y, 1 + (i % 3), 0, Math.PI * 2); ctx.fill();
+  }
+}
+
+function drawGlobe(t) {
+  const G = globeAt(t);
+  if (G.al <= 0.001) return;
+  const { cx, cy, r } = G;
+  const lam0 = (110 + t * 4) * D, phi0 = 22 * D; // centered roughly on Asia/Japan, slowly rotating
+  const sp0 = Math.sin(phi0), cp0 = Math.cos(phi0);
+  const proj = (v) => { // v: unit vector (x,y,z) in earth coords
+    const lon = Math.atan2(v[1], v[0]), lat = Math.asin(clamp(v[2], -1, 1));
+    const dl = lon - lam0;
+    const x = Math.cos(lat) * Math.sin(dl);
+    const y = cp0 * Math.sin(lat) - sp0 * Math.cos(lat) * Math.cos(dl);
+    const z = sp0 * Math.sin(lat) + cp0 * Math.cos(lat) * Math.cos(dl);
+    return [x, y, z];
+  };
+  ctx.save();
+  ctx.globalAlpha = G.al;
+  // sphere body
+  const sg = ctx.createRadialGradient(cx - r * 0.35, cy - r * 0.4, r * 0.1, cx, cy, r);
+  sg.addColorStop(0, 'rgba(60,110,200,0.55)');
+  sg.addColorStop(1, 'rgba(10,30,80,0.35)');
+  ctx.fillStyle = sg;
+  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = 'rgba(140,190,255,0.5)'; ctx.lineWidth = 2;
+  ctx.stroke();
+  // dotted graticule
+  ctx.fillStyle = 'rgba(170,205,255,0.55)';
+  for (let lat = -75; lat <= 75; lat += 15) {
+    for (let lon = -180; lon < 180; lon += 4) {
+      const p = proj(vec([lon, lat]));
+      if (p[2] > 0) { ctx.globalAlpha = G.al * (0.25 + 0.75 * p[2]); ctx.fillRect(cx + p[0] * r - 1.2, cy - p[1] * r - 1.2, 2.4, 2.4); }
+    }
+  }
+  for (let lon = -180; lon < 180; lon += 20) {
+    for (let lat = -84; lat <= 84; lat += 4) {
+      const p = proj(vec([lon, lat]));
+      if (p[2] > 0) { ctx.globalAlpha = G.al * (0.25 + 0.75 * p[2]); ctx.fillRect(cx + p[0] * r - 1.2, cy - p[1] * r - 1.2, 2.4, 2.4); }
+    }
+  }
+  // routes
+  const on = (c) => G.mode === 3 || (G.mode === 1 && c === 't') || (G.mode === 2 && c === 'o');
+  ROUTES.forEach(([a, b, c, ph], idx) => {
+    if (!on(c)) return;
+    const reveal = clamp((t - 0.8 - idx * 0.15) / 1.2);
+    if (reveal <= 0) return;
+    const P = vec(CITIES[a]), Q = vec(CITIES[b]);
+    const col = c === 't' ? '54,214,200' : '255,169,77';
+    const N = 48;
+    let prev = null;
+    ctx.lineWidth = 2.4;
+    for (let i = 0; i <= N * reveal; i++) {
+      const s = i / N;
+      const v = slerp(P, Q, s);
+      const lift = 1 + 0.18 * Math.sin(Math.PI * s);
+      const p = proj(v);
+      const pt = [cx + p[0] * r * lift, cy - p[1] * r * lift, p[2]];
+      if (prev && (pt[2] > -0.15 || prev[2] > -0.15)) {
+        ctx.globalAlpha = G.al * (pt[2] > 0 ? 0.85 : 0.25);
+        ctx.strokeStyle = `rgba(${col},1)`;
+        ctx.beginPath(); ctx.moveTo(prev[0], prev[1]); ctx.lineTo(pt[0], pt[1]); ctx.stroke();
+      }
+      prev = pt;
+    }
+    // travelling pulse
+    const s = ((t * 0.35 + ph) % 1);
+    const v = slerp(P, Q, s), lift = 1 + 0.18 * Math.sin(Math.PI * s), p = proj(v);
+    if (p[2] > -0.1 && reveal >= 1) {
+      ctx.globalAlpha = G.al;
+      const x = cx + p[0] * r * lift, y = cy - p[1] * r * lift;
+      const rg = ctx.createRadialGradient(x, y, 0, x, y, 16);
+      rg.addColorStop(0, `rgba(${col},1)`); rg.addColorStop(1, `rgba(${col},0)`);
+      ctx.fillStyle = rg; ctx.beginPath(); ctx.arc(x, y, 16, 0, Math.PI * 2); ctx.fill();
+    }
+  });
+  // cities
+  Object.entries(CITIES).forEach(([name, ll]) => {
+    const p = proj(vec(ll));
+    if (p[2] <= 0) return;
+    const x = cx + p[0] * r, y = cy - p[1] * r;
+    const isTokyo = name === 'tokyo';
+    ctx.globalAlpha = G.al * (0.4 + 0.6 * p[2]);
+    ctx.fillStyle = isTokyo ? '#ffffff' : 'rgba(220,235,255,0.9)';
+    ctx.beginPath(); ctx.arc(x, y, isTokyo ? 7 : 4, 0, Math.PI * 2); ctx.fill();
+    if (isTokyo) {
+      const pr = (t % 1.6) / 1.6;
+      ctx.strokeStyle = `rgba(255,255,255,${1 - pr})`; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(x, y, 8 + pr * 28, 0, Math.PI * 2); ctx.stroke();
+    }
+  });
+  ctx.restore();
+}
+
+/* ---------- main render ---------- */
+function render(t) {
+  drawBackground(t);
+  drawGlobe(t);
+
+  scenes.forEach(s => { s.el.style.visibility = (t >= s.a && t < s.b) ? 'visible' : 'hidden'; });
+  items.forEach(({ el, a, b, fx }) => {
+    const pin = ease(clamp((t - a) / IN));
+    const pout = smooth(clamp((t - (b - OUT)) / OUT));
+    const op = pin * (1 - pout);
+    el.style.opacity = op.toFixed(4);
+    let tf = '';
+    const k = 1 - pin;
+    switch (fx) {
+      case 'up': tf = `translateY(${(k * 50 - pout * 20).toFixed(2)}px)`; break;
+      case 'left': tf = `translateX(${(-k * 70).toFixed(2)}px)`; break;
+      case 'scale': tf = `scale(${(0.9 + 0.1 * pin + 0.03 * pout).toFixed(4)})`; break;
+      case 'grow': el.style.transformOrigin = 'top'; tf = `scaleY(${pin.toFixed(4)})`; break;
+      default: tf = '';
+    }
+    el.style.transform = tf;
+    el.style.filter = k > 0.01 && fx !== 'grow' ? `blur(${(k * 8).toFixed(2)}px)` : 'none';
+  });
+
+  // clocks follow the timeline items (Tokyo time), easing between each entry
+  const CK = [[54.4, 9], [56.2, 10.5], [58, 13], [59.8, 15], [61.6, 17]];
+  let hours = CK[0][1];
+  for (let i = 0; i < CK.length - 1; i++) {
+    if (t >= CK[i][0]) hours = lerp(CK[i][1], CK[i + 1][1], smooth(clamp((t - CK[i][0] - 0.2) / 1.0)));
+  }
+  clocks.forEach(el => {
+    let h = hours + Number(el.dataset.clock);
+    h = ((h % 24) + 24) % 24;
+    const hh = Math.floor(h), mm = Math.floor((h - hh) * 60 / 5) * 5;
+    el.textContent = `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
+  });
+
+}
+
+window.render = render;
+window.DURATION = CONFIG.duration;
+
+// Live preview mode: play in real time unless ?render=1
+if (!new URLSearchParams(location.search).has('render')) {
+  const start = performance.now();
+  const loop = () => { render(((performance.now() - start) / 1000) % CONFIG.duration); requestAnimationFrame(loop); };
+  requestAnimationFrame(loop);
+} else {
+  render(0);
+}
+</script>
+</body>
+</html>
