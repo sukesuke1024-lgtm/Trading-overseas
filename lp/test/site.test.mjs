@@ -16,7 +16,7 @@ const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const DIST = path.join(ROOT, 'dist');
 const SHOTS = path.join(ROOT, 'screenshots');
 const base = new URL(cfg.siteUrl.endsWith('/') ? cfg.siteUrl : cfg.siteUrl + '/');
-const PREFIX = base.pathname; // e.g. /KAAS-E-learning/
+const PREFIX = base.pathname; // e.g. /Trading-overseas/
 
 // ---- static server that mimics the production path prefix ----
 const TYPES = { '.html': 'text/html; charset=utf-8', '.css': 'text/css', '.js': 'text/javascript', '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.mp4': 'video/mp4', '.vtt': 'text/vtt', '.xml': 'application/xml', '.txt': 'text/plain; charset=utf-8', '.webmanifest': 'application/manifest+json' };

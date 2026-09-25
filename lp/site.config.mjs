@@ -5,7 +5,7 @@
 export default {
   // 公開URL（末尾スラッシュあり）。GitHub Actions では Pages の URL が自動で入ります。
   // 独自ドメインを使う場合はここを書き換えるか、環境変数 SITE_URL で上書きします。
-  siteUrl: process.env.SITE_URL || 'https://sukesuke1024-lgtm.github.io/KAAS-E-learning/',
+  siteUrl: process.env.SITE_URL || 'https://sukesuke1024-lgtm.github.io/Trading-overseas/',
 
   company: {
     // ★要確認: 会社名（言語別）。空のままだとヘッダーは「RECRUIT」表記になります。
