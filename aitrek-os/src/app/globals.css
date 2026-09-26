@@ -1,0 +1,93 @@
+@import "tailwindcss";
+
+/* Linear / Stripe 風の落ち着いたB2Bトーン。色は役割ごとのトークンで定義する */
+:root {
+  --bg: #f7f7f5;
+  --surface: #ffffff;
+  --surface-2: #f2f2ef;
+  --border: #e6e5e1;
+  --border-strong: #d4d3ce;
+  --text: #16161a;
+  --text-2: #55555c;
+  --text-3: #8b8b93;
+  --accent: #1f3a5f; /* 深い紺：商社・信頼 */
+  --accent-2: #2a78d6;
+  --accent-soft: #e8eef6;
+  --gold: #a8843a;
+  --good: #1a7f4b;
+  --good-soft: #e5f3eb;
+  --warn: #a15c00;
+  --warn-soft: #fbf0dc;
+  --bad: #c0362c;
+  --bad-soft: #fbe7e5;
+  --bar: #2a78d6;
+  --sidebar: #111318;
+  --sidebar-text: #c9cad1;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-line: var(--border);
+  --color-line-strong: var(--border-strong);
+  --color-ink: var(--text);
+  --color-ink-2: var(--text-2);
+  --color-ink-3: var(--text-3);
+  --color-accent: var(--accent);
+  --color-accent-2: var(--accent-2);
+  --color-accent-soft: var(--accent-soft);
+  --color-gold: var(--gold);
+  --color-good: var(--good);
+  --color-good-soft: var(--good-soft);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+  --color-bad: var(--bad);
+  --color-bad-soft: var(--bad-soft);
+  --color-bar: var(--bar);
+  --font-sans: var(--font-inter), "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif;
+  --font-mono: var(--font-mono-face), ui-monospace, monospace;
+}
+
+html,
+body {
+  background: var(--bg);
+  color: var(--text);
+}
+
+body {
+  font-feature-settings: "palt" 1;
+}
+
+.print-area {
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* 印刷（PDF出力）：アプリの枠を消して書類だけを出す */
+@media print {
+  @page {
+    size: A4;
+    margin: 14mm;
+  }
+  body {
+    background: #fff !important;
+  }
+  .no-print {
+    display: none !important;
+  }
+  .print-area {
+    box-shadow: none !important;
+    border: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    max-width: none !important;
+  }
+  main {
+    padding: 0 !important;
+  }
+}
