@@ -194,5 +194,6 @@ export function buildSeed() {
     (a as { created_at: string }).created_at = new Date(Date.now() - i * 1000 * 60 * 47).toISOString();
   });
 
-  return { db: tx.db, settings };
+  // サンプルデータの投入自体は訂正履歴に残さない
+  return { db: { ...tx.db, audit_log: [] }, settings };
 }

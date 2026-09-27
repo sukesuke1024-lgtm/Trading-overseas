@@ -24,6 +24,8 @@ interface StoreValue {
   settings: CompanySettings;
   me: Member | null;
   session: Session | null;
+  /** ログインはできたが、メンバー登録されていない（個人利用のため拒否） */
+  denied: boolean;
   /** 1 トランザクションで変更を適用する。戻り値は fn の戻り値 */
   run: <R>(fn: (tx: Tx) => R, opts?: { need?: Action; ok?: string }) => R | undefined;
   saveSettings: (s: CompanySettings) => void;
@@ -48,6 +50,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [meId, setMeId] = useState<string | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [toasts, setToasts] = useState<Toast[]>([]);
+  const [denied, setDenied] = useState(false);
 
   const toast = useCallback((text: string, kind: Toast["kind"] = "ok") => {
     const id = Date.now() + Math.random();
@@ -110,14 +113,19 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         const email = session.user.email ?? "";
         let member = db.members.find((m) => m.email.toLowerCase() === email.toLowerCase());
         if (!member) {
+          // 個人利用：最初の 1 人だけが Owner として自動登録される。
+          // それ以外（未登録の Email）は DB 側で拒否されるので「利用権限なし」を表示する。
           const tx = new Tx(db, email);
-          member = tx.insert("members", {
-            name: email.split("@")[0],
-            email,
-            role: db.members.length === 0 ? "owner" : "viewer",
-            active: true,
-          });
-          await adapter.apply(tx.ops, { db: tx.db, settings: loaded.settings });
+          member = tx.insert("members", { name: email.split("@")[0], email, role: "owner", active: true });
+          try {
+            await adapter.apply(tx.ops, { db: tx.db, settings: loaded.settings });
+          } catch {
+            if (!cancelled) {
+              setDenied(true);
+              setReady(true);
+            }
+            return;
+          }
           // メンバー登録後は RLS により閲覧できる範囲が変わるので読み直す
           db = (await adapter.load())?.db ?? tx.db;
         }
@@ -227,6 +235,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const signOut = useCallback(async () => {
     await getSupabase()?.auth.signOut();
     setMeId(null);
+    setDenied(false);
   }, []);
 
   const value: StoreValue = {
@@ -236,6 +245,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     settings: snap.settings,
     me,
     session,
+    denied,
     run,
     saveSettings,
     upload,

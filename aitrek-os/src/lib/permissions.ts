@@ -10,7 +10,8 @@ export type Action =
   | "buyer.delete"
   | "producer.delete"
   | "user.manage" // User 追加・権限変更
-  | "settings.edit";
+  | "settings.edit"
+  | "history.restore"; // 訂正履歴から元に戻す
 
 const CRITICAL: Action[] = [
   "contract.approve",
@@ -20,6 +21,7 @@ const CRITICAL: Action[] = [
   "producer.delete",
   "user.manage",
   "settings.edit",
+  "history.restore",
 ];
 
 const MATRIX: Record<Role, Action[]> = {
@@ -47,6 +49,7 @@ export const ACTION_LABELS: Record<Action, string> = {
   "producer.delete": "Producer削除",
   "user.manage": "User追加・権限変更",
   "settings.edit": "システム設定変更",
+  "history.restore": "訂正履歴からの復元",
 };
 
 export const ALL_ACTIONS = Object.keys(ACTION_LABELS) as Action[];

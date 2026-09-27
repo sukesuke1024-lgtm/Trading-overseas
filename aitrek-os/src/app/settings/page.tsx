@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Download, Upload, UserPlus } from "lucide-react";
+import { SystemCard } from "@/components/system-card";
 import { Badge, Button, Card, Field, Input, PageHeader, Select, Table, Textarea } from "@/components/ui";
 import { log } from "@/lib/automation";
 import { CURRENCIES, ROLES, roleLabel } from "@/lib/constants";
@@ -14,6 +15,9 @@ export default function SettingsPage() {
     <>
       <PageHeader title="Settings" subtitle="会社情報・為替レート・ユーザーと権限・データ管理" />
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+        <div className="xl:col-span-2">
+          <SystemCard />
+        </div>
         <CompanyCard />
         <FxCard />
         <div className="xl:col-span-2" id="users">

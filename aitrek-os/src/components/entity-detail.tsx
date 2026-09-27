@@ -10,6 +10,7 @@ import { useStore } from "@/lib/store/store";
 import type { Tx } from "@/lib/store/tx";
 import type { TableName } from "@/lib/types";
 import { EntityForm, EntityView, type FieldDef } from "./entity-form";
+import { HistoryList } from "./history";
 import { Button, Card, Empty, Modal } from "./ui";
 
 /** Producer / Buyer / Product 共通の詳細画面の枠 */
@@ -42,7 +43,7 @@ export function EntityDetail({
   children?: ReactNode;
   side?: ReactNode;
 }) {
-  const { run, can } = useStore();
+  const { run, can, db } = useStore();
   const router = useRouter();
   const [edit, setEdit] = useState(false);
 
@@ -72,7 +73,7 @@ export function EntityDetail({
               const ok = run(
                 (tx) => {
                   tx.remove(table, row.id);
-                  log(tx, "system", `${entityType}削除：${title}`, { entity_type: entityType, entity_id: row.id });
+                  log(tx, "system", `${{ producer: "Producer", buyer: "Buyer", product: "商品" }[entityType]}削除：${title}`, { entity_type: entityType, entity_id: row.id });
                   return true;
                 },
                 { need: deleteAction, ok: "削除しました" },
@@ -91,6 +92,9 @@ export function EntityDetail({
             <EntityView fields={fields} values={row} />
           </Card>
           {children}
+          <Card title="訂正履歴">
+            <HistoryList entries={db.audit_log.filter((e) => e.record_id === row.id)} limit={20} />
+          </Card>
         </div>
         {side && <div className="flex min-w-0 flex-col gap-4">{side}</div>}
       </div>

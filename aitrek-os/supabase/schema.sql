@@ -227,6 +227,22 @@ create table if not exists finance (
   notes text not null default ''
 );
 
+-- 訂正履歴（追記のみ。更新・削除は RLS で禁止）
+create table if not exists audit_log (
+  id uuid primary key default gen_random_uuid(),
+  created_at timestamptz not null default now(),
+  table_name text not null,
+  record_id uuid not null,
+  record_label text not null default '',
+  action text not null check (action in ('insert','update','delete','restore')),
+  actor text not null default '',
+  actor_email text default (auth.jwt() ->> 'email'),
+  changes jsonb not null default '{}',
+  snapshot jsonb
+);
+create index if not exists audit_log_record_idx on audit_log(record_id);
+create index if not exists audit_log_created_idx on audit_log(created_at desc);
+
 create table if not exists app_settings (
   id integer primary key default 1 check (id = 1),
   data jsonb not null default '{}'
@@ -242,6 +258,12 @@ create index if not exists deals_stage_idx on deals(stage);
 create or replace function public.app_role() returns text
 language sql stable security definer set search_path = public as $$
   select role from members where lower(email) = lower(auth.jwt() ->> 'email') and active limit 1
+$$;
+
+-- 初期セットアップ判定（RLS の再帰を避けるため security definer）
+create or replace function public.members_empty() returns boolean
+language sql stable security definer set search_path = public as $$
+  select not exists (select 1 from members)
 $$;
 
 create or replace function public.is_admin() returns boolean
@@ -282,18 +304,27 @@ create policy "documents_delete" on documents for delete to authenticated using 
 create policy "activities_delete" on activities for delete to authenticated using (public.is_admin());
 create policy "finance_delete" on finance for delete to authenticated using (public.is_admin());
 
+-- audit_log：メンバーは閲覧・追記のみ。誰も（Owner も）書き換え・削除できない
+alter table audit_log enable row level security;
+drop policy if exists "audit_select" on audit_log;
+drop policy if exists "audit_insert" on audit_log;
+create policy "audit_select" on audit_log for select to authenticated using (public.app_role() is not null);
+create policy "audit_insert" on audit_log for insert to authenticated
+  with check (public.can_write() and actor_email = (auth.jwt() ->> 'email'));
+revoke update, delete, truncate on audit_log from authenticated, anon;
+
 -- members：閲覧は全メンバー、追加・変更は Owner / Admin。
--- 最初の 1 人だけは自分自身を Owner として登録できる（初期セットアップ）。
+-- 個人利用：最初にログインした 1 人だけが自分を Owner として登録できる。
+-- それ以外の人は Owner が Settings で登録しない限り何も見られない。
 alter table members enable row level security;
 drop policy if exists "members_select" on members;
 drop policy if exists "members_insert" on members;
 drop policy if exists "members_update" on members;
 drop policy if exists "members_delete" on members;
-create policy "members_select" on members for select to authenticated using (true);
+create policy "members_select" on members for select to authenticated using (public.app_role() is not null);
 create policy "members_insert" on members for insert to authenticated with check (
   public.is_admin()
-  or (not exists (select 1 from members) and lower(email) = lower(auth.jwt() ->> 'email') and role = 'owner')
-  or (lower(email) = lower(auth.jwt() ->> 'email') and role = 'viewer')
+  or (public.members_empty() and lower(email) = lower(auth.jwt() ->> 'email') and role = 'owner')
 );
 create policy "members_update" on members for update to authenticated using (public.is_admin());
 create policy "members_delete" on members for delete to authenticated using (public.is_admin());
@@ -301,7 +332,7 @@ create policy "members_delete" on members for delete to authenticated using (pub
 alter table app_settings enable row level security;
 drop policy if exists "settings_select" on app_settings;
 drop policy if exists "settings_write" on app_settings;
-create policy "settings_select" on app_settings for select to authenticated using (true);
+create policy "settings_select" on app_settings for select to authenticated using (public.app_role() is not null);
 create policy "settings_write" on app_settings for all to authenticated using (public.is_admin()) with check (public.is_admin());
 
 -- ---------------------------------------------------------------- storage
