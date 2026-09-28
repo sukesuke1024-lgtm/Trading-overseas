@@ -314,6 +314,19 @@ export interface CompanySettings {
   fx_rates: Record<Currency, number>;
 }
 
+/** 訂正履歴（監査ログ）。追記のみで、更新・削除はしない */
+export interface AuditEntry {
+  id: ID;
+  created_at: string;
+  table_name: TableName;
+  record_id: ID;
+  record_label: string;
+  action: "insert" | "update" | "delete" | "restore";
+  actor: string;
+  changes: Record<string, { from: unknown; to: unknown }>;
+  snapshot: Record<string, unknown> | null; // 削除時・復元用の全体
+}
+
 export interface Database {
   producers: Producer[];
   buyers: Buyer[];
@@ -325,6 +338,7 @@ export interface Database {
   documents: TradeDocument[];
   finance: FinanceRecord[];
   members: Member[];
+  audit_log: AuditEntry[];
 }
 
 export type TableName = keyof Database;

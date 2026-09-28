@@ -34,6 +34,7 @@ export const TABLES: TableName[] = [
   "documents",
   "finance",
   "members",
+  "audit_log",
 ];
 
 export const emptyDb = (): Database => ({
@@ -47,4 +48,5 @@ export const emptyDb = (): Database => ({
   documents: [],
   finance: [],
   members: [],
+  audit_log: [],
 });

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { AlertTriangle } from "lucide-react";
+import { HistoryList } from "@/components/history";
 import { Badge, Button, Card, Empty, Field, Input, Modal, PageHeader, Select, Stat, Table, Textarea } from "@/components/ui";
 import { updateFinance } from "@/lib/automation";
 import { CURRENCIES, PAYMENT_STATUS, paymentStatusLabel } from "@/lib/constants";
@@ -137,7 +138,7 @@ export default function FinancePage() {
 }
 
 function FinanceModal({ f, onClose }: { f: FinanceRecord; onClose: () => void }) {
-  const { run, can } = useStore();
+  const { run, can, db } = useStore();
   const [v, setV] = useState(f);
   const set = <K extends keyof FinanceRecord>(k: K, val: FinanceRecord[K]) => setV((s) => ({ ...s, [k]: val }));
   const n = (x: string) => (x === "" ? 0 : Number(x));
@@ -222,6 +223,8 @@ function FinanceModal({ f, onClose }: { f: FinanceRecord; onClose: () => void })
           <Textarea value={v.notes} onChange={(e) => set("notes", e.target.value)} />
         </Field>
       </div>
+      <h3 className="mb-1 mt-5 text-[12px] font-semibold text-ink-2">訂正履歴</h3>
+      <HistoryList entries={db.audit_log.filter((e) => e.record_id === f.id)} limit={10} />
     </Modal>
   );
 }

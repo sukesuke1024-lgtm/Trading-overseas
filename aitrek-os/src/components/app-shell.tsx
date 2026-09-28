@@ -20,6 +20,7 @@ import {
   Bell,
   X,
   Sparkles,
+  History,
 } from "lucide-react";
 import { useStore } from "@/lib/store/store";
 import { alerts as buildAlerts } from "@/lib/insights";
@@ -39,11 +40,12 @@ const NAV = [
   { href: "/finance", label: "Finance", icon: Wallet },
   { href: "/tasks", label: "Tasks", icon: CheckSquare },
   { href: "/marketing", label: "Marketing", icon: Megaphone },
+  { href: "/history", label: "History", icon: History },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {
-  const { ready, mode, session, me, db, toasts } = useStore();
+  const { ready, mode, session, me, db, toasts, denied, signOut } = useStore();
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [bell, setBell] = useState(false);
@@ -51,6 +53,18 @@ export function AppShell({ children }: { children: ReactNode }) {
   const openTasks = db.tasks.filter((t) => t.status !== "done" && t.status !== "na" && t.due_date && t.due_date < new Date().toISOString().slice(0, 10)).length;
 
   if (mode === "supabase" && ready && !session) return <LoginScreen />;
+  if (denied || (mode === "supabase" && ready && me && !me.active))
+    return (
+      <div className="grid min-h-screen place-items-center bg-[var(--sidebar)] p-4">
+        <div className="w-full max-w-sm rounded-xl bg-surface p-7 text-center shadow-2xl">
+          <div className="text-[16px] font-semibold">利用権限がありません</div>
+          <p className="mt-2 text-[13px] text-ink-2">{session?.user.email} は AITREK OS のメンバーとして登録されていません。</p>
+          <button onClick={signOut} className="mt-5 text-[13px] text-accent-2 hover:underline">
+            別のアカウントでログイン
+          </button>
+        </div>
+      </div>
+    );
 
   const isActive = (href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href));
 
@@ -77,7 +91,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-screen">
       {/* Sidebar (PC) */}
-      <aside className="no-print sticky top-0 hidden h-screen w-56 shrink-0 flex-col bg-[var(--sidebar)] py-4 lg:flex">
+      <aside className="safe-top [--safe-min:1rem] no-print sticky top-0 hidden h-screen w-56 shrink-0 flex-col bg-[var(--sidebar)] py-4 lg:flex">
         <Brand />
         {nav}
         <UserBox />
@@ -87,7 +101,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       {open && (
         <div className="no-print fixed inset-0 z-40 lg:hidden" onClick={() => setOpen(false)}>
           <div className="absolute inset-0 bg-black/40" />
-          <aside className="absolute inset-y-0 left-0 flex w-64 flex-col bg-[var(--sidebar)] py-4" onClick={(e) => e.stopPropagation()}>
+          <aside className="safe-top [--safe-min:1rem] absolute inset-y-0 left-0 flex w-64 flex-col overflow-y-auto bg-[var(--sidebar)] py-4" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between pr-3">
               <Brand />
               <button onClick={() => setOpen(false)} className="text-white/70" aria-label="閉じる">
@@ -101,7 +115,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       )}
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="no-print sticky top-0 z-30 flex h-12 items-center gap-3 border-b border-line bg-bg/85 px-4 backdrop-blur lg:px-6">
+        <header className="safe-top no-print sticky top-0 z-30 flex min-h-12 items-center gap-3 border-b border-line bg-bg/85 px-4 backdrop-blur lg:px-6">
           <button className="rounded p-1 text-ink-2 hover:bg-surface-2 lg:hidden" onClick={() => setOpen(true)} aria-label="メニュー">
             <Menu size={18} />
           </button>
@@ -139,7 +153,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <main className="mx-auto w-full max-w-[1480px] flex-1 px-4 py-5 lg:px-6 lg:py-6">{ready ? children : <Loading />}</main>
       </div>
 
-      <div className="no-print fixed bottom-4 right-4 z-[60] flex flex-col gap-2">
+      <div className="safe-bottom no-print fixed bottom-4 right-4 z-[60] flex flex-col gap-2">
         {toasts.map((t) => (
           <div key={t.id} role="status" className={cx("max-w-sm rounded-md px-3.5 py-2.5 text-[13px] shadow-lg", t.kind === "error" ? "bg-bad text-white" : "bg-[#16161a] text-white")}>
             {t.text}

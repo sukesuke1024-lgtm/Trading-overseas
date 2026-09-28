@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
 import { ArrowLeft, Printer, Save, Trash2 } from "lucide-react";
 import { DocPrint } from "@/components/doc-print";
+import { HistoryList } from "@/components/history";
 import { LineItemsEditor } from "@/components/line-items";
 import { Badge, Button, Card, Empty, Field, Input, Select, Textarea } from "@/components/ui";
 import { log } from "@/lib/automation";
@@ -135,6 +136,9 @@ function Editor({ q }: { q: Quotation }) {
           <Field label="Remarks" className="mt-4">
             <Textarea value={v.notes} onChange={(e) => setV({ ...v, notes: e.target.value })} />
           </Field>
+        </Card>
+        <Card title="訂正履歴" className="mb-5">
+          <HistoryList entries={db.audit_log.filter((e) => e.record_id === q.id)} limit={10} />
         </Card>
         <h2 className="mb-2 text-[12px] font-semibold uppercase tracking-wider text-ink-3">プレビュー</h2>
       </div>

@@ -8,6 +8,7 @@ import { AiPanel } from "@/components/ai-panel";
 import { Checklist } from "@/components/checklist";
 import { ActivityFeed, StageBadge } from "@/components/common";
 import { CostSimulator } from "@/components/cost-simulator";
+import { HistoryList } from "@/components/history";
 import { Badge, Button, Card, Empty, Field, Input, KV, Modal, Select, Textarea, cx } from "@/components/ui";
 import { applyCost, generateChecklist, log } from "@/lib/automation";
 import { DOC_TYPES, INCOTERMS, LOST_STAGE, PAYMENT_TERMS, STAGES, countryLabel, docTypeLabel, paymentStatusLabel, stageIndex, COUNTRIES } from "@/lib/constants";
@@ -252,6 +253,13 @@ export default function DealDetail() {
             </div>
           </Card>
 
+          <Card title="訂正履歴">
+            <HistoryList
+              entries={db.audit_log.filter((e) => e.record_id === id || (e.table_name !== "deals" && (e.snapshot?.deal_id === id || db.tasks.some((t) => t.id === e.record_id && t.deal_id === id) || db.finance.some((f) => f.id === e.record_id && f.deal_id === id))))}
+              showRecord
+              limit={15}
+            />
+          </Card>
           <Card title="Payment" action={<Link href="/finance" className="text-[12.5px] text-accent-2 hover:underline">Finance</Link>}>
             {fin ? (
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">

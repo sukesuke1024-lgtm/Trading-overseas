@@ -23,7 +23,8 @@ AITREK の海外輸出・海外営業事業を少人数・AI中心で運営す�
 | Finance | 売上・原価・粗利・請求・入金・為替・Producer/Logistics支払・AITREK Revenue、入金期限超過アラート |
 | Tasks | Checklist・自動Follow-up・個別Taskの横断管理（担当・期限・Status・Note・添付） |
 | Marketing | AI Workspace（Weekly Report 等）、Buyer Outreach、多言語商品Catalog |
-| Settings | 会社情報（書類に印字）、為替レート、ユーザー・Role、権限マトリクス、バックアップ |
+| History | データの訂正履歴（全項目の変更前後・操作者・日時、CSV出力、元に戻す）とシステム更新履歴 |
+| Settings | システム更新の状態・不具合報告、会社情報（書類に印字）、為替レート、ユーザー・Role、権限マトリクス、バックアップ |
 
 PDF 出力はブラウザの印刷機能（「PDFに保存」）を使います。書類は A4 レイアウトで、アプリの枠は印刷されません。
 
@@ -66,15 +67,13 @@ npm run dev   # http://localhost:3000
 
 Supabase を設定していない場合は **ローカルモード** で動作します。データはブラウザの localStorage に保存され、初回はサンプルデータ（架空の生産者・バイヤー・案件）が入ります。Settings からユーザー（Role）を切り替えて権限の動作を確認できます。
 
-## 本番運用（Supabase + Vercel）
+## 本番運用・夜間更新・履歴管理
 
-1. Supabase でプロジェクトを作成し、SQL Editor で `supabase/schema.sql` を実行（テーブル・RLS・Storage バケット `attachments` を作成）
-2. Authentication でメール認証を有効化
-3. `.env.example` を参考に環境変数を設定
-   - `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-   - `ANTHROPIC_API_KEY`（任意）
-4. Vercel にこのディレクトリ（Root Directory: `aitrek-os`）をデプロイ。独自ドメイン例：`app.aitrek.jp`
-5. 最初にログインしたユーザーが Owner になります。以降のメンバーは Settings で Email と Role を登録してから、その Email でログインしてもらいます（未登録の Email は Viewer として登録されます）
+個人利用での初期設定（Supabase・Vercel）、各端末へのインストール、不具合の報告から承認・夜間反映までの流れ、訂正履歴の管理は **[docs/OPERATIONS.md](docs/OPERATIONS.md)** を参照してください。
+
+- 不具合は自動で検知・報告され、毎晩 1:00 頃に Claude が修正案（PR）を作成します（[手順](docs/NIGHTLY_FIX.md)）
+- あなたが PR に `approved` ラベルを付けたものだけが、毎晩 2:00（日本時間）に本番へ反映されます
+- すべてのデータ変更は訂正履歴（変更前 → 変更後）として追記専用で記録され、アプリの History 画面で確認・復元できます
 
 ## 構成
 

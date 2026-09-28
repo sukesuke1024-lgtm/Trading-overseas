@@ -1,0 +1,146 @@
+name: Nightly release (AITREK OS)
+
+# 毎晩 2:00（日本時間）に、所有者が承認した修正だけを本番へ反映する。
+#   1. 既定ブランチ宛ての open PR のうち、`approved` ラベルが付いたものを対象にする
+#      - ラベルを付けたのがリポジトリ管理者であること
+#      - ラベルが最後のコミットより後に付けられたこと（承認後の差し替えを防ぐ）
+#      - CI がすべて成功し、競合がないこと
+#   2. 条件を満たす PR をマージする（満たさないものは理由をコメントして残す）
+#   3. 既定ブランチを lint・型チェック・ビルドで再検証し、成功したときだけ
+#      `production` ブランチを更新する（Vercel の本番はこのブランチからデプロイ）
+# 承認がなければ何もしない。手動実行（Run workflow）は所有者の判断で行う。
+
+on:
+  schedule:
+    - cron: "0 17 * * *" # 17:00 UTC = 2:00 JST
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  checks: read
+
+concurrency:
+  group: nightly-release
+  cancel-in-progress: false
+
+jobs:
+  merge-approved:
+    runs-on: ubuntu-latest
+    outputs:
+      default_branch: ${{ steps.merge.outputs.default_branch }}
+      merged: ${{ steps.merge.outputs.merged }}
+    steps:
+      - id: merge
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const { data: repoInfo } = await github.rest.repos.get({ owner, repo });
+            // 運用に使うラベルを用意（初回のみ作成）
+            for (const [name, color, description] of [
+              ['approved', '1a7f4b', '所有者が本番反映を承認（夜間 2:00 に反映）'],
+              ['fix-proposal', '2a78d6', 'Claude が作成した修正案（未承認）'],
+              ['auto-report', 'a15c00', 'アプリが自動検知した不具合'],
+              ['user-report', 'a15c00', '利用者が報告した不具合'],
+            ]) {
+              try { await github.rest.issues.getLabel({ owner, repo, name }); }
+              catch { await github.rest.issues.createLabel({ owner, repo, name, color, description }); }
+            }
+            const base = repoInfo.default_branch;
+            core.setOutput('default_branch', base);
+
+            const prs = await github.paginate(github.rest.pulls.list, { owner, repo, state: 'open', base, per_page: 100 });
+            const approved = prs.filter(p => p.labels.some(l => l.name === 'approved'));
+            core.info(`承認済みPR: ${approved.map(p => '#' + p.number).join(', ') || 'なし'}`);
+
+            const merged = [];
+            const note = (n, body) => github.rest.issues.createComment({ owner, repo, issue_number: n, body: body + '\n\n---\n_Nightly release (AITREK OS)_' });
+
+            for (const pr of approved) {
+              const n = pr.number;
+              // 1) 承認者と承認タイミング
+              const events = await github.paginate(github.rest.issues.listEvents, { owner, repo, issue_number: n, per_page: 100 });
+              const label = events.filter(e => e.event === 'labeled' && e.label?.name === 'approved').pop();
+              const commits = await github.paginate(github.rest.pulls.listCommits, { owner, repo, pull_number: n, per_page: 100 });
+              const lastCommitAt = new Date(commits[commits.length - 1].commit.committer.date);
+              let approverOk = false;
+              if (label?.actor?.login) {
+                const { data: perm } = await github.rest.repos.getCollaboratorPermissionLevel({ owner, repo, username: label.actor.login });
+                approverOk = perm.permission === 'admin';
+              }
+              if (!approverOk) { await note(n, '⏸ 反映を見送りました：`approved` ラベルがリポジトリ管理者によって付けられていません。'); continue; }
+              if (new Date(label.created_at) < lastCommitAt) { await note(n, '⏸ 反映を見送りました：承認後に新しいコミットが追加されています。内容を確認し、`approved` ラベルを付け直してください。'); continue; }
+
+              // 2) CI と競合
+              const { data: full } = await github.rest.pulls.get({ owner, repo, pull_number: n });
+              const checks = await github.paginate(github.rest.checks.listForRef, { owner, repo, ref: full.head.sha, per_page: 100 });
+              const bad = checks.filter(c => c.status !== 'completed' || !['success', 'skipped', 'neutral'].includes(c.conclusion));
+              if (checks.length === 0 || bad.length) { await note(n, `⏸ 反映を見送りました：CI が成功していません（${bad.map(c => c.name + ':' + (c.conclusion ?? c.status)).join(', ') || 'CI 未実行'}）。`); continue; }
+              if (full.mergeable === false || full.mergeable_state === 'dirty') { await note(n, '⏸ 反映を見送りました：既定ブランチと競合しています。'); continue; }
+
+              // 3) マージ
+              try {
+                await github.rest.pulls.merge({ owner, repo, pull_number: n, sha: full.head.sha, merge_method: 'merge',
+                  commit_title: `Nightly release: ${full.title} (#${n})`,
+                  commit_message: `Approved by @${label.actor.login} at ${label.created_at}` });
+                merged.push({ number: n, title: full.title, labels: full.labels.map(l => l.name) });
+                await note(n, `✅ 夜間更新でマージしました（承認：@${label.actor.login}）。本番への反映は、このあとの再検証が成功した場合に行われます。`);
+              } catch (e) {
+                await note(n, `⏸ マージに失敗しました：${e.message}`);
+              }
+            }
+            core.setOutput('merged', JSON.stringify(merged));
+
+  release:
+    needs: merge-approved
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.merge-approved.outputs.default_branch }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: 更新履歴とバージョンを記録
+        if: needs.merge-approved.outputs.merged != '[]' && needs.merge-approved.outputs.merged != ''
+        env:
+          MERGED: ${{ needs.merge-approved.outputs.merged }}
+        run: |
+          git pull --ff-only origin "${{ needs.merge-approved.outputs.default_branch }}"
+          VERSION=$(node aitrek-os/scripts/release-notes.mjs "$MERGED" "$(TZ=Asia/Tokyo date +%F)")
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add aitrek-os/src/lib/changelog.ts aitrek-os/package.json
+          git commit -m "Release v${VERSION} (nightly)"
+          git push origin HEAD:"${{ needs.merge-approved.outputs.default_branch }}"
+      - name: 本番との差分を確認
+        id: diff
+        run: |
+          if git ls-remote --exit-code --heads origin production >/dev/null; then
+            git fetch origin production
+            if [ "$(git rev-parse HEAD)" = "$(git rev-parse origin/production)" ]; then echo "changed=false" >> "$GITHUB_OUTPUT"; exit 0; fi
+          fi
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+      - name: 再検証（lint・型チェック・ビルド）
+        if: steps.diff.outputs.changed == 'true'
+        working-directory: aitrek-os
+        run: |
+          npm ci
+          npm run lint
+          npm run typecheck
+          npm run build
+      - name: production ブランチを更新（Vercel 本番デプロイ）
+        if: steps.diff.outputs.changed == 'true'
+        run: git push origin HEAD:refs/heads/production
+      - name: 失敗を記録
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.create({ owner: context.repo.owner, repo: context.repo.repo,
+              title: `[夜間更新] 再検証に失敗したため本番へ反映しませんでした（${new Date().toISOString().slice(0, 10)}）`,
+              body: `実行記録: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}\n\n本番（production ブランチ）は前回の状態のままです。`,
+              labels: ['bug'] });
