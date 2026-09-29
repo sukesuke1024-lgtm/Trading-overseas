@@ -1,0 +1,15 @@
+{
+  "/_global-error/page": "app/_global-error/page.js",
+  "/_not-found/page": "app/_not-found/page.js",
+  "/admin/page": "app/admin/page.js",
+  "/attendance/page": "app/attendance/page.js",
+  "/directory/page": "app/directory/page.js",
+  "/documents/page": "app/documents/page.js",
+  "/helpdesk/page": "app/helpdesk/page.js",
+  "/icon.svg/route": "app/icon.svg/route.js",
+  "/news/page": "app/news/page.js",
+  "/page": "app/page.js",
+  "/rooms/page": "app/rooms/page.js",
+  "/training/page": "app/training/page.js",
+  "/workflow/page": "app/workflow/page.js"
+}

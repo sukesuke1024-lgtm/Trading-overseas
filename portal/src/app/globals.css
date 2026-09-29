@@ -1,0 +1,88 @@
+@import "tailwindcss";
+
+/* 大企業の社内ポータル向け：信頼・可読性優先の落ち着いたトーン（Design dials 3/2/6） */
+:root {
+  --bg: #f4f5f7;
+  --surface: #ffffff;
+  --surface-2: #eef0f3;
+  --border: #e1e4e9;
+  --border-strong: #c9ced6;
+  --text: #17202e;
+  --text-2: #4b5565;
+  --text-3: #6f7a8b;
+  --brand: #0b3d6e;
+  --brand-2: #1560b0;
+  --brand-soft: #e6eef7;
+  --good: #166b45;
+  --good-soft: #e3f3ea;
+  --warn: #8a5300;
+  --warn-soft: #fbf0d9;
+  --bad: #b3261e;
+  --bad-soft: #fbe6e4;
+  --side: #0c1a2c;
+  --side-text: #c4cddb;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-line: var(--border);
+  --color-line-strong: var(--border-strong);
+  --color-ink: var(--text);
+  --color-ink-2: var(--text-2);
+  --color-ink-3: var(--text-3);
+  --color-brand: var(--brand);
+  --color-brand-2: var(--brand-2);
+  --color-brand-soft: var(--brand-soft);
+  --color-good: var(--good);
+  --color-good-soft: var(--good-soft);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+  --color-bad: var(--bad);
+  --color-bad-soft: var(--bad-soft);
+  --color-side: var(--side);
+  --color-side-text: var(--side-text);
+  --font-sans: "Hiragino Kaku Gothic ProN", "Hiragino Sans", "BIZ UDPGothic", "Yu Gothic UI", "Noto Sans JP", Meiryo, system-ui, sans-serif;
+}
+
+html { background: var(--bg); }
+body {
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.65;
+  font-feature-settings: "palt";
+  -webkit-font-smoothing: antialiased;
+}
+.tabular { font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
+
+:focus-visible { outline: 2px solid var(--brand-2); outline-offset: 2px; border-radius: 4px; }
+
+@layer components {
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; }
+.btn {
+  display: inline-flex; align-items: center; gap: 6px; justify-content: center;
+  height: 36px; padding: 0 14px; border-radius: 8px; font-weight: 600; font-size: 13px;
+  border: 1px solid var(--border-strong); background: var(--surface); color: var(--text);
+  transition: background .15s, border-color .15s, transform .1s; cursor: pointer;
+}
+.btn:hover { background: var(--surface-2); }
+.btn:active { transform: translateY(1px); }
+.btn-primary { background: var(--brand); border-color: var(--brand); color: #fff; }
+.btn-primary:hover { background: #082f55; }
+.btn-danger { color: var(--bad); }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+.input {
+  width: 100%; height: 36px; padding: 0 10px; border-radius: 8px; font-size: 14px;
+  border: 1px solid var(--border-strong); background: var(--surface); color: var(--text);
+}
+textarea.input { height: auto; padding: 8px 10px; }
+.label { display: block; font-size: 12px; font-weight: 600; color: var(--text-2); margin-bottom: 4px; }
+.th { text-align: left; font-size: 12px; font-weight: 600; color: var(--text-3); padding: 8px 12px; border-bottom: 1px solid var(--border); background: var(--surface-2); }
+.td { padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}
