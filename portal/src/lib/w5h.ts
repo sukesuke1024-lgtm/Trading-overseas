@@ -16,8 +16,8 @@ export type W5H = {
   minutes: number;
 };
 
-type PunchLike = { in?: string; out?: string; break?: number; place?: string; edited?: boolean };
-type WfLike = { id: string; type: string; title: string; applicantId: string; detail: string; createdAt: string; amount?: number; steps: { approverId: string; label: string; state: string; at?: string; comment?: string }[] };
+type PunchLike = { in?: string; out?: string; break?: number; place?: string; who?: string; what?: string; why?: string; how?: string; edited?: boolean };
+type WfLike = { id: string; type: string; title: string; applicantId: string; detail: string; createdAt: string; amount?: number; w5h?: { when?: string; where?: string; who?: string; how?: string }; steps: { approverId: string; label: string; state: string; at?: string; comment?: string }[] };
 export type Src = {
   meId: string;
   name: (id: string) => string;
@@ -43,9 +43,9 @@ export function buildEvents(src: Src, from: string, to: string): W5H[] {
     const c = calcDay(date, p);
     out.push({
       id: `punch-${date}`, when: `${date}T${p.in}`, until: p.out ? `${date}T${p.out}` : undefined,
-      where: p.place ?? "オフィス", who: me, what: "勤務",
-      why: c.overtime > 0 ? `所定労働（時間外 ${fmtHM(c.overtime)}）` : c.kind === "workday" ? "所定労働" : "休日労働",
-      how: `ポータルで打刻${p.edited ? "（修正あり）" : ""}／休憩${c.breakMin}分`,
+      where: p.place ?? "オフィス", who: p.who ? `${me}／${p.who}` : me, what: p.what || "勤務",
+      why: p.why || (c.overtime > 0 ? `所定労働（時間外 ${fmtHM(c.overtime)}）` : c.kind === "workday" ? "所定労働" : "休日労働"),
+      how: p.how || `ポータルで打刻${p.edited ? "（修正あり）" : ""}／休憩${c.breakMin}分`,
       category: "勤務", source: "punch", minutes: c.work,
     });
   }
@@ -53,7 +53,8 @@ export function buildEvents(src: Src, from: string, to: string): W5H[] {
   for (const w of src.workflows) {
     const applicant = src.name(w.applicantId), route = w.steps.map((s) => src.name(s.approverId)).join(" → ");
     if (w.applicantId === src.meId && inRange(w.createdAt)) {
-      out.push({ id: `wf-${w.id}-apply`, when: w.createdAt, where: "ワークフロー", who: `${applicant} → ${route}`, what: `申請：${w.title}`, why: w.detail, how: `${w.type}${w.amount ? `（${w.amount.toLocaleString("ja-JP")}円）` : ""}として申請`, category: "申請", source: "workflow", minutes: 0 });
+      const f = w.w5h ?? {};
+      out.push({ id: `wf-${w.id}-apply`, when: f.when ? `${w.createdAt}` : w.createdAt, where: f.where || "ワークフロー", who: `${applicant} → ${route}${f.who ? `／関係者：${f.who}` : ""}`, what: `申請：${w.title}`, why: w.detail, how: f.how || `${w.type}${w.amount ? `（${w.amount.toLocaleString("ja-JP")}円）` : ""}として申請`, category: "申請", source: "workflow", minutes: 0 });
     }
     w.steps.forEach((s, i) => {
       if (s.approverId !== src.meId || !s.at || !inRange(s.at)) return;
