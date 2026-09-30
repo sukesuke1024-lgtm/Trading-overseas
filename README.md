@@ -6,3 +6,4 @@
 | [`recruit-video/`](recruit-video/README.md) | 90秒の採用動画（MP4）と、その元ファイル一式 |
 | [`aitrek-os/`](aitrek-os/README.md) | 社内業務システム AITREK OS（生産者・商品・海外バイヤー・商談・輸出原価・Checklist・書類・入金・利益を一元管理。Next.js + Supabase） |
 | [`portal/`](portal/README.md) | 社内ポータル（大企業向け：お知らせ・ワークフロー・勤怠・名簿・文書・会議室予約・ヘルプデスク・研修・監査ログ。Next.js。デモ） |
+| [`h-link/`](h-link/README.md) | H-LINK 公式サイト（リニューアル版。食品専門商社。9ページ＋記事テンプレート・フォーム・SEO。依存ゼロの静的サイト） |

@@ -1,0 +1,27 @@
+name: H-LINK website
+
+on:
+  push:
+    paths: ['h-link/**', '.github/workflows/h-link.yml']
+  pull_request:
+    paths: ['h-link/**', '.github/workflows/h-link.yml']
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: h-link
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: h-link/package-lock.json
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm test

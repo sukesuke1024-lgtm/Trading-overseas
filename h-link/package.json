@@ -1,0 +1,19 @@
+{
+  "name": "h-link-website",
+  "private": true,
+  "type": "module",
+  "description": "H-LINK 公式サイト（静的サイト / コンテンツはcontent/に集約）",
+  "scripts": {
+    "build": "node build.mjs",
+    "test": "node build.mjs && node test/site.test.mjs",
+    "preview": "node build.mjs && node scripts/serve.mjs",
+    "assets": "node scripts/make-assets.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "axe-core": "^4.13.0",
+    "playwright": "1.56.1"
+  }
+}
