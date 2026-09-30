@@ -178,6 +178,17 @@ export const FAQ = [
 ];
 
 // ---------- ワークフロー ----------
+export type W5hFields = { when?: string; where?: string; who?: string; how?: string };
+
+/** 申請種別ごとの 5W1H の入力ヒント（ラベルと例） */
+export const W5H_HINT: Record<string, { when: [string, string]; where: [string, string]; who: [string, string]; how: [string, string] }> = {
+  経費精算: { when: ["いつ（利用日）", "例：2026-09-25"], where: ["どこで（訪問先・利用場所）", "例：大阪・A社"], who: ["誰が・誰と（同行者・取引先）", "例：A社 佐藤様（会食3名）"], how: ["どのように（支払・移動方法）", "例：新幹線・タクシー／立替払い"] },
+  休暇申請: { when: ["いつ（取得の事情の時期）", "例：家族行事のため"], where: ["どこで（行き先・連絡先）", "例：国内・携帯に連絡可"], who: ["誰が・誰に（引継ぎ先）", "例：佐藤さんに引継ぎ済み"], how: ["どのように（緊急連絡の方法）", "例：携帯・チャット"] },
+  出張申請: { when: ["いつ（出張期間）", "例：11/4〜11/7"], where: ["どこで（出張先）", "例：シンガポール"], who: ["誰が・誰と（面会相手）", "例：現地パートナー X社"], how: ["どのように（交通・宿泊）", "例：航空券（ビジネス）・ホテル3泊"] },
+  稟議: { when: ["いつ（実施・契約時期／希望決裁日）", "例：10月末までに契約"], where: ["どこで（対象部門・取引先）", "例：営業本部・Y社"], who: ["誰が・誰と（関係者・相手先）", "例：営業本部 全員／Y社"], how: ["どのように（実施方法・支払条件）", "例：年額一括払い、3社比較の上で選定"] },
+  "IT機器・アカウント申請": { when: ["いつ（希望納期）", "例：10月15日まで"], where: ["どこで（使用場所）", "例：本社12F"], who: ["誰が（使用者）", "例：山本 拓也"], how: ["どのように（希望仕様・数量）", "例：ノートPC 1台（14インチ）"] },
+};
+
 export type WfType = "経費精算" | "休暇申請" | "出張申請" | "稟議" | "IT機器・アカウント申請";
 export const WF_TYPES: { type: WfType; desc: string }[] = [
   { type: "経費精算", desc: "交通費・接待交際費・立替金などの精算" },
@@ -199,7 +210,8 @@ export type Workflow = {
   invoiceNo?: string; // 経費精算：適格請求書発行事業者の登録番号（T+13桁）
   from?: string; // 休暇申請：開始日
   to?: string; // 休暇申請：終了日
-  detail: string;
+  detail: string; // なぜ（Why）：申請の理由・目的
+  w5h?: W5hFields; // 5W1H：いつ/どこで/誰が(関係者)/どのように（何を＝件名、なぜ＝detail）
   createdAt: string;
   status: WfStatus;
   steps: WfStep[];

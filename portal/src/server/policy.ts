@@ -30,7 +30,7 @@ export function sanitizeForRead(state: S | null, uid: string, role: RoleName): S
 }
 
 function validWf(o: S, n: S, uid: string): boolean {
-  for (const k of ["id", "applicantId", "type", "title", "amount", "detail", "createdAt", "from", "to", "category", "taxKind", "invoiceNo"]) if (JSON.stringify(o[k]) !== JSON.stringify(n[k])) return false;
+  for (const k of ["id", "applicantId", "type", "title", "amount", "detail", "createdAt", "from", "to", "category", "taxKind", "invoiceNo", "w5h"]) if (JSON.stringify(o[k]) !== JSON.stringify(n[k])) return false;
   const same = (i: number) => JSON.stringify(o.steps[i]) === JSON.stringify(n.steps[i]);
   if (o.steps.length !== n.steps.length) return false;
   if (n.status === "取下げ" && o.status === "承認待ち" && o.applicantId === uid) return o.steps.every((_: unknown, i: number) => same(i));
