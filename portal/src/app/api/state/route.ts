@@ -1,6 +1,7 @@
 import { loadDb, saveDb } from "@/server/db";
 import { json, sameOrigin, sessionUser } from "@/server/session";
 import { clientIp, logAuth } from "@/server/authlog";
+import { notify } from "@/server/bus";
 import { mergeWrite, sanitizeForRead } from "@/server/policy";
 import { roleOf } from "@/lib/data";
 
@@ -26,6 +27,7 @@ export async function PUT(req: Request) {
     const { state: merged, denied } = mergeWrite(db.state as never, state, id, roleOf(id));
     db.state = merged;
     saveDb();
+    notify(); // 他の端末へ即時通知
     if (denied.length) logAuth({ actor: id, event: "write_denied", ip: clientIp(req), detail: denied.join(",") });
     return json({ ok: true, state: sanitizeForRead(merged, id, roleOf(id)), denied });
   } catch { return json({ error: "bad request" }, 400); }
