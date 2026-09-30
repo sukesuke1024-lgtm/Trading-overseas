@@ -3,7 +3,7 @@ name: Recruitment LP
 on:
   push:
     branches: [main, claude/overseas-buyer-sales-recruitment-video-idqyvw]
-    paths: ['lp/**', 'recruit-video/out/**', '.github/workflows/lp.yml']
+    paths: ['lp/**', 'portal/**', 'recruit-video/out/**', '.github/workflows/lp.yml']
   pull_request:
     paths: ['lp/**', 'recruit-video/out/**', '.github/workflows/lp.yml']
   workflow_dispatch:
@@ -57,6 +57,17 @@ jobs:
           SITE_URL: ${{ vars.SITE_URL || format('{0}/', steps.pages.outputs.base_url) }}
           CNAME: ${{ vars.CNAME }}
         run: node build.mjs
+      # 社内ポータルのデモ版（静的書き出し）を /portal/ 配下に同梱して公開する
+      - name: Build portal demo
+        working-directory: portal
+        env:
+          NEXT_PUBLIC_BASE_PATH: ${{ steps.pages.outputs.base_path }}/portal
+        run: |
+          npm ci
+          npm run build:static
+          mkdir -p ../lp/dist/portal
+          cp -r out/. ../lp/dist/portal/
+          touch ../lp/dist/.nojekyll
       - uses: actions/upload-pages-artifact@v3
         with:
           path: lp/dist
