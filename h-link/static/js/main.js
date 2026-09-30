@@ -48,7 +48,7 @@ $$('[data-tabs]').forEach(function(root){
     });
   });
   if(root.hasAttribute('data-hash-tabs')){
-    var type=new URLSearchParams(location.search).get('type'); var t=type&&tabs.filter(function(x){return x.dataset.type===type})[0]; if(t)select(t);
+    var type=new URLSearchParams(window.__query!==undefined?window.__query:location.search).get('type'); var t=type&&tabs.filter(function(x){return x.dataset.type===type})[0]; if(t)select(t);
   }
 });
 
