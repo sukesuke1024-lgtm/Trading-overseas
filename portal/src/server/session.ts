@@ -1,17 +1,18 @@
 import crypto from "node:crypto";
-import { sessionSecret } from "./db";
+import { loadDb, sessionSecret } from "./db";
 
 export const COOKIE = "mirai_session";
 export const SESSION_SEC = 60 * 60 * 12; // 12時間
 export const TICKET_SEC = 60 * 5; // 二要素認証の入力猶予：5分
 
-type Payload = { sub: string; exp: number; kind: "session" | "ticket" };
+type Payload = { sub: string; exp: number; kind: "session" | "ticket"; v?: number };
 
 const b64 = (s: string) => Buffer.from(s).toString("base64url");
 const mac = (s: string) => crypto.createHmac("sha256", sessionSecret()).update(s).digest("base64url");
 
 export function sign(sub: string, kind: Payload["kind"], ttlSec: number) {
-  const body = b64(JSON.stringify({ sub, kind, exp: Math.floor(Date.now() / 1000) + ttlSec } satisfies Payload));
+  const v = kind === "session" ? loadDb().users[sub]?.sv ?? 0 : undefined;
+  const body = b64(JSON.stringify({ sub, kind, v, exp: Math.floor(Date.now() / 1000) + ttlSec } satisfies Payload));
   return `${body}.${mac(body)}`;
 }
 
@@ -23,7 +24,9 @@ export function verify(token: string | undefined | null, kind: Payload["kind"]):
   if (sig.length !== good.length || !crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(good))) return null;
   try {
     const p = JSON.parse(Buffer.from(body, "base64url").toString()) as Payload;
-    return p.kind === kind && p.exp > Date.now() / 1000 ? p.sub : null;
+    if (p.kind !== kind || p.exp <= Date.now() / 1000) return null;
+    if (kind === "session" && (loadDb().users[p.sub]?.sv ?? 0) !== (p.v ?? 0)) return null; // 失効済みセッション
+    return p.sub;
   } catch { return null; }
 }
 

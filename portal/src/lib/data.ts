@@ -8,10 +8,12 @@ export const COMPANY = {
   code: "0000",
 };
 
-export type Role = "employee" | "approver" | "admin";
+export type Role = "employee" | "approver" | "finance" | "auditor" | "admin";
 export const ROLE_LABEL: Record<Role, string> = {
   employee: "一般社員",
   approver: "承認者（部長）",
+  finance: "経理担当",
+  auditor: "監査・コンプライアンス",
   admin: "全社管理者",
 };
 
@@ -74,8 +76,12 @@ export const MANAGER_ID = "E1007"; // 渡辺 由美（営業本部 本部長）
 
 // 全社管理者（人事部長・情報システム部長）。部長/本部長は承認者、それ以外は一般社員
 const ADMINS = ["E1002", "E1006"];
+const FINANCE = ["E1004", "E1013"]; // 経理財務部長・経理担当
+const AUDITORS = ["E1005"]; // 法務・コンプライアンス部長（読み取り専用の監査権限）
 export function roleOf(id: string): Role {
   if (ADMINS.includes(id)) return "admin";
+  if (FINANCE.includes(id)) return "finance";
+  if (AUDITORS.includes(id)) return "auditor";
   const e = EMPLOYEES.find((x) => x.id === id);
   return e && (e.title === "部長" || e.title === "本部長") ? "approver" : "employee";
 }
@@ -188,6 +194,9 @@ export type Workflow = {
   title: string;
   applicantId: string;
   amount?: number;
+  category?: string; // 経費精算：勘定科目コード
+  taxKind?: string; // 経費精算：税区分
+  invoiceNo?: string; // 経費精算：適格請求書発行事業者の登録番号（T+13桁）
   from?: string; // 休暇申請：開始日
   to?: string; // 休暇申請：終了日
   detail: string;

@@ -5,15 +5,17 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   Home, Megaphone, FileCheck2, Clock, Users, Library, DoorOpen, LifeBuoy, GraduationCap,
-  Search, Bell, Menu, X, ShieldCheck, CornerDownLeft, LogOut, Ellipsis, Cloud, CloudOff,
+  Search, Bell, Menu, X, ShieldCheck, CornerDownLeft, LogOut, Ellipsis, Cloud, CloudOff, Landmark, BookText, Wallet, FileSearch, Rocket,
 } from "lucide-react";
 import { COMPANY, DOCS, EMPLOYEES, FAQ, ROLE_LABEL, empById } from "@/lib/data";
 import { BASE, STATIC, AuthProvider, useAuth } from "@/lib/auth";
+import { can, type RoleName } from "@/lib/perm";
 import { StoreProvider, useStore } from "@/lib/store";
 import { LoginScreen } from "./Login";
 import { AppMark } from "./ui";
 
-const NAV = [
+type NavItem = { href: string; label: string; icon: typeof Home; show?: (r: RoleName) => boolean; group?: string };
+const NAV: NavItem[] = [
   { href: "/", label: "ホーム", icon: Home },
   { href: "/news", label: "お知らせ", icon: Megaphone },
   { href: "/workflow", label: "ワークフロー", icon: FileCheck2 },
@@ -23,7 +25,12 @@ const NAV = [
   { href: "/rooms", label: "会議室予約", icon: DoorOpen },
   { href: "/helpdesk", label: "ヘルプデスク", icon: LifeBuoy },
   { href: "/training", label: "研修・eラーニング", icon: GraduationCap },
-  { href: "/admin", label: "管理・監査ログ", icon: ShieldCheck },
+  { href: "/payroll", label: "給与", icon: Wallet },
+  { href: "/accounting", label: "決算書・販管費", icon: Landmark, show: can.viewAccounting, group: "経理・会計" },
+  { href: "/journal", label: "仕訳帳", icon: BookText, show: can.viewAccounting, group: "経理・会計" },
+  { href: "/audit", label: "監査・税務調査出力", icon: FileSearch, show: can.audit, group: "監査・統制" },
+  { href: "/ipo", label: "上場準備", icon: Rocket, show: can.viewAccounting, group: "監査・統制" },
+  { href: "/admin", label: "監査ログ・管理", icon: ShieldCheck, show: can.audit, group: "監査・統制" },
 ];
 
 export function Shell({ children }: { children: ReactNode }) {
@@ -67,7 +74,7 @@ function ForcePassword() {
     <div className="fixed inset-0 z-[60] grid place-items-center bg-black/50 p-4" role="dialog" aria-modal="true" aria-label="パスワード変更">
       <form className="card w-full max-w-sm space-y-3 p-5" onSubmit={async (e) => { e.preventDefault(); const r = await changePassword(cur, next); if (r) setErr(r); }}>
         <h2 className="text-lg font-bold">パスワードの変更（必須）</h2>
-        <p className="text-[13px] text-ink-2">初期パスワードのままではご利用いただけません。10文字以上で英字と数字を含めてください。</p>
+        <p className="text-[13px] text-ink-2">初期パスワードのままではご利用いただけません。12文字以上で英字・数字・記号を含めてください。</p>
         <div><label className="label" htmlFor="cp">現在のパスワード</label><input id="cp" type="password" autoComplete="current-password" className="input" value={cur} onChange={(e) => setCur(e.target.value)} /></div>
         <div><label className="label" htmlFor="np">新しいパスワード</label><input id="np" type="password" autoComplete="new-password" className="input" value={next} onChange={(e) => setNext(e.target.value)} /></div>
         {err && <p role="alert" className="text-[13px] text-bad">{err}</p>}
@@ -97,32 +104,34 @@ function Frame({ children }: { children: ReactNode }) {
   const unread = s.news.filter((n) => !(s.read[meId] ?? []).includes(n.id)).length;
 
   return (
-    <div className="min-h-screen lg:grid lg:grid-cols-[236px_1fr]">
+    <div className="min-h-screen lg:grid lg:grid-cols-[236px_1fr] print:block">
       <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-2 focus:top-2 focus:z-50 focus:rounded focus:bg-white focus:p-2">本文へスキップ</a>
       {open && <div className="fixed inset-0 z-30 bg-black/40 lg:hidden" onClick={() => setOpen(false)} />}
-      <aside className={`fixed inset-y-0 left-0 z-40 w-[236px] overflow-y-auto bg-side text-side-text transition-transform lg:sticky lg:top-0 lg:h-screen lg:translate-x-0 ${open ? "translate-x-0" : "-translate-x-full"}`} aria-label="メインメニュー">
+      <aside className={`print:hidden fixed inset-y-0 left-0 z-40 w-[236px] overflow-y-auto bg-side text-side-text transition-transform lg:sticky lg:top-0 lg:h-screen lg:translate-x-0 ${open ? "translate-x-0" : "-translate-x-full"}`} aria-label="メインメニュー">
         <div className="px-5 pb-4 pt-5">
           <div className="flex items-center gap-2 text-[15px] font-bold text-white"><AppMark size={24} />{COMPANY.short} ポータル</div>
           <div className="mt-0.5 text-[11px] text-side-text/70">{COMPANY.name}<br />{COMPANY.market}上場（{COMPANY.code}）</div>
         </div>
         <nav className="px-2 pb-6">
-          {NAV.filter((n) => n.href !== "/admin" || role === "admin").map(({ href, label, icon: Icon }) => {
+          {NAV.filter((n) => !n.show || n.show(role)).map(({ href, label, icon: Icon, group }, idx, arr) => {
+            const head = group && group !== arr[idx - 1]?.group ? <div key={`g-${group}`} className="mb-1 mt-4 px-3 text-[10.5px] font-semibold tracking-wide text-side-text/60">{group}</div> : null;
             const active = href === "/" ? path === "/" : path.startsWith(href);
             const badge = href === "/workflow" ? pending : href === "/news" ? unread : 0;
             return (
-              <Link key={href} href={href} onClick={() => setOpen(false)} aria-current={active ? "page" : undefined}
+              <div key={href}>{head}
+              <Link href={href} onClick={() => setOpen(false)} aria-current={active ? "page" : undefined}
                 className={`mb-0.5 flex items-center gap-3 rounded-lg px-3 py-2 text-[13.5px] transition-colors ${active ? "bg-white/12 font-semibold text-white" : "hover:bg-white/8"}`}>
                 <Icon size={17} aria-hidden />
                 <span className="flex-1">{label}</span>
                 {badge > 0 && <span className="rounded-full bg-brand-2 px-1.5 text-[11px] font-bold text-white tabular">{badge}</span>}
-              </Link>
+              </Link></div>
             );
           })}
         </nav>
       </aside>
 
       <div className="min-w-0 overflow-x-clip">
-        <header className="sticky top-0 z-20 flex h-14 items-center gap-3 border-b border-line bg-surface/95 px-4 backdrop-blur lg:px-8">
+        <header className="print:hidden sticky top-0 z-20 flex h-14 items-center gap-3 border-b border-line bg-surface/95 px-4 backdrop-blur lg:px-8">
           <button className="btn !h-9 !w-9 !p-0 lg:hidden" aria-label="メニューを開く" onClick={() => setOpen(true)}><Menu size={18} /></button>
           <button onClick={() => setQ(true)} className="flex h-9 min-w-0 flex-1 items-center gap-2 rounded-lg border border-line-strong bg-bg px-3 text-left text-ink-3 sm:max-w-md">
             <Search size={15} aria-hidden /><span className="flex-1 truncate">社員・文書・お知らせ・FAQを検索</span>
@@ -144,11 +153,11 @@ function Frame({ children }: { children: ReactNode }) {
           </div>
         </header>
         <main id="main" className="mx-auto max-w-[1180px] px-4 py-6 pb-[calc(88px+env(safe-area-inset-bottom))] lg:px-8 lg:pb-6">{children}</main>
-        <footer className="border-t border-line px-4 py-5 text-[12px] text-ink-3 lg:px-8">
+        <footer className="print:hidden border-t border-line px-4 py-5 text-[12px] text-ink-3 lg:px-8">
           © {COMPANY.name}　社外秘（Confidential）。無断での転載・社外共有を禁じます。　{STATIC ? "※デモ環境：データはこのブラウザ内にのみ保存されます。" : "※データは社内サーバーに保存され、ログイン中の端末間で同期されます。"}
         </footer>
       </div>
-      <nav className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-line bg-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden" aria-label="モバイルメニュー">
+      <nav className="print:hidden fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-line bg-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden" aria-label="モバイルメニュー">
         {[["/", "ホーム", Home, 0], ["/attendance", "勤怠", Clock, 0], ["/workflow", "申請", FileCheck2, pending], ["/news", "お知らせ", Megaphone, unread]].map(([href, label, Icon, badge]) => {
           const I = Icon as typeof Home; const h = href as string;
           const active = h === "/" ? path === "/" : path.startsWith(h);
