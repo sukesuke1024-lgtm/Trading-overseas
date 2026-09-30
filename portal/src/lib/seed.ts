@@ -55,8 +55,5 @@ export function seedState(withAccounting: boolean): State {
     payroll: {},
     closed: withAccounting ? ["2026-04", "2026-05", "2026-06", "2026-07", "2026-08"] : [],
     ipo: {},
-    logs: [
-      { id: "l-seed1", by: "E1012", start: `${ymd(new Date(Date.now() - 86400000))}T14:00`, end: `${ymd(new Date(Date.now() - 86400000))}T15:30`, where: "客先A社", who: "A社 佐藤様", what: "新規提案の商談", why: "来期の契約更新", how: "対面・資料持参", category: "会議" },
-    ],
   };
 }
