@@ -13,7 +13,7 @@ import type { LogRec } from "./w5h";
 import { acct, checkEntry, isInvoiceNo, isPosted, postJournal, reversal, type Approvals, type Journal, type JournalCore, type TaxKind } from "./accounting";
 import { payrollLines, totals, type PayRow } from "./payroll";
 
-export type Punch = { in?: string; out?: string; break?: number; place?: string; who?: string; what?: string; why?: string; how?: string; note?: string; edited?: boolean }; // place＝どこで、who＝誰と、what＝何を、why＝なぜ、how＝どのように
+export type Punch = { in?: string; out?: string; break?: number; place?: string; note?: string; edited?: boolean };
 export type Booking = { id: string; roomId: string; date: string; slot: string; title: string; by: string };
 export type Ticket = { id: string; cat: string; title: string; body: string; status: "受付" | "対応中" | "完了"; createdAt: string; by: string };
 export type AuditBody = { at: string; actor: string; action: string };

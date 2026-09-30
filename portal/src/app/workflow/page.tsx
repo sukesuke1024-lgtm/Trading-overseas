@@ -5,26 +5,12 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, Check, CircleDot, Plus, RotateCcw, X, Circle } from "lucide-react";
 import { workdaysBetween } from "@/lib/attendance-calc";
 import { TAX_KINDS, acct, isInvoiceNo } from "@/lib/accounting";
-import { W5H_HINT, WF_TYPES, empById, type WfStatus, type WfType, type Workflow } from "@/lib/data";
-import { W5hCard, completeness, type W5hItem } from "@/components/w5h";
+import { WF_TYPES, empById, type WfStatus, type WfType, type Workflow } from "@/lib/data";
 import { EXPENSE_ACCOUNTS, useStore, ymd } from "@/lib/store";
 import { Badge, Empty, PageHeader, yen } from "@/components/ui";
 
 const TONE: Record<WfStatus, "warn" | "good" | "bad" | "gray"> = { 承認待ち: "warn", 承認済: "good", 差戻し: "bad", 却下: "bad", 取下げ: "gray" };
 type Tab = "todo" | "mine" | "all";
-
-/** 申請の5W1H：何を＝件名、なぜ＝理由（detail）、いつ/どこで/誰が/どのように＝w5h */
-function w5hItems(w: Workflow): W5hItem[] {
-  const f = w.w5h ?? {};
-  return [
-    { key: "when", label: "いつ（When）", value: f.when },
-    { key: "where", label: "どこで（Where）", value: f.where },
-    { key: "who", label: "誰が・誰と（Who）", value: [empById(w.applicantId)?.name, f.who].filter(Boolean).join("／") },
-    { key: "what", label: "何を（What）", value: `${w.type}：${w.title}${w.amount ? `（${w.amount.toLocaleString("ja-JP")}円）` : ""}` },
-    { key: "why", label: "なぜ（Why）", value: w.detail },
-    { key: "how", label: "どのように（How）", value: f.how },
-  ];
-}
 
 export default function WorkflowPage() {
   const { s, meId, role } = useStore();
@@ -56,14 +42,13 @@ export default function WorkflowPage() {
       </div>
       <div className="card overflow-x-auto">
         <table className="w-full min-w-[720px] text-[13.5px]">
-          <thead><tr><th className="th">申請番号</th><th className="th">種別</th><th className="th">件名</th><th className="th">申請者</th><th className="th text-right">金額</th><th className="th">5W1H</th><th className="th">状態</th></tr></thead>
+          <thead><tr><th className="th">申請番号</th><th className="th">種別</th><th className="th">件名</th><th className="th">申請者</th><th className="th text-right">金額</th><th className="th">状態</th></tr></thead>
           <tbody>
             {rows.map((w) => (
               <tr key={w.id} className="cursor-pointer hover:bg-bg" onClick={() => router.push(`/workflow?id=${w.id}`)}>
                 <td className="td tabular text-ink-3">{w.id}</td><td className="td">{w.type}</td>
                 <td className="td font-medium">{w.title}</td><td className="td">{empById(w.applicantId)?.name}</td>
                 <td className="td tabular text-right">{w.amount ? yen(w.amount) : "—"}</td>
-                <td className="td"><Badge tone={completeness(w5hItems(w)) === 6 ? "good" : "warn"}>{completeness(w5hItems(w))}/6</Badge></td>
                 <td className="td"><Badge tone={TONE[w.status]}>{w.status}</Badge></td>
               </tr>
             ))}
@@ -78,15 +63,13 @@ export default function WorkflowPage() {
 function NewForm({ initial }: { initial: WfType }) {
   const { d, meId, nextWfId, approvalRoute } = useStore();
   const router = useRouter();
-  const [f, setF] = useState({ type: initial, title: "", amount: "", detail: "", from: ymd(new Date()), to: ymd(new Date()), category: "6210", taxKind: "課税10%", invoiceNo: "", when: "", where: "", who: "", how: "" });
+  const [f, setF] = useState({ type: initial, title: "", amount: "", detail: "", from: ymd(new Date()), to: ymd(new Date()), category: "6210", taxKind: "課税10%", invoiceNo: "" });
   const amt = Number(f.amount) || 0;
   const route = approvalRoute(f.type, amt, meId);
   const isLeave = f.type === "休暇申請";
-  const hint = W5H_HINT[f.type];
   const isExpense = f.type === "経費精算" || f.type === "出張申請";
   const invErr = isExpense && f.invoiceNo && !isInvoiceNo(f.invoiceNo) ? "登録番号は「T」＋13桁の数字です" : "";
-  const days = workdaysBetween(f.from, f.to);
-  const filled = 1 + (f.title.trim() || isLeave ? 1 : 0) + (f.detail.trim() ? 1 : 0) + (isLeave || f.when.trim() ? 1 : 0) + (f.where.trim() ? 1 : 0) + (f.how.trim() ? 1 : 0); // 誰が＝申請者は自動
+  const days = workdaysBetween(f.from, f.to); // 土日祝を除いた日数を自動計算
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     if (invErr) return;
@@ -95,7 +78,6 @@ function NewForm({ initial }: { initial: WfType }) {
       title: f.title || (isLeave ? `年次有給休暇 ${f.from}〜${f.to}（${days.length}日）` : f.type),
       applicantId: meId, amount: isLeave || !amt ? undefined : amt,
       ...(isLeave ? { from: f.from, to: f.to } : {}),
-      w5h: { when: isLeave ? `${f.from}〜${f.to}（${days.length}日）` : f.when.trim() || undefined, where: f.where.trim() || undefined, who: f.who.trim() || undefined, how: f.how.trim() || undefined },
       ...(isExpense ? { category: f.category, taxKind: f.taxKind, invoiceNo: f.invoiceNo || undefined } : {}),
       detail: f.detail, createdAt: ymd(new Date()), status: "承認待ち", steps: route,
     };
@@ -120,18 +102,8 @@ function NewForm({ initial }: { initial: WfType }) {
             <p className="text-[12px] text-ink-3 sm:col-span-3">承認完了後、経理へ自動で仕訳（費用／仮払消費税／未払金）が作成されます。登録番号がない場合は仕入税額控除の対象外として処理されます。</p>
           </div>
         )}
-        <fieldset className="space-y-3 rounded-lg border border-line p-3">
-          <legend className="px-1 text-[12.5px] font-bold text-brand">5W1H（承認者が判断するための情報）</legend>
-          <div><label className="label" htmlFor="wn">何を（What）＝件名</label><input id="wn" required={!isLeave} className="input" value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} /></div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            {!isLeave && <div><label className="label" htmlFor="w5w">{hint.when[0]}</label><input id="w5w" className="input" placeholder={hint.when[1]} value={f.when} onChange={(e) => setF({ ...f, when: e.target.value })} /></div>}
-            <div><label className="label" htmlFor="w5e">{hint.where[0]}</label><input id="w5e" className="input" placeholder={hint.where[1]} value={f.where} onChange={(e) => setF({ ...f, where: e.target.value })} /></div>
-            <div><label className="label" htmlFor="w5o">{hint.who[0]}</label><input id="w5o" className="input" placeholder={hint.who[1]} value={f.who} onChange={(e) => setF({ ...f, who: e.target.value })} /></div>
-            <div><label className="label" htmlFor="w5h">{hint.how[0]}</label><input id="w5h" className="input" placeholder={hint.how[1]} value={f.how} onChange={(e) => setF({ ...f, how: e.target.value })} /></div>
-          </div>
-          <div><label className="label" htmlFor="wd">なぜ（Why）＝理由・目的 ※必須</label><textarea id="wd" required rows={4} className="input" placeholder="なぜ必要か、どんな成果・影響があるかを書くと、承認が早くなります" value={f.detail} onChange={(e) => setF({ ...f, detail: e.target.value })} /></div>
-          <p className={`text-[12px] ${filled === 6 ? "text-good" : "text-ink-3"}`}>5W1H の記入状況：{filled}/6{filled < 6 && "（未記入の項目は承認者に「未記入」と表示されます）"}</p>
-        </fieldset>
+        <div><label className="label" htmlFor="wn">件名</label><input id="wn" required={!isLeave} className="input" value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} /></div>
+        <div><label className="label" htmlFor="wd">内容・理由</label><textarea id="wd" required rows={5} className="input" value={f.detail} onChange={(e) => setF({ ...f, detail: e.target.value })} /></div>
         <div>
           <div className="label">承認ルート（自動設定）</div>
           <ol className="flex flex-wrap items-center gap-2 text-[12.5px]">
@@ -167,7 +139,7 @@ function Detail({ w, onBack }: { w: Workflow; onBack: () => void }) {
           <div><dt className="text-[12px] text-ink-3">申請日</dt><dd className="tabular">{w.createdAt}</dd></div>
           <div><dt className="text-[12px] text-ink-3">金額</dt><dd className="tabular">{w.amount ? yen(w.amount) : "—"}</dd></div>
         </dl>
-        <div className="mt-4"><W5hCard items={w5hItems(w)} footer={canAct && completeness(w5hItems(w)) < 6 ? <p className="mt-2 text-[12px] text-warn">未記入の項目があります。判断に必要なら「差戻し」で申請者に補足を依頼できます。</p> : undefined} /></div>
+        <p className="mt-4 whitespace-pre-wrap rounded-lg bg-bg p-3">{w.detail}</p>
 
         <h2 className="mb-2 mt-6 font-bold">承認履歴</h2>
         <ol className="space-y-3">

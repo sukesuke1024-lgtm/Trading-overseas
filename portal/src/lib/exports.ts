@@ -50,14 +50,14 @@ export function attendanceCsv(punches: Record<string, Record<string, Punch>>, fr
   for (const [emp, days] of Object.entries(punches)) for (const [d, p] of Object.entries(days)) {
     if (d < from || d > to) continue;
     const c = calcDay(d, p);
-    rows.push([emp, empById(emp)?.name ?? "", d, p.in ?? "", p.out ?? "", c.breakMin, fmtHM(c.work), fmtHM(c.overtime), fmtHM(c.night), fmtHM(c.legalHoliday), p.place ?? "", p.who ?? "", p.what ?? "", p.why ?? "", p.how ?? "", p.edited ? "修正あり" : ""]);
+    rows.push([emp, empById(emp)?.name ?? "", d, p.in ?? "", p.out ?? "", c.breakMin, fmtHM(c.work), fmtHM(c.overtime), fmtHM(c.night), fmtHM(c.legalHoliday), p.place ?? "", p.edited ? "修正あり" : ""]);
   }
-  return toCsv(["社員番号", "氏名", "日付", "出勤", "退勤", "休憩(分)", "実働", "時間外", "深夜", "法定休日労働", "どこで(勤務場所)", "誰と", "何を", "なぜ", "どのように", "修正"], rows.sort((a, b) => (String(a[0]) + String(a[2])).localeCompare(String(b[0]) + String(b[2]))));
+  return toCsv(["社員番号", "氏名", "日付", "出勤", "退勤", "休憩(分)", "実働", "時間外", "深夜", "法定休日労働", "勤務場所", "修正"], rows.sort((a, b) => (String(a[0]) + String(a[2])).localeCompare(String(b[0]) + String(b[2]))));
 }
 
 export function workflowCsv(list: Workflow[]) {
-  const rows = list.flatMap((w) => w.steps.map((st, i) => [w.id, w.type, w.title, empById(w.applicantId)?.name ?? w.applicantId, w.amount ?? "", w.createdAt, w.status, i + 1, st.label, empById(st.approverId)?.name ?? st.approverId, st.state, st.at ?? "", st.comment ?? "", w.invoiceNo ?? "", w.w5h?.when ?? "", w.w5h?.where ?? "", w.w5h?.who ?? "", w.detail, w.w5h?.how ?? ""]));
-  return toCsv(["申請番号", "種別", "件名", "申請者", "金額", "申請日", "全体状態", "承認順", "承認段階", "承認者", "段階状態", "処理日", "コメント", "適格請求書登録番号", "いつ(5W1H)", "どこで(5W1H)", "誰が・誰と(5W1H)", "なぜ(5W1H)", "どのように(5W1H)"], rows);
+  const rows = list.flatMap((w) => w.steps.map((st, i) => [w.id, w.type, w.title, empById(w.applicantId)?.name ?? w.applicantId, w.amount ?? "", w.createdAt, w.status, i + 1, st.label, empById(st.approverId)?.name ?? st.approverId, st.state, st.at ?? "", st.comment ?? "", w.invoiceNo ?? ""]));
+  return toCsv(["申請番号", "種別", "件名", "申請者", "金額", "申請日", "全体状態", "承認順", "承認段階", "承認者", "段階状態", "処理日", "コメント", "適格請求書登録番号"], rows);
 }
 
 export const auditCsv = (list: Audit[]) => toCsv(["連番", "日時", "実行者", "操作", "直前ハッシュ", "ハッシュ"], list.map((a) => [a.seq, a.at, a.actor, a.action, a.prev, a.hash]));
