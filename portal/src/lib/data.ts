@@ -69,9 +69,24 @@ export const EMPLOYEES: Employee[] = raw.map((r, i) => ({
   skills: r[6].split(","),
 }));
 
-// ログイン中ユーザー（デモ）
-export const ME_ID = "E1012"; // 山本 拓也（営業本部 主任）
+export const ME_ID = "E1012"; // 山本 拓也（営業本部 主任）：デモの既定ユーザー
 export const MANAGER_ID = "E1007"; // 渡辺 由美（営業本部 本部長）
+
+// 全社管理者（人事部長・情報システム部長）。部長/本部長は承認者、それ以外は一般社員
+const ADMINS = ["E1002", "E1006"];
+export function roleOf(id: string): Role {
+  if (ADMINS.includes(id)) return "admin";
+  const e = EMPLOYEES.find((x) => x.id === id);
+  return e && (e.title === "部長" || e.title === "本部長") ? "approver" : "employee";
+}
+
+/** 申請者の所属長（同部署の部長/本部長）。本人が長の場合は経営企画部長。 */
+export function managerOf(id: string): string {
+  const me = EMPLOYEES.find((x) => x.id === id);
+  const head = EMPLOYEES.find((x) => x.dept === me?.dept && (x.title === "部長" || x.title === "本部長"));
+  if (head && head.id !== id) return head.id;
+  return id === "E1001" ? "E1004" : "E1001";
+}
 
 export function empById(id: string) {
   return EMPLOYEES.find((e) => e.id === id);
@@ -173,6 +188,8 @@ export type Workflow = {
   title: string;
   applicantId: string;
   amount?: number;
+  from?: string; // 休暇申請：開始日
+  to?: string; // 休暇申請：終了日
   detail: string;
   createdAt: string;
   status: WfStatus;
@@ -181,8 +198,12 @@ export type Workflow = {
 
 export const WF_SEED: Workflow[] = [
   { id: "WF-2026-0412", type: "経費精算", title: "9月 顧客訪問 交通費・会食費", applicantId: "E1012", amount: 48620, detail: "大阪・名古屋 顧客訪問（新幹線・タクシー）および会食1件（5,000円/人×3名）", createdAt: "2026-09-27", status: "承認待ち", steps: [{ approverId: "E1007", label: "所属長", state: "承認待ち" }, { approverId: "E1004", label: "経理財務部", state: "待機" }] },
-  { id: "WF-2026-0409", type: "休暇申請", title: "年次有給休暇 10/20〜10/21", applicantId: "E1012", detail: "私用のため。担当案件は佐藤様に引き継ぎ済み。", createdAt: "2026-09-24", status: "承認済", steps: [{ approverId: "E1007", label: "所属長", state: "承認", at: "2026-09-25", comment: "承認します。" }] },
+  { id: "WF-2026-0380", type: "休暇申請", title: "年次有給休暇 9/14", applicantId: "E1012", from: "2026-09-14", to: "2026-09-14", detail: "私用のため。", createdAt: "2026-09-08", status: "承認済", steps: [{ approverId: "E1007", label: "所属長", state: "承認", at: "2026-09-09", comment: "承認します。" }] },
+  { id: "WF-2026-0409", type: "休暇申請", title: "年次有給休暇 10/20〜10/21", applicantId: "E1012", from: "2026-10-20", to: "2026-10-21", detail: "私用のため。担当案件は佐藤様に引き継ぎ済み。", createdAt: "2026-09-24", status: "承認済", steps: [{ approverId: "E1007", label: "所属長", state: "承認", at: "2026-09-25", comment: "承認します。" }] },
   { id: "WF-2026-0402", type: "稟議", title: "営業支援SaaS導入（年額 4,800,000円）", applicantId: "E1007", amount: 4800000, detail: "商談管理の統一とレポート自動化のため。3社比較の結果、A社を選定。", createdAt: "2026-09-20", status: "承認待ち", steps: [{ approverId: "E1007", label: "起案部門長", state: "承認", at: "2026-09-20" }, { approverId: "E1006", label: "情報システム部（セキュリティ審査）", state: "承認待ち" }, { approverId: "E1004", label: "経理財務部", state: "待機" }, { approverId: "E1001", label: "経営企画部", state: "待機" }] },
   { id: "WF-2026-0398", type: "出張申請", title: "シンガポール出張 11/4〜11/7", applicantId: "E1008", amount: 385000, detail: "現地パートナーとの契約交渉。航空券（ビジネス）・ホテル3泊。", createdAt: "2026-09-18", status: "承認待ち", steps: [{ approverId: "E1007", label: "所属長", state: "承認待ち" }, { approverId: "E1004", label: "経理財務部", state: "待機" }] },
   { id: "WF-2026-0391", type: "IT機器・アカウント申請", title: "ノートPC 更新（3年経過）", applicantId: "E1012", detail: "現行機のバッテリー劣化により交換希望。", createdAt: "2026-09-10", status: "差戻し", steps: [{ approverId: "E1007", label: "所属長", state: "差戻し", at: "2026-09-11", comment: "資産管理番号を追記してください。" }] },
 ];
+
+// 勤怠システム導入前の年次有給休暇の取得実績（デモ）
+export const LEAVE_SEED = { usedBefore: 3, carryOver: 6 };

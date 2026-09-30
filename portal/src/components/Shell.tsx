@@ -1,14 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   Home, Megaphone, FileCheck2, Clock, Users, Library, DoorOpen, LifeBuoy, GraduationCap,
-  Search, Bell, Menu, X, ShieldCheck, CornerDownLeft,
+  Search, Bell, Menu, X, ShieldCheck, CornerDownLeft, LogOut, Ellipsis, Cloud, CloudOff,
 } from "lucide-react";
-import { COMPANY, DOCS, EMPLOYEES, FAQ, ROLE_LABEL, empById, type Role } from "@/lib/data";
+import { COMPANY, DOCS, EMPLOYEES, FAQ, ROLE_LABEL, empById } from "@/lib/data";
+import { BASE, STATIC, AuthProvider, useAuth } from "@/lib/auth";
 import { StoreProvider, useStore } from "@/lib/store";
+import { LoginScreen } from "./Login";
+import { AppMark } from "./ui";
 
 const NAV = [
   { href: "/", label: "ホーム", icon: Home },
@@ -25,15 +28,59 @@ const NAV = [
 
 export function Shell({ children }: { children: ReactNode }) {
   return (
-    <StoreProvider>
+    <AuthProvider>
+      <Gate>{children}</Gate>
+    </AuthProvider>
+  );
+}
+
+const IDLE_MS = 30 * 60 * 1000; // 無操作30分で自動ログアウト
+
+function Gate({ children }: { children: ReactNode }) {
+  const { user, ready, logout, mustChange } = useAuth();
+  useEffect(() => {
+    if (!user) return;
+    let t = setTimeout(() => logout(), IDLE_MS);
+    const reset = () => { clearTimeout(t); t = setTimeout(() => logout(), IDLE_MS); };
+    const ev = ["pointerdown", "keydown", "visibilitychange"] as const;
+    ev.forEach((e) => window.addEventListener(e, reset));
+    return () => { clearTimeout(t); ev.forEach((e) => window.removeEventListener(e, reset)); };
+  }, [user, logout]);
+  useEffect(() => {
+    if ("serviceWorker" in navigator && process.env.NODE_ENV === "production") navigator.serviceWorker.register(`${BASE}/sw.js`, { scope: `${BASE}/` }).catch(() => {});
+  }, []);
+
+  if (!ready) return <div className="grid min-h-dvh place-items-center text-ink-3">読み込み中…</div>;
+  if (!user) return <LoginScreen />;
+  return (
+    <StoreProvider meId={user.id} role={user.role}>
       <Frame>{children}</Frame>
+      {mustChange && !STATIC && <ForcePassword />}
     </StoreProvider>
+  );
+}
+
+function ForcePassword() {
+  const { changePassword, logout } = useAuth();
+  const [cur, setCur] = useState(""); const [next, setNext] = useState(""); const [err, setErr] = useState("");
+  return (
+    <div className="fixed inset-0 z-[60] grid place-items-center bg-black/50 p-4" role="dialog" aria-modal="true" aria-label="パスワード変更">
+      <form className="card w-full max-w-sm space-y-3 p-5" onSubmit={async (e) => { e.preventDefault(); const r = await changePassword(cur, next); if (r) setErr(r); }}>
+        <h2 className="text-lg font-bold">パスワードの変更（必須）</h2>
+        <p className="text-[13px] text-ink-2">初期パスワードのままではご利用いただけません。10文字以上で英字と数字を含めてください。</p>
+        <div><label className="label" htmlFor="cp">現在のパスワード</label><input id="cp" type="password" autoComplete="current-password" className="input" value={cur} onChange={(e) => setCur(e.target.value)} /></div>
+        <div><label className="label" htmlFor="np">新しいパスワード</label><input id="np" type="password" autoComplete="new-password" className="input" value={next} onChange={(e) => setNext(e.target.value)} /></div>
+        {err && <p role="alert" className="text-[13px] text-bad">{err}</p>}
+        <div className="flex justify-between"><button type="button" className="btn" onClick={() => logout()}>ログアウト</button><button className="btn btn-primary">変更する</button></div>
+      </form>
+    </div>
   );
 }
 
 function Frame({ children }: { children: ReactNode }) {
   const path = usePathname();
-  const { s, d, meId } = useStore();
+  const { s, meId, role, sync } = useStore();
+  const { logout } = useAuth();
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState(false);
   const me = empById(meId)!;
@@ -47,7 +94,7 @@ function Frame({ children }: { children: ReactNode }) {
   }, []);
 
   const pending = s.workflows.filter((w) => w.status === "承認待ち" && w.steps.find((st) => st.state === "承認待ち")?.approverId === meId).length;
-  const unread = s.news.filter((n) => !s.read.includes(n.id)).length;
+  const unread = s.news.filter((n) => !(s.read[meId] ?? []).includes(n.id)).length;
 
   return (
     <div className="min-h-screen lg:grid lg:grid-cols-[236px_1fr]">
@@ -55,11 +102,11 @@ function Frame({ children }: { children: ReactNode }) {
       {open && <div className="fixed inset-0 z-30 bg-black/40 lg:hidden" onClick={() => setOpen(false)} />}
       <aside className={`fixed inset-y-0 left-0 z-40 w-[236px] overflow-y-auto bg-side text-side-text transition-transform lg:sticky lg:top-0 lg:h-screen lg:translate-x-0 ${open ? "translate-x-0" : "-translate-x-full"}`} aria-label="メインメニュー">
         <div className="px-5 pb-4 pt-5">
-          <div className="text-[15px] font-bold text-white">{COMPANY.short} ポータル</div>
+          <div className="flex items-center gap-2 text-[15px] font-bold text-white"><AppMark size={24} />{COMPANY.short} ポータル</div>
           <div className="mt-0.5 text-[11px] text-side-text/70">{COMPANY.name}<br />{COMPANY.market}上場（{COMPANY.code}）</div>
         </div>
         <nav className="px-2 pb-6">
-          {NAV.map(({ href, label, icon: Icon }) => {
+          {NAV.filter((n) => n.href !== "/admin" || role === "admin").map(({ href, label, icon: Icon }) => {
             const active = href === "/" ? path === "/" : path.startsWith(href);
             const badge = href === "/workflow" ? pending : href === "/news" ? unread : 0;
             return (
@@ -85,24 +132,35 @@ function Frame({ children }: { children: ReactNode }) {
             <Link href="/news" className="relative grid h-9 w-9 place-items-center rounded-lg hover:bg-surface-2" aria-label={`未読のお知らせ ${unread}件`}>
               <Bell size={17} />{unread > 0 && <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-bad" />}
             </Link>
-            <label className="hidden items-center gap-2 text-[12px] text-ink-3 md:flex">
-              表示ロール
-              <select className="input !h-8 !w-auto !text-[12px]" value={s.role} onChange={(e) => d({ t: "role", role: e.target.value as Role })}>
-                {(Object.keys(ROLE_LABEL) as Role[]).map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}
-              </select>
-            </label>
+            <span className={`hidden items-center gap-1 text-[11.5px] md:flex ${sync === "offline" ? "text-bad" : "text-ink-3"}`} title={sync === "local" ? "この端末内に保存（デモ）" : sync === "offline" ? "サーバーに接続できません" : "サーバーと同期"}>
+              {sync === "offline" ? <CloudOff size={14} aria-hidden /> : <Cloud size={14} aria-hidden />}{sync === "local" ? "端末内保存" : sync === "offline" ? "オフライン" : sync === "saving" ? "保存中…" : "同期済み"}
+            </span>
             <div className="hidden text-right leading-tight sm:block">
               <div className="text-[13px] font-semibold">{me.name}</div>
-              <div className="text-[11px] text-ink-3">{me.dept}・{me.title}</div>
+              <div className="text-[11px] text-ink-3">{me.dept}・{me.title}・{ROLE_LABEL[role]}</div>
             </div>
             <div className="grid h-9 w-9 place-items-center rounded-full bg-brand text-[13px] font-bold text-white" aria-hidden>{me.name[0]}</div>
+            <button className="btn !h-9 !w-9 !p-0" aria-label="ログアウト" title="ログアウト" onClick={() => logout()}><LogOut size={16} /></button>
           </div>
         </header>
-        <main id="main" className="mx-auto max-w-[1180px] px-4 py-6 lg:px-8">{children}</main>
+        <main id="main" className="mx-auto max-w-[1180px] px-4 py-6 pb-[calc(88px+env(safe-area-inset-bottom))] lg:px-8 lg:pb-6">{children}</main>
         <footer className="border-t border-line px-4 py-5 text-[12px] text-ink-3 lg:px-8">
-          © {COMPANY.name}　社外秘（Confidential）。無断での転載・社外共有を禁じます。　※デモ環境：データはこのブラウザ内にのみ保存されます。
+          © {COMPANY.name}　社外秘（Confidential）。無断での転載・社外共有を禁じます。　{STATIC ? "※デモ環境：データはこのブラウザ内にのみ保存されます。" : "※データは社内サーバーに保存され、ログイン中の端末間で同期されます。"}
         </footer>
       </div>
+      <nav className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-line bg-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden" aria-label="モバイルメニュー">
+        {[["/", "ホーム", Home, 0], ["/attendance", "勤怠", Clock, 0], ["/workflow", "申請", FileCheck2, pending], ["/news", "お知らせ", Megaphone, unread]].map(([href, label, Icon, badge]) => {
+          const I = Icon as typeof Home; const h = href as string;
+          const active = h === "/" ? path === "/" : path.startsWith(h);
+          return (
+            <Link key={h} href={h} aria-current={active ? "page" : undefined} className={`relative flex flex-col items-center gap-0.5 py-2 text-[10.5px] ${active ? "font-bold text-brand" : "text-ink-3"}`}>
+              <I size={21} aria-hidden />{label as string}
+              {(badge as number) > 0 && <span className="absolute right-[26%] top-1 rounded-full bg-bad px-1 text-[9px] font-bold text-white tabular">{badge as number}</span>}
+            </Link>
+          );
+        })}
+        <button onClick={() => setOpen(true)} className="flex flex-col items-center gap-0.5 py-2 text-[10.5px] text-ink-3"><Ellipsis size={21} aria-hidden />メニュー</button>
+      </nav>
       {q && <Palette onClose={() => setQ(false)} />}
     </div>
   );
@@ -115,6 +173,7 @@ function Palette({ onClose }: { onClose: () => void }) {
   const [i, setI] = useState(0);
   const ref = useRef<HTMLInputElement>(null);
   const { s } = useStore();
+  const router = useRouter();
   const all = useMemo<Hit[]>(() => [
     ...EMPLOYEES.map((e) => ({ kind: "社員", title: e.name, sub: `${e.dept} ${e.title}・内線${e.ext}`, href: `/directory?q=${encodeURIComponent(e.name)}` })),
     ...DOCS.map((x) => ({ kind: "文書", title: x.title, sub: `${x.kind}・${x.owner}`, href: `/documents?q=${encodeURIComponent(x.title)}` })),
@@ -128,7 +187,7 @@ function Palette({ onClose }: { onClose: () => void }) {
   }, [text, all]);
   useEffect(() => { ref.current?.focus(); }, []);
 
-  const go = (h?: Hit) => { if (h) { window.location.href = h.href; } };
+  const go = (h?: Hit) => { if (h) { router.push(h.href); onClose(); } };
   return (
     <div className="fixed inset-0 z-50 grid place-items-start bg-black/40 px-4 pt-[12vh]" onClick={onClose} role="dialog" aria-modal="true" aria-label="全社検索">
       <div className="card mx-auto w-full max-w-xl overflow-hidden shadow-xl" onClick={(e) => e.stopPropagation()}>

@@ -38,3 +38,13 @@ export function Progress({ value, tone = "brand" }: { value: number; tone?: "bra
 }
 
 export const yen = (n: number) => `¥${n.toLocaleString("ja-JP")}`;
+
+/** アプリアイコンと同じマーク（ロゴ） */
+export function AppMark({ size = 32 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 32 32" role="img" aria-label="ミライHD">
+      <rect width="32" height="32" rx="7" fill="#0b3d6e" />
+      <path d="M8 23V9l8 9 8-9v14" fill="none" stroke="#fff" strokeWidth="2.6" strokeLinejoin="round" strokeLinecap="round" />
+    </svg>
+  );
+}

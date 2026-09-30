@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, Check, CircleDot, Plus, RotateCcw, X, Circle } from "lucide-react";
+import { workdaysBetween } from "@/lib/attendance-calc";
 import { WF_TYPES, empById, type WfStatus, type WfType, type Workflow } from "@/lib/data";
 import { useStore, ymd } from "@/lib/store";
 import { Badge, Empty, PageHeader, yen } from "@/components/ui";
@@ -11,7 +12,7 @@ const TONE: Record<WfStatus, "warn" | "good" | "bad" | "gray"> = { 承認待ち:
 type Tab = "todo" | "mine" | "all";
 
 export default function WorkflowPage() {
-  const { s, meId } = useStore();
+  const { s, meId, role } = useStore();
   const sp = useSearchParams();
   const router = useRouter();
   const id = sp.get("id");
@@ -21,8 +22,8 @@ export default function WorkflowPage() {
   const rows = useMemo(() => s.workflows.filter((w) => {
     if (tab === "todo") return w.status === "承認待ち" && w.steps.find((x) => x.state === "承認待ち")?.approverId === meId;
     if (tab === "mine") return w.applicantId === meId;
-    return s.role !== "employee";
-  }), [s.workflows, s.role, tab, meId]);
+    return role !== "employee";
+  }), [s.workflows, role, tab, meId]);
 
   if (newType !== null || sp.has("new")) return <NewForm initial={WF_TYPES.some((t) => t.type === newType) ? newType! : "経費精算"} />;
   const cur = s.workflows.find((w) => w.id === id);
@@ -34,7 +35,7 @@ export default function WorkflowPage() {
       <PageHeader title="ワークフロー" sub="申請・承認。決裁権限表に基づき承認ルートが自動設定されます。"
         actions={<button className="btn btn-primary" onClick={() => router.push("/workflow?new")}><Plus size={15} />新規申請</button>} />
       <div className="mb-3 flex gap-1 border-b border-line" role="tablist">
-        {([["todo", `承認待ち（${todoCount}）`], ["mine", "自分の申請"], ...(s.role !== "employee" ? [["all", "全件"]] : [])] as [Tab, string][]).map(([k, l]) => (
+        {([["todo", `承認待ち（${todoCount}）`], ["mine", "自分の申請"], ...(role !== "employee" ? [["all", "全件"]] : [])] as [Tab, string][]).map(([k, l]) => (
           <button key={k} role="tab" aria-selected={tab === k} onClick={() => setTab(k)} className={`-mb-px border-b-2 px-4 py-2 text-[13.5px] font-semibold ${tab === k ? "border-brand text-brand" : "border-transparent text-ink-3"}`}>{l}</button>
         ))}
       </div>
@@ -59,19 +60,20 @@ export default function WorkflowPage() {
 }
 
 function NewForm({ initial }: { initial: WfType }) {
-  const { s, d, meId, nextWfId, approvalRoute } = useStore();
+  const { d, meId, nextWfId, approvalRoute } = useStore();
   const router = useRouter();
-  void s;
   const [f, setF] = useState({ type: initial, title: "", amount: "", detail: "", from: ymd(new Date()), to: ymd(new Date()) });
   const amt = Number(f.amount) || 0;
-  const route = approvalRoute(f.type, amt);
+  const route = approvalRoute(f.type, amt, meId);
   const isLeave = f.type === "休暇申請";
+  const days = workdaysBetween(f.from, f.to); // 土日祝を除いた日数を自動計算
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     const w: Workflow = {
-      id: nextWfId(f.type), type: f.type,
-      title: f.title || (isLeave ? `年次有給休暇 ${f.from}〜${f.to}` : f.type),
+      id: nextWfId(), type: f.type,
+      title: f.title || (isLeave ? `年次有給休暇 ${f.from}〜${f.to}（${days.length}日）` : f.type),
       applicantId: meId, amount: isLeave || !amt ? undefined : amt,
+      ...(isLeave ? { from: f.from, to: f.to } : {}),
       detail: f.detail, createdAt: ymd(new Date()), status: "承認待ち", steps: route,
     };
     d({ t: "wf-new", w });
@@ -86,7 +88,7 @@ function NewForm({ initial }: { initial: WfType }) {
           <div><label className="label" htmlFor="wt">申請種別</label><select id="wt" className="input" value={f.type} onChange={(e) => setF({ ...f, type: e.target.value as WfType })}>{WF_TYPES.map((t) => <option key={t.type}>{t.type}</option>)}</select></div>
           {!isLeave && <div><label className="label" htmlFor="wa">金額（円）</label><input id="wa" type="number" min={0} className="input tabular" value={f.amount} onChange={(e) => setF({ ...f, amount: e.target.value })} /></div>}
         </div>
-        {isLeave && <div className="grid gap-4 sm:grid-cols-2"><div><label className="label" htmlFor="lf">開始日</label><input id="lf" type="date" className="input" value={f.from} onChange={(e) => setF({ ...f, from: e.target.value })} /></div><div><label className="label" htmlFor="lt">終了日</label><input id="lt" type="date" min={f.from} className="input" value={f.to} onChange={(e) => setF({ ...f, to: e.target.value })} /></div></div>}
+        {isLeave && <div className="grid gap-4 sm:grid-cols-2"><div><label className="label" htmlFor="lf">開始日</label><input id="lf" type="date" className="input" value={f.from} onChange={(e) => setF({ ...f, from: e.target.value })} /></div><div><label className="label" htmlFor="lt">終了日</label><input id="lt" type="date" min={f.from} className="input" value={f.to} onChange={(e) => setF({ ...f, to: e.target.value })} /></div><p className="text-[12.5px] text-ink-2 sm:col-span-2">取得日数（土日祝を除く自動計算）：<b className="tabular">{days.length}日</b>{days.length === 0 && <span className="ml-2 text-bad">対象期間に営業日がありません</span>}</p></div>}
         <div><label className="label" htmlFor="wn">件名</label><input id="wn" required={!isLeave} className="input" value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} /></div>
         <div><label className="label" htmlFor="wd">内容・理由</label><textarea id="wd" required rows={5} className="input" value={f.detail} onChange={(e) => setF({ ...f, detail: e.target.value })} /></div>
         <div>
@@ -96,7 +98,7 @@ function NewForm({ initial }: { initial: WfType }) {
           </ol>
           {f.type === "稟議" && amt >= 1000000 && <p className="mt-2 text-[12px] text-warn">100万円以上のため、決裁権限表により経営企画部の承認が追加されました。</p>}
         </div>
-        <div className="flex justify-end gap-2"><button type="button" className="btn" onClick={() => router.push("/workflow")}>キャンセル</button><button className="btn btn-primary">申請する</button></div>
+        <div className="flex justify-end gap-2"><button type="button" className="btn" onClick={() => router.push("/workflow")}>キャンセル</button><button className="btn btn-primary" disabled={isLeave && days.length === 0}>申請する</button></div>
       </form>
     </div>
   );
@@ -147,7 +149,7 @@ function Detail({ w, onBack }: { w: Workflow; onBack: () => void }) {
             <div className="flex gap-2"><button className="btn btn-primary" onClick={() => act("承認")}><Check size={15} />承認</button><button className="btn" onClick={() => act("差戻し")}><RotateCcw size={14} />差戻し</button><button className="btn btn-danger" onClick={() => act("却下")}><X size={15} />却下</button></div>
           </div>
         )}
-        {mine && w.status === "承認待ち" && <div className="mt-6 border-t border-line pt-4"><button className="btn btn-danger" onClick={() => confirm("この申請を取り下げますか？") && d({ t: "wf-cancel", id: w.id })}>申請を取り下げる</button></div>}
+        {mine && w.status === "承認待ち" && <div className="mt-6 border-t border-line pt-4"><button className="btn btn-danger" onClick={() => confirm("この申請を取り下げますか？") && d({ t: "wf-cancel", id: w.id, by: meId })}>申請を取り下げる</button></div>}
         {!canAct && w.status === "承認待ち" && !mine && <p className="mt-4 text-[12px] text-ink-3">この案件の現在の承認者は {empById(active?.approverId ?? "")?.name} です。</p>}
       </div>
     </div>

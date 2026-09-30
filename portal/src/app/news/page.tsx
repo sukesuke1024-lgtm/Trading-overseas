@@ -7,8 +7,11 @@ import { NEWS_CATEGORIES, type NewsCategory } from "@/lib/data";
 import { useStore, ymd } from "@/lib/store";
 import { Badge, Empty, PageHeader } from "@/components/ui";
 
+const NONE: string[] = [];
+
 export default function NewsPage() {
-  const { s, d } = useStore();
+  const { s, d, meId, role } = useStore();
+  const readSet = s.read[meId] ?? NONE;
   const sp = useSearchParams();
   const router = useRouter();
   const id = sp.get("id");
@@ -16,14 +19,14 @@ export default function NewsPage() {
   const [q, setQ] = useState("");
   const [unreadOnly, setUnread] = useState(false);
   const [compose, setCompose] = useState(false);
-  const canPost = s.role === "admin";
+  const canPost = role === "admin";
 
   const list = useMemo(() => s.news.filter((n) =>
-    (cat === "すべて" || n.category === cat) && (!unreadOnly || !s.read.includes(n.id)) && (n.title + n.body).includes(q)), [s.news, s.read, cat, q, unreadOnly]);
+    (cat === "すべて" || n.category === cat) && (!unreadOnly || !readSet.includes(n.id)) && (n.title + n.body).includes(q)), [s.news, readSet, cat, q, unreadOnly]);
   const cur = s.news.find((n) => n.id === id);
 
   if (cur) {
-    if (!s.read.includes(cur.id)) queueMicrotask(() => d({ t: "read", id: cur.id }));
+    if (!readSet.includes(cur.id)) queueMicrotask(() => d({ t: "read", emp: meId, id: cur.id }));
     return (
       <article className="card max-w-3xl p-6">
         <button className="btn mb-4" onClick={() => router.push("/news")}><ArrowLeft size={14} />一覧へ</button>
@@ -49,10 +52,10 @@ export default function NewsPage() {
         {list.length === 0 && <Empty>該当するお知らせはありません</Empty>}
         {list.map((n) => (
           <div key={n.id} className="flex items-center gap-3 border-b border-line px-4 py-3 last:border-0">
-            <span className={`h-2 w-2 shrink-0 rounded-full ${s.read.includes(n.id) ? "bg-transparent" : "bg-brand-2"}`} aria-label={s.read.includes(n.id) ? "既読" : "未読"} />
+            <span className={`h-2 w-2 shrink-0 rounded-full ${readSet.includes(n.id) ? "bg-transparent" : "bg-brand-2"}`} aria-label={readSet.includes(n.id) ? "既読" : "未読"} />
             <button className="min-w-0 flex-1 text-left" onClick={() => router.push(`/news?id=${n.id}`)}>
               <div className="mb-0.5 flex items-center gap-2"><Badge tone={n.important ? "bad" : "gray"}>{n.category}</Badge>{n.important && <Badge tone="bad">重要</Badge>}<span className="tabular text-[12px] text-ink-3">{n.date}・{n.author}</span></div>
-              <div className={`truncate ${s.read.includes(n.id) ? "" : "font-semibold"}`}>{n.title}</div>
+              <div className={`truncate ${readSet.includes(n.id) ? "" : "font-semibold"}`}>{n.title}</div>
             </button>
             {canPost && <button className="btn btn-danger !h-8 !w-8 !p-0" aria-label="削除" onClick={() => confirm("このお知らせを削除しますか？") && d({ t: "news-del", id: n.id })}><Trash2 size={14} /></button>}
           </div>

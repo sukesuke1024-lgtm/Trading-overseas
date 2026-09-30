@@ -11,12 +11,12 @@ const CATS = ["すべて", "IT", "人事", "経理", "総務", "コンプライ�
 const STATUS_TONE = { 受付: "gray", 対応中: "warn", 完了: "good" } as const;
 
 export default function Helpdesk() {
-  const { s, d, meId } = useStore();
+  const { s, d, meId, role } = useStore();
   const sp = useSearchParams();
   const [q, setQ] = useState(sp.get("q") ?? "");
   const [cat, setCat] = useState("すべて");
   const [f, setF] = useState({ cat: "IT", title: "", body: "" });
-  const admin = s.role === "admin";
+  const admin = role === "admin";
   const t = q.trim();
   const faqs = FAQ.filter((x) => (cat === "すべて" || x.cat === cat) && (!t || (x.q + x.a).includes(t)));
   const tickets = s.tickets.filter((x) => admin || x.by === meId);

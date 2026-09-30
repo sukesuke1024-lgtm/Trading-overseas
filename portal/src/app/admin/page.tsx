@@ -5,8 +5,8 @@ import { useStore } from "@/lib/store";
 import { Empty, PageHeader } from "@/components/ui";
 
 export default function Admin() {
-  const { s, d } = useStore();
-  const ok = s.role === "admin";
+  const { s, d, role } = useStore();
+  const ok = role === "admin";
   return (
     <div>
       <PageHeader title="管理・監査ログ" sub="内部統制（J-SOX）対応のため、申請・承認・投稿等の操作を記録します。"

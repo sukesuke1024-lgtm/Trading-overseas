@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { ArrowRight, LogIn, LogOut, TrendingUp, Cake, AlertTriangle } from "lucide-react";
+import { ArrowRight, TrendingUp, Cake, AlertTriangle } from "lucide-react";
 import { COMPANY, COURSES, EMPLOYEES, ROOMS, empById } from "@/lib/data";
-import { hm, useStore, ymd } from "@/lib/store";
+import { useStore, ymd } from "@/lib/store";
+import { PunchCard } from "@/components/PunchCard";
 import { Badge, Progress, yen } from "@/components/ui";
 
 const LINKS = [
@@ -13,18 +14,19 @@ const LINKS = [
 ];
 
 export default function Home() {
-  const { s, d, meId } = useStore();
+  const { s, meId } = useStore();
+  const prog = s.progress[meId] ?? {};
+  const readSet = s.read[meId] ?? [];
   const me = empById(meId)!;
   const [t, setT] = useState(() => new Date());
   useEffect(() => { const i = setInterval(() => setT(new Date()), 1000 * 20); return () => clearInterval(i); }, []);
 
   const today = ymd(t);
-  const p = s.punches[today] ?? {};
   const todo = s.workflows.filter((w) => w.status === "承認待ち" && w.steps.find((x) => x.state === "承認待ち")?.approverId === meId);
   const mine = s.workflows.filter((w) => w.applicantId === meId && (w.status === "承認待ち" || w.status === "差戻し"));
   const important = s.news.filter((n) => n.important).slice(0, 3);
   const latest = s.news.slice(0, 6);
-  const dueCourses = COURSES.filter((c) => c.required && (s.progress[c.id] ?? 0) < 100);
+  const dueCourses = COURSES.filter((c) => c.required && (prog[c.id] ?? 0) < 100);
   const todayBookings = s.bookings.filter((b) => b.date === today).sort((a, b) => a.slot.localeCompare(b.slot));
   const hour = t.getHours();
 
@@ -47,15 +49,7 @@ export default function Home() {
       )}
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
-        <section className="card p-4" aria-label="勤怠打刻">
-          <h2 className="mb-1 font-bold">勤怠打刻</h2>
-          <div className="tabular text-[34px] font-bold leading-tight">{hm(t)}</div>
-          <p className="mb-3 text-[12px] text-ink-3">出勤 {p.in ?? "—"} ／ 退勤 {p.out ?? "—"}</p>
-          <div className="flex gap-2">
-            <button className="btn btn-primary flex-1" disabled={!!p.in} onClick={() => d({ t: "punch", date: today, p: { in: hm(new Date()) } })}><LogIn size={15} />出勤</button>
-            <button className="btn flex-1" disabled={!p.in || !!p.out} onClick={() => d({ t: "punch", date: today, p: { out: hm(new Date()) } })}><LogOut size={15} />退勤</button>
-          </div>
-        </section>
+        <PunchCard />
 
         <section className="card min-w-0 p-4 lg:col-span-2" aria-label="あなたのToDo">
           <div className="mb-2 flex items-center justify-between"><h2 className="font-bold">あなたのToDo</h2><Link href="/workflow" className="flex items-center gap-1 text-[12px] text-brand-2">ワークフローへ<ArrowRight size={13} /></Link></div>
@@ -81,7 +75,7 @@ export default function Home() {
                 <Link href={`/news?id=${n.id}`} className="flex items-center gap-3 px-4 py-2.5 hover:bg-bg">
                   <span className="tabular w-[76px] shrink-0 text-[12px] text-ink-3">{n.date}</span>
                   <Badge tone={n.important ? "bad" : "gray"}>{n.category}</Badge>
-                  <span className={`flex-1 truncate ${s.read.includes(n.id) ? "text-ink-2" : "font-semibold"}`}>{n.title}</span>
+                  <span className={`flex-1 truncate ${readSet.includes(n.id) ? "text-ink-2" : "font-semibold"}`}>{n.title}</span>
                 </Link>
               </li>
             ))}
@@ -117,7 +111,7 @@ export default function Home() {
           <h2 className="mb-2 font-bold">必須研修の進捗</h2>
           <div className="space-y-3">
             {COURSES.filter((c) => c.required).map((c) => (
-              <div key={c.id}><div className="mb-1 flex justify-between text-[12px]"><span className="truncate">{c.title}</span><span className="tabular text-ink-3">{s.progress[c.id]}%</span></div><Progress value={s.progress[c.id] ?? 0} tone={(s.progress[c.id] ?? 0) >= 100 ? "good" : "brand"} /></div>
+              <div key={c.id}><div className="mb-1 flex justify-between text-[12px]"><span className="truncate">{c.title}</span><span className="tabular text-ink-3">{prog[c.id]}%</span></div><Progress value={prog[c.id] ?? 0} tone={(prog[c.id] ?? 0) >= 100 ? "good" : "brand"} /></div>
             ))}
           </div>
         </section>
