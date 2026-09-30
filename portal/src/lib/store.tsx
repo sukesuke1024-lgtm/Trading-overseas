@@ -9,7 +9,6 @@ import { BASE, STATIC } from "./auth";
 import { append, type Chained } from "./chain";
 import { can } from "./perm";
 import { seedState } from "./seed";
-import type { LogRec } from "./w5h";
 import { acct, checkEntry, isInvoiceNo, isPosted, postJournal, reversal, type Approvals, type Journal, type JournalCore, type TaxKind } from "./accounting";
 import { payrollLines, totals, type PayRow } from "./payroll";
 
@@ -35,7 +34,6 @@ export type State = {
   payroll: Record<string, PayrollRun>;
   closed: string[]; // 月次締め済み（YYYY-MM）
   ipo: Record<string, boolean>;
-  logs: LogRec[]; // 5W1H の手入力記録（個人）
 };
 
 const KEY = "mirai-portal-v3";
@@ -72,8 +70,6 @@ type Action =
   | { t: "payroll-save"; run: PayrollRun }
   | { t: "payroll-confirm"; month: string; by: string }
   | { t: "ipo-set"; id: string; v: boolean; by: string }
-  | { t: "log-add"; log: LogRec }
-  | { t: "log-del"; id: string; by: string }
   | { t: "export-log"; by: string; what: string }
   | { t: "reset"; role: Role };
 
@@ -175,8 +171,6 @@ function reducer(s: State, a: Action): State {
       return logged(s, a.by, `給与確定: ${a.month}（仕訳 ${journal[journal.length - 1].id}）`, { journal, payroll: { ...s.payroll, [a.month]: { ...run, status: "確定", journalId: journal[journal.length - 1].id } } });
     }
     case "ipo-set": return logged(s, a.by, `上場準備チェック: ${a.id}=${a.v}`, { ipo: { ...s.ipo, [a.id]: a.v } });
-    case "log-add": return logged(s, a.log.by, `5W1H記録: ${a.log.what}`, { logs: [a.log, ...s.logs] });
-    case "log-del": return logged(s, a.by, `5W1H記録の削除: ${a.id}`, { logs: s.logs.filter((l) => !(l.id === a.id && l.by === a.by)) });
     case "export-log": return logged(s, a.by, `データ出力: ${a.what}`);
   }
 }

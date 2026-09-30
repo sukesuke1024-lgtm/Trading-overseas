@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   Home, Megaphone, FileCheck2, Clock, Users, Library, DoorOpen, LifeBuoy, GraduationCap,
-  Search, Bell, Menu, X, ShieldCheck, CornerDownLeft, LogOut, Ellipsis, Cloud, CloudOff, Landmark, BookText, Wallet, FileSearch, Rocket, ListChecks,
+  Search, Bell, Menu, X, ShieldCheck, CornerDownLeft, LogOut, Ellipsis, Cloud, CloudOff, Landmark, BookText, Wallet, FileSearch, Rocket,
 } from "lucide-react";
 import { COMPANY, DOCS, EMPLOYEES, FAQ, ROLE_LABEL, empById } from "@/lib/data";
 import { BASE, STATIC, AuthProvider, useAuth } from "@/lib/auth";
@@ -20,7 +20,6 @@ const NAV: NavItem[] = [
   { href: "/news", label: "お知らせ", icon: Megaphone },
   { href: "/workflow", label: "ワークフロー", icon: FileCheck2 },
   { href: "/attendance", label: "勤怠", icon: Clock },
-  { href: "/w5h", label: "5W1H 記録", icon: ListChecks },
   { href: "/directory", label: "社員名簿・組織図", icon: Users },
   { href: "/documents", label: "文書ライブラリ", icon: Library },
   { href: "/rooms", label: "会議室予約", icon: DoorOpen },

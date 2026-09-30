@@ -55,11 +55,3 @@ test("closed months can only grow; confirmed payroll immutable; audit is server-
   assert.equal(a.audit.length, 1); assert.equal(a.audit[0].actor, "E1012"); assert.equal(a.audit[0].seq, 1);
   void append;
 });
-
-test("5W1H logs are personal: own-only read/write", () => {
-  const b = { ...base(), logs: [{ id: "a", by: "E1012", what: "x" }, { id: "b", by: "E1007", what: "y" }] };
-  assert.deepEqual(sanitizeForRead(b, "E1012", "employee")!.logs.map((l: { id: string }) => l.id), ["a"]);
-  assert.deepEqual(sanitizeForRead(b, "E1002", "admin")!.logs.map((l: { id: string }) => l.id), []); // 管理者でも他人の記録は見えない
-  const r = mergeWrite(b, { logs: [{ id: "a", by: "E1012", what: "x2" }, { id: "z", by: "E1007", what: "偽装" }] }, "E1012", "employee").state;
-  assert.deepEqual(r.logs.map((l: { id: string }) => l.id).sort(), ["a", "b"]); // 他人名義の追加は無視、他人の記録は保持
-});
