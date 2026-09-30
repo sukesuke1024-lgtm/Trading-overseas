@@ -24,6 +24,7 @@ export function sanitizeForRead(state: S | null, uid: string, role: RoleName): S
   if (!can.viewPayroll(role) && base_payroll(state)) out.payroll = ownConfirmedPayroll(state.payroll, uid); // 一般社員には自分の確定済み明細だけ返す
   const seeAll = can.viewPayroll(role);
   if (!seeAll && out.punches) out.punches = { [uid]: out.punches[uid] ?? {} };
+  if (out.logs) out.logs = out.logs.filter((l: S) => l.by === uid); // 5W1H記録は本人のみ
   if (!can.audit(role) && out.audit) out.audit = out.audit.filter((a: S) => a.actor === uid).slice(-50);
   return out;
 }
@@ -67,6 +68,7 @@ export function mergeWrite(cur: S | null, inc: S, uid: string, role: RoleName): 
     for (const [emp, v] of Object.entries(inc[k] as S)) { if (emp === uid) out[k][emp] = v; else if (JSON.stringify(v) !== JSON.stringify(base[k]?.[emp])) deny(k); }
   }
   // 会議室予約・問い合わせ：自分の分のみ増減、他人の分は変更不可
+  if (inc.logs) out.logs = [...(base.logs ?? []).filter((l: S) => l.by !== uid), ...inc.logs.filter((l: S) => l.by === uid)];
   if (inc.bookings) out.bookings = [...(base.bookings ?? []).filter((b: S) => b.by !== uid), ...inc.bookings.filter((b: S) => b.by === uid)];
   if (inc.tickets) {
     const mine = inc.tickets.filter((t: S) => !(base.tickets ?? []).some((x: S) => x.id === t.id) && t.by === uid);
