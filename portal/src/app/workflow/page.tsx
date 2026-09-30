@@ -4,8 +4,9 @@ import { useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, Check, CircleDot, Plus, RotateCcw, X, Circle } from "lucide-react";
 import { workdaysBetween } from "@/lib/attendance-calc";
+import { TAX_KINDS, acct, isInvoiceNo } from "@/lib/accounting";
 import { WF_TYPES, empById, type WfStatus, type WfType, type Workflow } from "@/lib/data";
-import { useStore, ymd } from "@/lib/store";
+import { EXPENSE_ACCOUNTS, useStore, ymd } from "@/lib/store";
 import { Badge, Empty, PageHeader, yen } from "@/components/ui";
 
 const TONE: Record<WfStatus, "warn" | "good" | "bad" | "gray"> = { 承認待ち: "warn", 承認済: "good", 差戻し: "bad", 却下: "bad", 取下げ: "gray" };
@@ -62,18 +63,22 @@ export default function WorkflowPage() {
 function NewForm({ initial }: { initial: WfType }) {
   const { d, meId, nextWfId, approvalRoute } = useStore();
   const router = useRouter();
-  const [f, setF] = useState({ type: initial, title: "", amount: "", detail: "", from: ymd(new Date()), to: ymd(new Date()) });
+  const [f, setF] = useState({ type: initial, title: "", amount: "", detail: "", from: ymd(new Date()), to: ymd(new Date()), category: "6210", taxKind: "課税10%", invoiceNo: "" });
   const amt = Number(f.amount) || 0;
   const route = approvalRoute(f.type, amt, meId);
   const isLeave = f.type === "休暇申請";
+  const isExpense = f.type === "経費精算" || f.type === "出張申請";
+  const invErr = isExpense && f.invoiceNo && !isInvoiceNo(f.invoiceNo) ? "登録番号は「T」＋13桁の数字です" : "";
   const days = workdaysBetween(f.from, f.to); // 土日祝を除いた日数を自動計算
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (invErr) return;
     const w: Workflow = {
       id: nextWfId(), type: f.type,
       title: f.title || (isLeave ? `年次有給休暇 ${f.from}〜${f.to}（${days.length}日）` : f.type),
       applicantId: meId, amount: isLeave || !amt ? undefined : amt,
       ...(isLeave ? { from: f.from, to: f.to } : {}),
+      ...(isExpense ? { category: f.category, taxKind: f.taxKind, invoiceNo: f.invoiceNo || undefined } : {}),
       detail: f.detail, createdAt: ymd(new Date()), status: "承認待ち", steps: route,
     };
     d({ t: "wf-new", w });
@@ -89,6 +94,14 @@ function NewForm({ initial }: { initial: WfType }) {
           {!isLeave && <div><label className="label" htmlFor="wa">金額（円）</label><input id="wa" type="number" min={0} className="input tabular" value={f.amount} onChange={(e) => setF({ ...f, amount: e.target.value })} /></div>}
         </div>
         {isLeave && <div className="grid gap-4 sm:grid-cols-2"><div><label className="label" htmlFor="lf">開始日</label><input id="lf" type="date" className="input" value={f.from} onChange={(e) => setF({ ...f, from: e.target.value })} /></div><div><label className="label" htmlFor="lt">終了日</label><input id="lt" type="date" min={f.from} className="input" value={f.to} onChange={(e) => setF({ ...f, to: e.target.value })} /></div><p className="text-[12.5px] text-ink-2 sm:col-span-2">取得日数（土日祝を除く自動計算）：<b className="tabular">{days.length}日</b>{days.length === 0 && <span className="ml-2 text-bad">対象期間に営業日がありません</span>}</p></div>}
+        {isExpense && (
+          <div className="grid gap-4 sm:grid-cols-3">
+            <div><label className="label" htmlFor="wc">勘定科目</label><select id="wc" className="input" value={f.category} onChange={(e) => setF({ ...f, category: e.target.value })}>{EXPENSE_ACCOUNTS.map((c) => <option key={c} value={c}>{acct(c)?.name}</option>)}</select></div>
+            <div><label className="label" htmlFor="wx">税区分</label><select id="wx" className="input" value={f.taxKind} onChange={(e) => setF({ ...f, taxKind: e.target.value })}>{TAX_KINDS.map((k) => <option key={k}>{k}</option>)}</select></div>
+            <div><label className="label" htmlFor="wi">適格請求書 登録番号</label><input id="wi" className="input tabular" placeholder="T1234567890123" value={f.invoiceNo} onChange={(e) => setF({ ...f, invoiceNo: e.target.value })} />{invErr && <p className="mt-1 text-[12px] text-bad">{invErr}</p>}</div>
+            <p className="text-[12px] text-ink-3 sm:col-span-3">承認完了後、経理へ自動で仕訳（費用／仮払消費税／未払金）が作成されます。登録番号がない場合は仕入税額控除の対象外として処理されます。</p>
+          </div>
+        )}
         <div><label className="label" htmlFor="wn">件名</label><input id="wn" required={!isLeave} className="input" value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} /></div>
         <div><label className="label" htmlFor="wd">内容・理由</label><textarea id="wd" required rows={5} className="input" value={f.detail} onChange={(e) => setF({ ...f, detail: e.target.value })} /></div>
         <div>

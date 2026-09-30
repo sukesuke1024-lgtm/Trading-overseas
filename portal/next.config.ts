@@ -19,6 +19,12 @@ const nextConfig: NextConfig = {
               { key: "X-Content-Type-Options", value: "nosniff" },
               { key: "Referrer-Policy", value: "same-origin" },
               { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
+              { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
+              { key: "Cross-Origin-Resource-Policy", value: "same-origin" },
+              // Next.js のインライン初期化スクリプトのため script-src に 'unsafe-inline' が必要（外部ドメインは一切許可しない）
+              ...(process.env.NODE_ENV === "production"
+                ? [{ key: "Content-Security-Policy", value: "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self'; font-src 'self'; manifest-src 'self'; worker-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'" }]
+                : []),
             ],
           }];
         },

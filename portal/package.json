@@ -9,7 +9,7 @@
     "lint": "eslint",
     "typecheck": "next typegen && tsc --noEmit",
     "icons": "node scripts/gen-icons.mjs",
-    "test": "node --test test/lib.test.ts",
+    "test": "node --test test/*.test.ts",
     "build:static": "node scripts/build-static.mjs",
     "dev:lan": "node scripts/lan.mjs dev",
     "start:lan": "node scripts/lan.mjs start"
