@@ -1,7 +1,7 @@
 import crypto from "node:crypto";
 import { loadDb, sessionSecret } from "./db";
 
-export const COOKIE = "mirai_session";
+export const COOKIE = "hlink_session";
 export const SESSION_SEC = 60 * 60 * 12; // 12時間
 export const TICKET_SEC = 60 * 5; // 二要素認証の入力猶予：5分
 

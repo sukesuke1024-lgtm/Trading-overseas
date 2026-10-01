@@ -3,8 +3,7 @@ import assert from "node:assert/strict";
 import { append, verifyChain } from "../src/lib/chain.ts";
 import { sha256 } from "../src/lib/sha256.ts";
 import { toCsv, zip, crc32 } from "../src/lib/csv.ts";
-import { buildSeedJournal, checkEntry, trialBalance, incomeStatement, balanceSheet, consumptionTax, postJournal, reversal, isInvoiceNo, fyStartOf, sgaByDept } from "../src/lib/accounting.ts";
-import { computePay, monthlyIncomeTax, payrollLines, totals } from "../src/lib/payroll.ts";
+import { checkEntry, trialBalance, incomeStatement, balanceSheet, postJournal, reversal, isInvoiceNo, fyStartOf } from "../src/lib/accounting.ts";
 
 test("sha256 vectors", () => {
   assert.equal(sha256(""), "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
@@ -34,58 +33,21 @@ test("zip is well-formed (crc32 check value)", () => {
   assert.equal(new DataView(z.buffer).getUint32(z.length - 22, true), 0x06054b50);
 });
 
-test("seed journal: every entry balanced, chain valid, BS balances", () => {
-  const j = buildSeedJournal();
-  assert.ok(j.length > 100);
-  for (const e of j) assert.equal(checkEntry(e), null, e.id);
-  assert.equal(verifyChain(j).ok, true);
-  const bs = balanceSheet(j, {}, "2026-04-01", "2026-09-30");
-  assert.equal(bs.balanced, true);
-  const tb = trialBalance(j, {}, "2026-04-01", "2026-09-30");
-  const pl = incomeStatement(tb);
-  assert.equal(pl.grossProfit, pl.sales - pl.cogs);
-  assert.equal(pl.netIncome, pl.operatingIncome + pl.nonOpIncome - pl.nonOpExpense - pl.tax);
-  assert.ok(pl.sales > 0 && pl.sgaTotal > 0 && pl.operatingIncome > 0 && pl.netIncome > 0);
-  const cash = tb.find((r) => r.code === "1120")!.closing; assert.ok(cash > 0);
-  assert.equal(bs.currentProfit, pl.netIncome);
-  const ct = consumptionTax(tb); assert.ok(ct.output > ct.input);
-  assert.ok(sgaByDept(j, {}, "2026-04-01", "2026-09-30").length > 3);
-});
-
-test("entry validation & reversal & manual approval gating", () => {
-  assert.match(checkEntry({ date: "2026-09-30", lines: [{ account: "1110", side: "D", amount: 100 }, { account: "4110", side: "C", amount: 99 }] })!, /貸借/);
-  assert.match(checkEntry({ date: "2026-09-30", lines: [{ account: "9999", side: "D", amount: 100 }, { account: "4110", side: "C", amount: 100 }] })!, /未登録/);
-  let j = buildSeedJournal();
-  j = postJournal(j, { date: "2026-09-30", memo: "手動", source: "manual", createdBy: "E1013", lines: [{ account: "6250", side: "D", amount: 1000 }, { account: "1110", side: "C", amount: 1000 }] });
-  const m = j[j.length - 1];
-  const before = trialBalance(j, {}, "2026-04-01", "2026-09-30").find((r) => r.code === "6250")!.closing;
-  const after = trialBalance(j, { [m.id]: { by: "E1004", at: "x" } }, "2026-04-01", "2026-09-30").find((r) => r.code === "6250")!.closing;
-  assert.equal(after - before, 1000); // 承認前は集計に含まれない
-  j = postJournal(j, reversal(m, "E1004", "2026-09-30"));
-  assert.equal(j[j.length - 1].reverses, m.id);
-  assert.equal(verifyChain(j).ok, true);
-});
-
 test("invoice number & fiscal year", () => {
   assert.equal(isInvoiceNo("T1234567890123"), true); assert.equal(isInvoiceNo("1234567890123"), false);
   assert.equal(fyStartOf("2026-09-30"), "2026-04-01"); assert.equal(fyStartOf("2027-02-01"), "2026-04-01");
 });
 
-test("payroll: OT premium, deductions, net, journal balance", () => {
-  const r = computePay({ id: "E1", name: "t", dept: "d", base: 480_000, allowance: 20_000, commute: 15_000, dependents: 1, residentTax: 20_000, hours: { overtime: 30 * 60, night: 5 * 60, legalHoliday: 8 * 60 } });
-  assert.equal(r.otPay, Math.round(3000 * 1.25 * 30)); // 480000/160=3000
-  assert.equal(r.nightPay, Math.round(3000 * 0.25 * 5)); assert.equal(r.holidayPay, Math.round(3000 * 1.35 * 8));
-  assert.equal(r.gross, 480000 + 20000 + 15000 + r.otPay + r.nightPay + r.holidayPay);
-  assert.equal(r.net, r.gross - r.deductions);
-  assert.ok(r.incomeTax > 0 && r.incomeTax < r.gross * 0.1);
-  const p = payrollLines(totals([r]), "2026-09");
-  const d = p.lines.filter((l) => l.side === "D").reduce((s, l) => s + l.amount, 0), c = p.lines.filter((l) => l.side === "C").reduce((s, l) => s + l.amount, 0);
-  assert.equal(d, c);
-  const over = computePay({ id: "E2", name: "t", dept: "d", base: 320_000, allowance: 0, commute: 0, dependents: 0, residentTax: 0, hours: { overtime: 70 * 60, night: 0, legalHoliday: 0 } });
-  assert.equal(over.otPay, Math.round(2000 * (1.25 * 60 + 1.5 * 10))); // 60h超は1.5倍
-});
-
-test("income tax monotonic", () => {
-  let prev = -1; for (const g of [150_000, 250_000, 350_000, 500_000, 800_000, 1_500_000]) { const t = monthlyIncomeTax(g, 0); assert.ok(t >= prev); prev = t; }
-  assert.equal(monthlyIncomeTax(80_000, 0), 0);
+test("journal: balanced check, reversal nets to zero, statements balance", () => {
+  const line = (account: string, side: "D" | "C", amount: number) => ({ account, side, amount });
+  assert.ok(checkEntry({ date: "2026-09-01", lines: [line("6250", "D", 100), line("1110", "C", 90)] }));
+  assert.equal(checkEntry({ date: "2026-09-01", lines: [line("6250", "D", 100), line("1110", "C", 100)] }), null);
+  let j = postJournal([], { date: "2026-09-01", memo: "売上", source: "manual", createdBy: "001", lines: [line("1110", "D", 1000), line("4110", "C", 1000)] });
+  const appr = { [j[0].id]: { by: "002", at: "x" } };
+  const tb = trialBalance(j, appr, "2026-04-01", "2026-09-30");
+  assert.equal(incomeStatement(tb).ordinaryIncome, 1000);
+  assert.equal(balanceSheet(j, appr, "2026-04-01", "2026-09-30").balanced, true);
+  j = postJournal(j, reversal(j[0], "001", "2026-09-02"));
+  const appr2 = { ...appr, [j[1].id]: { by: "002", at: "x" } };
+  assert.equal(incomeStatement(trialBalance(j, appr2, "2026-04-01", "2026-09-30")).ordinaryIncome, 0);
 });

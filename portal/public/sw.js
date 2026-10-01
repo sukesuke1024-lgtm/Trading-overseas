@@ -1,7 +1,7 @@
-// ミライHD ポータル Service Worker
+// H-LINK ポータル Service Worker
 // - 画面部品（静的ファイル）はキャッシュ優先、画面（HTML）は通信優先で、圏外のときは直近の画面を表示
 // - /api/ はキャッシュしない（業務データ・認証情報を端末のキャッシュに残さない）
-const CACHE = "mirai-portal-v2";
+const CACHE = "hlink-portal-v3";
 const SCOPE = new URL(self.registration.scope).pathname; // 例: "/" or "/Trading-overseas/portal/"
 
 self.addEventListener("install", (e) => {

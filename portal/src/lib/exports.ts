@@ -1,9 +1,29 @@
-// 監査・税務調査・労基署調査向けのCSV定義。列名は日本語、Excelで開ける UTF-8(BOM)。
+// 出力CSVの定義（Excel で開ける UTF-8 BOM 付き）。
+//  ・日別勤怠CSV … 「勤怠入力_自動計算.xlsx」の 日別勤怠 シートにそのまま貼り付けられる列順（日付・従業員番号・氏名・区分・始業・終業・休憩・…）
+//  ・月次集計CSV … 同ブックの 月次集計 シートと同じ列（賃金計算ブックの⑤勤怠入力に対応）
 import { acct, isPosted, type Approvals, type Journal, type TbRow } from "./accounting";
-import { calcDay, fmtHM } from "./attendance-calc";
 import { toCsv } from "./csv";
-import { empById, type Workflow } from "./data";
-import type { Audit, PayrollRun, Punch } from "./store";
+import type { Employee, Workflow } from "./data";
+import type { Audit } from "./store";
+import { calcDay, holidaySet, isHoliday, type Conditions, type DayInput, type Summary } from "./work";
+
+const DOW = "日月火水木金土";
+
+/** 日別勤怠（入力＋自動計算の参考値）。nameOf: 従業員番号→氏名 */
+export function attendanceCsv(rows: { empId: string; day: DayInput }[], nameOf: (id: string) => string, scheduledOf: (id: string) => number, c: Conditions) {
+  const hs = holidaySet(c);
+  const body = [...rows].sort((a, b) => (a.day.date + a.empId).localeCompare(b.day.date + b.empId)).map(({ empId, day }) => {
+    const x = calcDay(day, scheduledOf(empId), hs, c);
+    return [day.date, empId, nameOf(empId), day.kind, day.start ?? "", day.end ?? "", day.brk ?? c.breakMin, x.worked || "", x.scheduled || "", x.legalIn || "", x.legalOut || "", x.night || "", x.holidayWork || "", x.holidayNight || "", isHoliday(day.date, hs) ? "休日" : "所定労働日", DOW[new Date(`${day.date}T00:00:00`).getDay()], day.remote ? "リモート" : "", day.note ?? ""];
+  });
+  return toCsv(["日付", "従業員番号", "氏名", "区分", "始業", "終業", "休憩(分)", "実労働時間", "所定内時間", "法定内残業", "法定外残業", "深夜時間", "休日労働時間", "休日の深夜", "所定労働日判定", "曜日", "勤務形態", "備考"], body);
+}
+
+/** 月次集計（勤怠ブックの 月次集計 シートと同じ列） */
+export function monthlySummaryCsv(list: { emp: Employee; s: Summary }[]) {
+  return toCsv(["従業員番号", "氏名", "出勤日数", "有給日数", "欠勤日数", "休日出勤日数", "リモート日数", "所定内労働時間", "法定内残業時間", "法定外残業時間", "うち月60h超", "深夜労働時間", "法定休日労働(日曜)", "法定外休日労働(土・祝)", "休日労働の深夜", "フレックス繰越"],
+    list.map(({ emp, s }) => [emp.id, emp.name, s.workDays, s.paidDays, s.absentDays, s.holidayWorkDays, s.remoteDays, s.scheduled, s.legalIn, s.legalOut, s.over60, s.night, s.legalHoliday, s.nonLegalHoliday, s.holidayNight, s.flexCarry]));
+}
 
 export function journalCsv(list: Journal[], appr: Approvals, from: string, to: string) {
   const rows: unknown[][] = [];
@@ -40,23 +60,8 @@ export function ledgerCsv(list: Journal[], appr: Approvals, from: string, to: st
 
 export const trialBalanceCsv = (tb: TbRow[]) => toCsv(["科目コード", "科目名", "区分", "期首残高", "借方合計", "貸方合計", "期末残高"], tb.map((r) => [r.code, r.name, r.type, r.opening, r.debit, r.credit, r.closing]));
 
-export function payrollCsv(runs: PayrollRun[]) {
-  const rows = runs.flatMap((run) => run.rows.map((r) => [run.month, run.status, r.id, r.name, r.dept, r.base, r.allowance, r.commute, r.otPay, r.nightPay, r.holidayPay, r.gross, r.health, r.pension, r.employment, r.incomeTax, r.residentTax, r.deductions, r.net, r.employerInsurance]));
-  return toCsv(["対象月", "状態", "社員番号", "氏名", "部署", "基本給", "諸手当", "通勤手当", "時間外手当", "深夜手当", "休日手当", "総支給額", "健康保険", "厚生年金", "雇用保険", "所得税", "住民税", "控除合計", "差引支給額", "会社負担社保"], rows);
-}
-
-export function attendanceCsv(punches: Record<string, Record<string, Punch>>, from: string, to: string) {
-  const rows: unknown[][] = [];
-  for (const [emp, days] of Object.entries(punches)) for (const [d, p] of Object.entries(days)) {
-    if (d < from || d > to) continue;
-    const c = calcDay(d, p);
-    rows.push([emp, empById(emp)?.name ?? "", d, p.in ?? "", p.out ?? "", c.breakMin, fmtHM(c.work), fmtHM(c.overtime), fmtHM(c.night), fmtHM(c.legalHoliday), p.place ?? "", p.edited ? "修正あり" : ""]);
-  }
-  return toCsv(["社員番号", "氏名", "日付", "出勤", "退勤", "休憩(分)", "実働", "時間外", "深夜", "法定休日労働", "勤務場所", "修正"], rows.sort((a, b) => (String(a[0]) + String(a[2])).localeCompare(String(b[0]) + String(b[2]))));
-}
-
-export function workflowCsv(list: Workflow[]) {
-  const rows = list.flatMap((w) => w.steps.map((st, i) => [w.id, w.type, w.title, empById(w.applicantId)?.name ?? w.applicantId, w.amount ?? "", w.createdAt, w.status, i + 1, st.label, empById(st.approverId)?.name ?? st.approverId, st.state, st.at ?? "", st.comment ?? "", w.invoiceNo ?? ""]));
+export function workflowCsv(list: Workflow[], nameOf: (id: string) => string) {
+  const rows = list.flatMap((w) => w.steps.map((st, i) => [w.id, w.type, w.title, nameOf(w.applicantId), w.amount ?? "", w.createdAt, w.status, i + 1, st.label, nameOf(st.approverId), st.state, st.at ?? "", st.comment ?? "", w.invoiceNo ?? ""]));
   return toCsv(["申請番号", "種別", "件名", "申請者", "金額", "申請日", "全体状態", "承認順", "承認段階", "承認者", "段階状態", "処理日", "コメント", "適格請求書登録番号"], rows);
 }
 

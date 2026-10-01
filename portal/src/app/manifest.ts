@@ -6,16 +6,16 @@ const B = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 // スマホ・PCに「アプリとしてインストール」するための定義（アイコンは npm run icons で自動生成）
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "ミライHD 社内ポータル",
-    short_name: "ミライHD",
-    description: "勤怠打刻・申請承認・お知らせ・社員名簿などの社内ポータル",
+    name: "H-LINK 社内ポータル",
+    short_name: "H-LINK",
+    description: "勤怠入力・申請承認・Excel連携（勤怠ブック→賃金計算ブック）の社内ポータル",
     id: `${B}/`,
     start_url: `${B}/`,
     scope: `${B}/`,
     display: "standalone",
     orientation: "portrait",
     background_color: "#f4f5f7",
-    theme_color: "#0b3d6e",
+    theme_color: "#111111",
     lang: "ja",
     icons: [
       { src: `${B}/icons/icon-192.png`, sizes: "192x192", type: "image/png", purpose: "any" },

@@ -1,5 +1,5 @@
 {
-  "name": "mirai-portal",
+  "name": "hlink-portal",
   "version": "1.0.0",
   "private": true,
   "scripts": {
@@ -8,13 +8,14 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "next typegen && tsc --noEmit",
-    "icons": "node scripts/gen-icons.mjs",
+    "brand": "node scripts/gen-brand.mjs",
     "test": "node --test test/*.test.ts",
     "build:static": "node scripts/build-static.mjs",
     "dev:lan": "node scripts/lan.mjs dev",
     "start:lan": "node scripts/lan.mjs start"
   },
   "dependencies": {
+    "exceljs": "^4.4.0",
     "lucide-react": "^1.48.0",
     "next": "16.3.6",
     "qrcode": "^1.5.4",

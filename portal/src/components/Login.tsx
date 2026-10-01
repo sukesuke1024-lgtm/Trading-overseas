@@ -4,10 +4,10 @@ import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import QRCode from "qrcode";
 import { KeyRound, ShieldCheck, Smartphone } from "lucide-react";
-import { COMPANY, EMPLOYEES } from "@/lib/data";
-import { DEMO_PASSWORD, STATIC, useAuth, type LoginStep } from "@/lib/auth";
+import { COMPANY, ROLE_LABEL } from "@/lib/data";
+import { DEMO_ACCOUNTS, DEMO_PASSWORD, STATIC, useAuth, type LoginStep } from "@/lib/auth";
 import { totp } from "@/lib/totp";
-import { AppMark } from "./ui";
+import { Logo } from "./ui";
 
 type Ok = Extract<LoginStep, { ok: true }>;
 
@@ -40,26 +40,26 @@ export function LoginScreen() {
     <div className="grid min-h-dvh place-items-center bg-bg px-4 py-8">
       <div className="w-full max-w-[400px]">
         <div className="mb-6 flex flex-col items-center text-center">
-          <AppMark size={56} />
-          <h1 className="mt-3 text-xl font-bold">{COMPANY.short} 社内ポータル</h1>
-          <p className="text-[12px] text-ink-3">{COMPANY.name}（{COMPANY.market}）</p>
+          <Logo variant="vertical" height={120} />
+          <h1 className="mt-3 text-lg font-bold">社内ポータル</h1>
+          <p className="text-[12px] text-ink-3">{COMPANY.tagline}</p>
         </div>
 
         <div className="card p-6">
           {!step ? (
             <form onSubmit={submit1} className="space-y-4" autoComplete="on">
               <h2 className="flex items-center gap-2 font-bold"><KeyRound size={16} aria-hidden />ログイン</h2>
-              <div><label className="label" htmlFor="uid">社員番号</label><input id="uid" name="username" autoComplete="username" inputMode="text" autoCapitalize="characters" required className="input tabular" placeholder="E1012" value={id} onChange={(e) => setId(e.target.value)} /></div>
+              <div><label className="label" htmlFor="uid">従業員番号</label><input id="uid" name="username" autoComplete="username" inputMode="text" autoCapitalize="characters" required className="input tabular" placeholder="001" value={id} onChange={(e) => setId(e.target.value)} /></div>
               <div><label className="label" htmlFor="pw">パスワード</label><input id="pw" name="password" type="password" autoComplete="current-password" required className="input" value={pw} onChange={(e) => setPw(e.target.value)} /></div>
               {err && <p role="alert" className="rounded-lg bg-bad-soft px-3 py-2 text-[13px] text-bad">{err}</p>}
               <button className="btn btn-primary w-full !h-11" disabled={busy}>{busy ? "確認中…" : "次へ（セキュリティコード）"}</button>
               {STATIC && (
-                <div className="rounded-lg bg-brand-soft p-3 text-[12.5px] leading-6 text-ink-2">
-                  <b className="text-brand">デモ環境</b>（実際の認証ではありません）<br />
+                <div className="rounded-lg bg-surface-2 p-3 text-[12.5px] leading-6 text-ink-2">
+                  <b className="text-ink">デモ環境</b>（実際の認証ではありません）<br />
                   パスワード：<code className="rounded bg-white px-1">{DEMO_PASSWORD}</code><br />
-                  社員番号の例：
-                  {[["E1012", "山本（一般）"], ["E1007", "渡辺（承認者）"], ["E1002", "佐藤（管理者）"]].map(([v, l]) => (
-                    <button type="button" key={v} className="ml-1 rounded bg-white px-1.5 underline-offset-2 hover:underline" onClick={() => { setId(v); setPw(DEMO_PASSWORD); }}>{v} {l}</button>
+                  アカウント：
+                  {DEMO_ACCOUNTS.map((e) => (
+                    <button type="button" key={e.id} className="ml-1 mt-1 rounded bg-white px-1.5 underline-offset-2 hover:underline" onClick={() => { setId(e.id); setPw(DEMO_PASSWORD); }}>{e.id} {e.name}（{ROLE_LABEL[e.role]}）</button>
                   ))}
                 </div>
               )}
@@ -79,7 +79,7 @@ export function LoginScreen() {
             </form>
           )}
         </div>
-        <p className="mt-4 text-center text-[11.5px] text-ink-3">社外秘。許可されていないアクセスは記録されます。<br />{EMPLOYEES.length}名のデモアカウントが登録されています。</p>
+        <p className="mt-4 text-center text-[11.5px] text-ink-3">社外秘。許可されていないアクセスは記録されます。</p>
       </div>
     </div>
   );
@@ -108,8 +108,8 @@ function DemoCode({ secret }: { secret: string }) {
     return () => { alive = false; clearInterval(i); };
   }, [secret]);
   return (
-    <div className="rounded-lg bg-brand-soft p-3 text-center text-[12.5px] text-ink-2">
-      デモ用コード（本番では認証アプリが表示）<div className="tabular text-2xl font-bold tracking-[0.3em] text-brand">{c.code}</div>更新まで {c.left} 秒
+    <div className="rounded-lg bg-surface-2 p-3 text-center text-[12.5px] text-ink-2">
+      デモ用コード（本番では認証アプリが表示）<div className="tabular text-2xl font-bold tracking-[0.3em] text-ink">{c.code}</div>更新まで {c.left} 秒
     </div>
   );
 }

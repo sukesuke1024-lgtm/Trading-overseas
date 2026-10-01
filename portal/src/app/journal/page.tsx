@@ -7,13 +7,13 @@ import { can } from "@/lib/perm";
 import { download } from "@/lib/csv";
 import { verifyChain } from "@/lib/chain";
 import { journalCsv } from "@/lib/exports";
-import { DEPARTMENTS, empById } from "@/lib/data";
+const DEPTS = ["全社", "営業", "総務", "経理・財務", "経営企画", "人事", "情報システム"]; // 販管費の部門（自由に増やせる）
 import { useStore, ymd } from "@/lib/store";
 import { Badge, Empty, PageHeader } from "@/components/ui";
 import { PrintButton, PrintHeader } from "@/components/report";
 
 export default function Journal() {
-  const { s, d, meId, role } = useStore();
+  const { s, d, meId, role, nameOf } = useStore();
   const w = can.writeAccounting(role);
   const [q, setQ] = useState({ text: "", from: "", to: "", min: "", max: "", partner: "", state: "" });
   const [open, setOpen] = useState(false);
@@ -57,7 +57,7 @@ export default function Journal() {
               return (
                 <tr key={j.id} className="avoid-break align-top">
                   <td className="td tabular text-ink-3">{j.id}</td><td className="td tabular">{j.date}</td>
-                  <td className="td"><div className="font-medium">{j.memo}</div><div className="text-[11.5px] text-ink-3">{[j.partner, j.evidenceNo, j.invoiceNo].filter(Boolean).join("・")}・起票 {empById(j.createdBy)?.name ?? j.createdBy}{s.jApprovals[j.id] && `・承認 ${empById(s.jApprovals[j.id].by)?.name}`}</div></td>
+                  <td className="td"><div className="font-medium">{j.memo}</div><div className="text-[11.5px] text-ink-3">{[j.partner, j.evidenceNo, j.invoiceNo].filter(Boolean).join("・")}・起票 {nameOf(j.createdBy)}{s.jApprovals[j.id] && `・承認 ${nameOf(s.jApprovals[j.id].by)}`}</div></td>
                   <td className="td">{j.lines.filter((l) => l.side === "D").map((l, i) => <div key={i}>{acct(l.account)?.name}</div>)}</td>
                   <td className="td">{j.lines.filter((l) => l.side === "C").map((l, i) => <div key={i}>{acct(l.account)?.name}</div>)}</td>
                   <td className="td tabular text-right">{amt.toLocaleString("ja-JP")}</td>
@@ -105,7 +105,7 @@ function Compose({ onClose }: { onClose: () => void }) {
               <select aria-label="勘定科目" className="input" value={l.account} onChange={(e) => set(i, { account: e.target.value })}>{ACCOUNTS.map((a) => <option key={a.code} value={a.code}>{a.code} {a.name}</option>)}</select>
               <input aria-label="金額" type="number" min={1} className="input tabular" placeholder="金額" value={l.amt} onChange={(e) => set(i, { amt: e.target.value })} />
               <select aria-label="税区分" className="input hidden sm:block" value={l.tax} onChange={(e) => set(i, { tax: e.target.value as TaxKind })}>{TAX_KINDS.map((t) => <option key={t}>{t}</option>)}</select>
-              <select aria-label="部門" className="input hidden sm:block" value={l.dept} onChange={(e) => set(i, { dept: e.target.value })}><option value="">部門</option>{DEPARTMENTS.map((x) => <option key={x}>{x}</option>)}</select>
+              <select aria-label="部門" className="input hidden sm:block" value={l.dept} onChange={(e) => set(i, { dept: e.target.value })}><option value="">部門</option>{DEPTS.map((x) => <option key={x}>{x}</option>)}</select>
               <button type="button" aria-label="行を削除" className="hidden text-ink-3 sm:block" disabled={lines.length <= 2} onClick={() => setLines(lines.filter((_, k) => k !== i))}><Trash2 size={15} /></button>
             </div>
           ))}
