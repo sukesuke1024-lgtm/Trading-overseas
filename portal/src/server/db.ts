@@ -16,13 +16,15 @@ export type UserRec = {
   lockedUntil: number;
   mustChange: boolean;
 };
-export type Db = { users: Record<string, UserRec>; state: unknown | null };
+export type ResetTicket = { id: string; exp: number; by: "email" | "admin"; used?: boolean };
+export type ResetRequest = { rid: string; id: string; note: string; at: string; handled?: boolean };
+export type Db = { users: Record<string, UserRec>; state: unknown | null; resets?: Record<string, ResetTicket>; resetRequests?: ResetRequest[] };
 
 const DIR = process.env.PORTAL_DATA_DIR ?? path.join(process.cwd(), "data");
 const FILE = path.join(DIR, "db.json");
 let cache: Db | null = null;
 
-export const INITIAL_PASSWORD = process.env.PORTAL_INITIAL_PASSWORD ?? "Hlink-2026!"; // 初回ログイン時に必ず変更を求める
+export const INITIAL_PIN = process.env.PORTAL_INITIAL_PIN ?? "000000"; // 初回ログイン時に必ず変更を求める（変更するまで他の画面は使えない）
 
 export function hashPassword(pw: string, salt = crypto.randomBytes(16).toString("hex")) {
   return { salt, hash: crypto.scryptSync(pw, salt, 64).toString("hex") };
@@ -53,7 +55,7 @@ export function loadDb(): Db {
 export function ensureUsers() {
   const db = cache!;
   for (const e of employees()) {
-    if (!db.users[e.id]) db.users[e.id] = { ...hashPassword(INITIAL_PASSWORD), totpEnrolled: false, sv: 0, lastStep: 0, fails: 0, lockedUntil: 0, mustChange: true };
+    if (!db.users[e.id]) db.users[e.id] = { ...hashPassword(INITIAL_PIN), totpEnrolled: false, sv: 0, lastStep: 0, fails: 0, lockedUntil: 0, mustChange: true };
   }
 }
 export function employees(): Employee[] { return ((loadDb().state as { employees?: Employee[] } | null)?.employees ?? []) as Employee[]; }

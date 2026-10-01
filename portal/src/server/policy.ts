@@ -4,6 +4,7 @@ import { can, type RoleName } from "../lib/perm.ts";
 import { append, verifyChain } from "../lib/chain.ts";
 import { checkEntry } from "../lib/accounting.ts";
 import { KINDS, toMin } from "../lib/work.ts";
+import { EVENT_CATEGORIES, REMOTE_KINDS, remoteLink } from "../lib/biz.ts";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type S = Record<string, any>;
@@ -18,8 +19,13 @@ export function sanitizeForRead(state: S | null, uid: string, role: RoleName): S
   if (!can.viewAllAttendance(role) && out.attendance) out.attendance = { [uid]: out.attendance[uid] ?? {} };
   if (!can.viewEmployees(role) && out.employees) {
     // 従業員には、表示に必要な最小限（番号・氏名・職種・権限）と自分自身の情報だけ返す
-    out.employees = out.employees.map((e: S) => (e.id === uid ? e : { id: e.id, name: e.name, job: e.job, employment: e.employment, scheduled: e.scheduled, role: e.role }));
+    out.employees = out.employees.map((e: S) => (e.id === uid ? e : { id: e.id, name: e.name, job: e.job, employment: e.employment, scheduled: e.scheduled, role: e.role, dept: e.dept, bossId: e.bossId }));
   }
+  const lead = role !== "employee"; // 役員・管理者
+  if (!can.viewAllReports(role) && out.reports) out.reports = { [uid]: out.reports[uid] ?? {} };
+  if (!can.viewAllReports(role) && out.docAck) out.docAck = { [uid]: out.docAck[uid] ?? {} };
+  if (!lead && out.kpis) out.kpis = out.kpis.filter((k: S) => k.ownerId === "" || k.ownerId === uid);
+  if (!lead && out.remotes) out.remotes = out.remotes.filter((r: S) => r.ownerId === uid);
   if (!can.viewAllWorkflows(role) && out.workflows) out.workflows = out.workflows.filter((w: S) => w.applicantId === uid || w.steps?.some((s: S) => s.approverId === uid));
   if (!can.audit(role) && out.audit) out.audit = out.audit.filter((a: S) => a.actor === uid).slice(-50);
   if (!can.viewAllAttendance(role) && out.read) out.read = { [uid]: out.read[uid] ?? [] };
@@ -58,10 +64,31 @@ export function validEmployees(list: S[]): boolean {
   for (const e of list) {
     if (typeof e?.id !== "string" || !/^[A-Za-z0-9]{1,12}$/.test(e.id) || ids.has(e.id) || typeof e.name !== "string" || !e.name.trim() || !["employee", "executive", "admin"].includes(e.role)) return false;
     ids.add(e.id);
+    for (const k of ["email", "dept", "bossId", "phone"]) if (e[k] != null && !str(e[k], 120)) return false;
   }
+  if (list.some((e) => e.bossId && !ids.has(e.bossId))) return false;
   const pres = list.find((e) => e.id === PRESIDENT_ID);
   return !!pres && pres.role === "admin" && list.some((e) => e.role === "admin");
 }
+
+const str = (v: unknown, max: number) => typeof v === "string" && v.length <= max;
+const isDate = (v: unknown) => typeof v === "string" && DATE.test(v);
+const isMonth = (v: unknown) => typeof v === "string" && /^\d{4}-\d{2}$/.test(v);
+const isTime = (v: unknown) => v == null || v === "" || (typeof v === "string" && toMin(v) != null);
+export function validDocs(list: S[]): boolean {
+  return Array.isArray(list) && list.length <= 300 && list.every((d) => str(d?.id, 40) && d.id && str(d.title, 120) && d.title && str(d.category, 40) && str(d.version, 20) && isDate(d.effective) && str(d.body, 60000) && str(d.updatedAt, 40) && str(d.updatedBy, 60));
+}
+export function validEvents(list: S[]): boolean {
+  return Array.isArray(list) && list.length <= 5000 && list.every((e) => str(e?.id, 40) && e.id && str(e.title, 120) && e.title && isDate(e.date) && (e.endDate == null || (isDate(e.endDate) && e.endDate >= e.date)) && isTime(e.start) && isTime(e.end) && (EVENT_CATEGORIES as readonly string[]).includes(e.category) && (e.note == null || str(e.note, 500)) && str(e.by, 20));
+}
+const validValues = (v: unknown) => !!v && typeof v === "object" && Object.entries(v as S).length <= 240 && Object.entries(v as S).every(([m, n]) => isMonth(m) && typeof n === "number" && Number.isFinite(n) && Math.abs(n) < 1e12);
+export function validKpis(list: S[]): boolean {
+  return Array.isArray(list) && list.length <= 300 && list.every((k) => str(k?.id, 40) && k.id && str(k.name, 80) && k.name && str(k.unit, 20) && typeof k.target === "number" && Number.isFinite(k.target) && str(k.ownerId, 20) && validValues(k.values) && (k.note == null || str(k.note, 300)));
+}
+export function validRemotes(list: S[]): boolean {
+  return Array.isArray(list) && list.length <= 1000 && list.every((r) => str(r?.id, 40) && r.id && str(r.name, 80) && r.name && (REMOTE_KINDS as readonly string[]).includes(r.kind) && str(r.host, 300) && !!remoteLink(r as never) && (r.port == null || (Number.isInteger(r.port) && r.port > 0 && r.port < 65536)) && str(r.ownerId, 20) && (r.note == null || str(r.note, 300)));
+}
+const validReport = (date: string, r: S) => isDate(date) && r?.date === date && str(r.done, 4000) && str(r.plan, 4000) && str(r.issues, 4000) && (r.hours == null || (typeof r.hours === "number" && r.hours >= 0 && r.hours <= 24)) && ["下書き", "提出済"].includes(r.status);
 
 /** 書き込み：サーバーの現状（cur）に、許可された変更だけを取り込む。拒否した項目は denied に列挙 */
 export function mergeWrite(cur: S | null, inc: S, uid: string, role: RoleName): { state: S; denied: string[] } {
@@ -75,6 +102,53 @@ export function mergeWrite(cur: S | null, inc: S, uid: string, role: RoleName): 
   if (inc.employees !== undefined && !same(inc.employees, base.employees)) { if (can.manageEmployees(role) && validEmployees(inc.employees)) out.employees = inc.employees; else deny("employees"); }
   if (inc.conditions !== undefined && !same(inc.conditions, base.conditions)) { if (can.manageEmployees(role)) out.conditions = inc.conditions; else deny("conditions"); }
   if (inc.news !== undefined && !same(inc.news, base.news)) { if (can.admin(role)) out.news = inc.news; else deny("news"); }
+
+  // 文書・カレンダー・リモート接続先：書き込める役割だけ（形式も検証）
+  if (inc.docs !== undefined && !same(inc.docs, base.docs)) { if (can.manageDocs(role) && validDocs(inc.docs)) out.docs = inc.docs; else deny("docs"); }
+  if (inc.events !== undefined && !same(inc.events, base.events)) { if (can.editCalendar(role) && validEvents(inc.events)) out.events = inc.events; else deny("events"); }
+  if (inc.remotes !== undefined && !same(inc.remotes, base.remotes)) { if (can.manageRemotes(role) && validRemotes(inc.remotes)) out.remotes = inc.remotes; else deny("remotes"); }
+  // 文書の確認（既読）：本人分のみ
+  if (inc.docAck) {
+    out.docAck = { ...(base.docAck ?? {}) };
+    for (const [emp, v] of Object.entries(inc.docAck as S)) { if (emp === uid) { if (v && typeof v === "object") out.docAck[emp] = Object.fromEntries(Object.entries(v as S).filter(([k, x]) => str(k, 40) && str(x, 20))); } else if (!same(v, base.docAck?.[emp])) deny("docAck"); }
+  }
+  // KPI：管理者は全て。担当者は自分のKPIの実績（values）のみ
+  if (inc.kpis !== undefined && !same(inc.kpis, base.kpis)) {
+    if (can.manageKpis(role)) { if (validKpis(inc.kpis)) out.kpis = inc.kpis; else deny("kpis"); }
+    else {
+      const next: S[] = [...(base.kpis ?? [])];
+      for (const k of inc.kpis as S[]) {
+        const i = next.findIndex((x) => x.id === k?.id);
+        if (i < 0) { deny("kpis"); continue; }
+        if (same(next[i], k)) continue;
+        if (next[i].ownerId === uid && same({ ...next[i], values: 0 }, { ...k, values: 0 }) && validValues(k.values)) next[i] = { ...next[i], values: k.values }; else deny("kpis");
+      }
+      out.kpis = next;
+    }
+  }
+  // 業務日報：本人は自分の日報（コメント欄は触れない）／役員・管理者は他人の日報へのコメントのみ
+  if (inc.reports) {
+    out.reports = { ...(base.reports ?? {}) };
+    for (const [emp, days] of Object.entries(inc.reports as S)) {
+      const cur: S = base.reports?.[emp] ?? {};
+      if (same(days, cur)) continue;
+      if (!days || typeof days !== "object") { deny("reports"); continue; }
+      const merged: S = { ...cur };
+      for (const [date, r] of Object.entries(days as S)) {
+        if (same(r, cur[date])) continue;
+        if (emp === uid) {
+          if (!validReport(date, r)) { deny("reports"); continue; }
+          const { comment, commentBy } = cur[date] ?? {};
+          const nr: S = { ...(r as S) }; delete nr.comment; delete nr.commentBy;
+          if (comment !== undefined) { nr.comment = comment; nr.commentBy = commentBy; }
+          merged[date] = nr;
+        } else if (can.viewAllReports(role) && cur[date] && str((r as S).comment, 500) && same({ ...cur[date], comment: 0, commentBy: 0 }, { ...(r as S), comment: 0, commentBy: 0 })) {
+          merged[date] = { ...cur[date], comment: (r as S).comment, commentBy: uid };
+        } else deny("reports");
+      }
+      out.reports[emp] = merged;
+    }
+  }
 
   // 勤怠：本人分は本人が、他人分は管理者のみ（役員は閲覧のみ）。形式が不正な日は取り込まない
   if (inc.attendance) {

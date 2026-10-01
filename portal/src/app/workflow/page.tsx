@@ -18,13 +18,15 @@ export default function WorkflowPage() {
   const router = useRouter();
   const id = sp.get("id");
   const newType = sp.get("new") as WfType | null;
+  const typeFilter = WF_TYPES.find((x) => x.type === sp.get("type"))?.type ?? null; // 経費精算・稟議など種別ごとの一覧
   const [tab, setTab] = useState<Tab>("todo");
 
   const rows = useMemo(() => s.workflows.filter((w) => {
+    if (typeFilter && w.type !== typeFilter) return false;
     if (tab === "todo") return w.status === "承認待ち" && w.steps.find((x) => x.state === "承認待ち")?.approverId === meId;
     if (tab === "mine") return w.applicantId === meId;
     return role !== "employee";
-  }), [s.workflows, role, tab, meId]);
+  }), [s.workflows, role, tab, meId, typeFilter]);
 
   if (newType !== null || sp.has("new")) return <NewForm initial={WF_TYPES.some((t) => t.type === newType) ? newType! : "経費精算"} />;
   const cur = s.workflows.find((w) => w.id === id);
@@ -33,8 +35,8 @@ export default function WorkflowPage() {
   const todoCount = s.workflows.filter((w) => w.status === "承認待ち" && w.steps.find((x) => x.state === "承認待ち")?.approverId === meId).length;
   return (
     <div>
-      <PageHeader title="ワークフロー" sub="申請・承認。決裁権限表に基づき承認ルートが自動設定されます。"
-        actions={<button className="btn btn-primary" onClick={() => router.push("/workflow?new")}><Plus size={15} />新規申請</button>} />
+      <PageHeader title={typeFilter ?? "申請・承認"} sub={typeFilter === "経費精算" ? "経費の精算申請。最終承認で仕訳が自動作成されます。" : typeFilter === "稟議" ? "稟議書・決裁。金額に応じて承認ルートが自動設定されます。" : "経費精算・休暇・出張・稟議などの申請と承認。承認ルートは金額・申請者に応じて自動設定されます。"}
+        actions={<button className="btn btn-primary" onClick={() => router.push(typeFilter ? `/workflow?new=${encodeURIComponent(typeFilter)}` : "/workflow?new")}><Plus size={15} />{typeFilter ? `${typeFilter}を申請` : "新規申請"}</button>} />
       <div className="mb-3 flex gap-1 border-b border-line" role="tablist">
         {([["todo", `承認待ち（${todoCount}）`], ["mine", "自分の申請"], ...(role !== "employee" ? [["all", "全件"]] : [])] as [Tab, string][]).map(([k, l]) => (
           <button key={k} role="tab" aria-selected={tab === k} onClick={() => setTab(k)} className={`-mb-px border-b-2 px-4 py-2 text-[13.5px] font-semibold ${tab === k ? "border-brand text-brand" : "border-transparent text-ink-3"}`}>{l}</button>

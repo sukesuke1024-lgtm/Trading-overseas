@@ -3,11 +3,12 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { PRESIDENT, SAMPLE_EMPLOYEES, type Role } from "./data";
 import { base32Encode, newSecret, otpauthUri, totp, verifyTotp } from "./totp";
+import { validatePin } from "./pin";
 
 /** static: GitHub Pages 等の静的公開（デモ認証・端末内保存）／ server: 自社サーバー運用（サーバー認証・共有DB） */
 export const STATIC = process.env.NEXT_PUBLIC_MODE === "static";
 export const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
-export const DEMO_PASSWORD = "Hlink-Demo-2026!";
+export const DEMO_PIN = "135790";
 /** デモ版（静的公開）で使えるアカウント。サーバー版は従業員マスタ（管理者が取込）がアカウントになる */
 export const DEMO_ACCOUNTS = [PRESIDENT, ...SAMPLE_EMPLOYEES];
 const demoRole = (id: string): Role => DEMO_ACCOUNTS.find((e) => e.id === id)?.role ?? "employee";
@@ -15,9 +16,16 @@ const demoRole = (id: string): Role => DEMO_ACCOUNTS.find((e) => e.id === id)?.r
 export type User = { id: string; role: Role };
 export type LoginStep =
   | { ok: false; error: string }
-  | { ok: true; ticket: string; mfa: "verify" | "enroll"; secret?: string; otpauth?: string; demoCode?: string; mustChange?: boolean; defaultPassword?: boolean };
+  | { ok: true; ticket: string; mfa: "verify" | "enroll"; secret?: string; otpauth?: string; demoCode?: string; mustChange?: boolean; defaultPin?: boolean };
 
 const SESSION_KEY = "hlink-portal-session";
+const PINS_KEY = "hlink-demo-pins", RESETS_KEY = "hlink-demo-resets", REQS_KEY = "hlink-demo-reqs";
+const lsGet = <T,>(k: string, d: T): T => { try { return JSON.parse(localStorage.getItem(k) ?? "null") ?? d; } catch { return d; } };
+const lsSet = (k: string, v: unknown) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
+const demoPin = (id: string) => lsGet<Record<string, string>>(PINS_KEY, {})[id] ?? DEMO_PIN;
+export const demoEmailOf = (id: string) => DEMO_ACCOUNTS.find((e) => e.id === id)?.email ?? `${id}@hlink.example`;
+const RESET_MIN = 15;
+const newToken = () => Array.from(crypto.getRandomValues(new Uint8Array(18)), (b) => b.toString(16).padStart(2, "0")).join("");
 const demoSecret = (id: string) => base32Encode(new TextEncoder().encode(`hlink-demo-${id}`));
 
 async function post<T>(path: string, body: unknown): Promise<{ status: number; data: T }> {
@@ -29,10 +37,88 @@ type AuthCtx = {
   user: User | null;
   ready: boolean;
   mustChange: boolean;
-  login: (id: string, password: string) => Promise<LoginStep>;
+  login: (id: string, pin: string) => Promise<LoginStep>;
   verify: (ticket: string, code: string) => Promise<{ ok: true } | { ok: false; error: string }>;
   logout: () => Promise<void>;
-  changePassword: (current: string, next: string) => Promise<string | null>;
+  changePin: (current: string, next: string) => Promise<string | null>;
+};
+
+export type ResetResult = { ok: true; minutes: number; demoUrl?: string } | { ok: false; error: string };
+/** ログイン前に使う、PIN再設定まわりの操作 */
+export const resetApi = {
+  /** 従業員番号＋登録メールで本人確認 → ワンタイムURLをメール送付（デモでは画面に表示） */
+  async request(idRaw: string, email: string): Promise<ResetResult> {
+    const id = idRaw.trim().toUpperCase();
+    if (!id || !email.trim()) return { ok: false, error: "従業員番号とメールアドレスを入力してください。" };
+    if (STATIC) {
+      const acct = DEMO_ACCOUNTS.find((e) => e.id === id);
+      if (!acct || demoEmailOf(id).toLowerCase() !== email.trim().toLowerCase()) return { ok: true, minutes: RESET_MIN }; // 登録の有無は漏らさない
+      const token = newToken(), all = lsGet<Record<string, { id: string; exp: number }>>(RESETS_KEY, {});
+      for (const k of Object.keys(all)) if (all[k].id === id || all[k].exp < Date.now()) delete all[k];
+      all[token] = { id, exp: Date.now() + RESET_MIN * 60000 }; lsSet(RESETS_KEY, all);
+      return { ok: true, minutes: RESET_MIN, demoUrl: `${BASE}/reset/?t=${token}` };
+    }
+    const { status, data } = await post<{ minutes?: number; error?: string }>("/api/auth/reset/request", { id, email });
+    return status === 200 ? { ok: true, minutes: data.minutes ?? RESET_MIN } : { ok: false, error: data.error ?? "送信できませんでした。" };
+  },
+  /** 管理者（人事・情シス）へのリセット申請 */
+  async contact(idRaw: string, note: string): Promise<{ ok: boolean; error?: string }> {
+    const id = idRaw.trim().toUpperCase();
+    if (!id) return { ok: false, error: "従業員番号を入力してください。" };
+    if (STATIC) {
+      const reqs = lsGet<{ id: string; note: string; at: string }[]>(REQS_KEY, []);
+      if (!reqs.some((r) => r.id === id)) lsSet(REQS_KEY, [...reqs, { id, note, at: new Date().toISOString() }]);
+      return { ok: true };
+    }
+    const { status, data } = await post<{ error?: string }>("/api/auth/reset/contact", { id, note });
+    return status === 200 ? { ok: true } : { ok: false, error: data.error ?? "送信できませんでした。" };
+  },
+  async check(token: string): Promise<boolean> {
+    if (STATIC) { const r = lsGet<Record<string, { exp: number }>>(RESETS_KEY, {})[token]; return !!r && r.exp > Date.now(); }
+    return (await post<{ valid?: boolean }>("/api/auth/reset/check", { token })).data.valid === true;
+  },
+  async confirm(token: string, pin: string): Promise<string | null> {
+    const bad = validatePin(pin);
+    if (bad) return bad;
+    if (STATIC) {
+      const all = lsGet<Record<string, { id: string; exp: number }>>(RESETS_KEY, {}), r = all[token];
+      if (!r || r.exp < Date.now()) return "このリンクは無効か、有効期限が切れています。もう一度再設定をお申し込みください。";
+      lsSet(PINS_KEY, { ...lsGet<Record<string, string>>(PINS_KEY, {}), [r.id]: pin });
+      delete all[token]; lsSet(RESETS_KEY, all);
+      return null;
+    }
+    const { status, data } = await post<{ error?: string }>("/api/auth/reset/confirm", { token, pin });
+    return status === 200 ? null : data.error ?? "設定できませんでした。";
+  },
+};
+
+export type ResetReq = { id: string; name: string; note: string; at: string };
+/** 管理者：PINリセット申請への対応 */
+export const adminResetApi = {
+  async list(): Promise<{ requests: ResetReq[]; mailConfigured: boolean }> {
+    if (STATIC) return { requests: lsGet<{ id: string; note: string; at: string }[]>(REQS_KEY, []).map((r) => ({ ...r, name: DEMO_ACCOUNTS.find((e) => e.id === r.id)?.name ?? "" })), mailConfigured: false };
+    const r = await fetch(`${BASE}/api/auth/admin-reset`, { credentials: "same-origin", cache: "no-store" });
+    return r.ok ? await r.json() : { requests: [], mailConfigured: false };
+  },
+  async link(id: string): Promise<{ url?: string; error?: string }> {
+    if (STATIC) {
+      const token = newToken(), all = lsGet<Record<string, { id: string; exp: number }>>(RESETS_KEY, {});
+      all[token] = { id, exp: Date.now() + RESET_MIN * 60000 }; lsSet(RESETS_KEY, all);
+      lsSet(REQS_KEY, lsGet<{ id: string }[]>(REQS_KEY, []).filter((r) => r.id !== id));
+      return { url: `${location.origin}${BASE}/reset/?t=${token}` };
+    }
+    const { data } = await post<{ url?: string; error?: string }>("/api/auth/admin-reset", { action: "link", id });
+    return data;
+  },
+  async initial(id: string): Promise<string | null> {
+    if (STATIC) { const p = lsGet<Record<string, string>>(PINS_KEY, {}); delete p[id]; lsSet(PINS_KEY, p); lsSet(REQS_KEY, lsGet<{ id: string }[]>(REQS_KEY, []).filter((r) => r.id !== id)); return null; }
+    const { status, data } = await post<{ error?: string }>("/api/auth/admin-reset", { action: "initial", id });
+    return status === 200 ? null : data.error ?? "失敗しました";
+  },
+  async dismiss(id: string): Promise<void> {
+    if (STATIC) { lsSet(REQS_KEY, lsGet<{ id: string }[]>(REQS_KEY, []).filter((r) => r.id !== id)); return; }
+    await post("/api/auth/admin-reset", { action: "dismiss", id });
+  },
 };
 const Ctx = createContext<AuthCtx | null>(null);
 
@@ -56,15 +142,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     })();
   }, []);
 
-  const login = useCallback<AuthCtx["login"]>(async (id, password) => {
+  const login = useCallback<AuthCtx["login"]>(async (id, pin) => {
     id = id.trim().toUpperCase();
     if (STATIC) {
       await new Promise((r) => setTimeout(r, 400));
-      if (!DEMO_ACCOUNTS.some((e) => e.id === id) || password !== DEMO_PASSWORD) return { ok: false, error: "社員番号またはパスワードが正しくありません。" };
+      if (!DEMO_ACCOUNTS.some((e) => e.id === id) || pin !== demoPin(id)) return { ok: false, error: "従業員番号またはPINが正しくありません。" };
       const secret = demoSecret(id);
       return { ok: true, ticket: id, mfa: "verify", demoCode: await totp(secret), secret, otpauth: otpauthUri(id, secret) };
     }
-    const { status, data } = await post<Record<string, unknown>>("/api/auth/login", { id, password });
+    const { status, data } = await post<Record<string, unknown>>("/api/auth/login", { id, pin });
     if (status !== 200) return { ok: false, error: String(data.error ?? "ログインに失敗しました。") };
     return { ok: true, ...(data as object) } as LoginStep;
   }, []);
@@ -88,14 +174,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null); setMustChange(false);
   }, []);
 
-  const changePassword = useCallback(async (current: string, next: string) => {
-    const { status, data } = await post<{ error?: string }>("/api/auth/password", { current, next });
+  const changePin = useCallback(async (current: string, next: string) => {
+    if (STATIC) {
+      if (current !== demoPin(user?.id ?? "")) return "現在のPINが正しくありません。";
+      const bad = validatePin(next); if (bad) return bad;
+      lsSet(PINS_KEY, { ...lsGet<Record<string, string>>(PINS_KEY, {}), [user?.id ?? ""]: next });
+      return null;
+    }
+    const { status, data } = await post<{ error?: string }>("/api/auth/pin", { current, next });
     if (status !== 200) return data.error ?? "変更に失敗しました。";
     setMustChange(false);
     return null;
-  }, []);
+  }, [user]);
 
-  const v = useMemo(() => ({ user, ready, mustChange, login, verify, logout, changePassword }), [user, ready, mustChange, login, verify, logout, changePassword]);
+  const v = useMemo(() => ({ user, ready, mustChange, login, verify, logout, changePin }), [user, ready, mustChange, login, verify, logout, changePin]);
   return <Ctx.Provider value={v}>{children}</Ctx.Provider>;
 }
 

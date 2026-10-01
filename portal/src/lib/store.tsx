@@ -8,6 +8,7 @@ import { can } from "./perm";
 import { seedState } from "./seed";
 import { acct, checkEntry, isInvoiceNo, isPosted, postJournal, reversal, type Approvals, type Journal, type JournalCore, type TaxKind } from "./accounting";
 import { holidaySet, workdaysBetween, type Conditions, type DayInput } from "./work";
+import type { CalEvent, Doc, Kpi, Remote, Report, Reports } from "./biz";
 
 export type AuditBody = { at: string; actor: string; action: string };
 export type Audit = AuditBody & Chained;
@@ -25,6 +26,12 @@ export type State = {
   jApprovals: Approvals;
   closed: string[]; // 月次締め済み（YYYY-MM）
   ipo: Record<string, boolean>;
+  docs: Doc[]; // 文書管理（社内規程など）
+  docAck: Record<string, Record<string, string>>; // 従業員番号 → 文書ID → 確認した版
+  events: CalEvent[]; // 業務カレンダー（全社共通）
+  reports: Reports; // 業務日報
+  kpis: Kpi[];
+  remotes: Remote[]; // リモート接続先
 };
 
 const KEY = "hlink-portal-v1";
@@ -61,6 +68,18 @@ type Action =
   | { t: "close-month"; month: string; by: string }
   | { t: "ipo-set"; id: string; v: boolean; by: string }
   | { t: "export-log"; by: string; what: string }
+  | { t: "doc-save"; doc: Doc; by: string }
+  | { t: "doc-del"; id: string; by: string }
+  | { t: "doc-ack"; emp: string; id: string; version: string }
+  | { t: "ev-save"; ev: CalEvent; by: string }
+  | { t: "ev-del"; id: string; by: string }
+  | { t: "report-save"; emp: string; report: Report }
+  | { t: "report-comment"; emp: string; date: string; comment: string; by: string }
+  | { t: "kpi-save"; kpi: Kpi; by: string }
+  | { t: "kpi-del"; id: string; by: string }
+  | { t: "kpi-value"; id: string; month: string; value: number | null }
+  | { t: "remote-save"; remote: Remote; by: string }
+  | { t: "remote-del"; id: string; by: string }
   | { t: "reset" };
 
 const nowIso = () => new Date().toISOString();
@@ -164,6 +183,33 @@ function reducer(s: State, a: Action): State {
     case "close-month": return s.closed.includes(a.month) ? s : logged(s, a.by, `月次締め: ${a.month}`, { closed: [...s.closed, a.month].sort() });
     case "ipo-set": return logged(s, a.by, `上場準備チェック: ${a.id}=${a.v}`, { ipo: { ...s.ipo, [a.id]: a.v } });
     case "export-log": return logged(s, a.by, `データ出力: ${a.what}`);
+    case "doc-save": {
+      const exists = s.docs.some((x) => x.id === a.doc.id);
+      return logged(s, a.by, `文書${exists ? "更新" : "登録"}: ${a.doc.title}（${a.doc.version}）`, { docs: exists ? s.docs.map((x) => (x.id === a.doc.id ? a.doc : x)) : [a.doc, ...s.docs] });
+    }
+    case "doc-del": return logged(s, a.by, `文書削除: ${s.docs.find((x) => x.id === a.id)?.title ?? a.id}`, { docs: s.docs.filter((x) => x.id !== a.id) });
+    case "doc-ack": return s.docAck[a.emp]?.[a.id] === a.version ? s : { ...s, docAck: { ...s.docAck, [a.emp]: { ...(s.docAck[a.emp] ?? {}), [a.id]: a.version } } };
+    case "ev-save": {
+      const exists = s.events.some((x) => x.id === a.ev.id);
+      return logged(s, a.by, `予定${exists ? "更新" : "登録"}: ${a.ev.title}（${a.ev.date}）`, { events: exists ? s.events.map((x) => (x.id === a.ev.id ? a.ev : x)) : [...s.events, a.ev] });
+    }
+    case "ev-del": return logged(s, a.by, `予定削除: ${s.events.find((x) => x.id === a.id)?.title ?? a.id}`, { events: s.events.filter((x) => x.id !== a.id) });
+    case "report-save": return { ...s, reports: { ...s.reports, [a.emp]: { ...(s.reports[a.emp] ?? {}), [a.report.date]: { ...(s.reports[a.emp]?.[a.report.date] ?? {}), ...a.report } } } };
+    case "report-comment": {
+      const r = s.reports[a.emp]?.[a.date];
+      return r ? { ...s, reports: { ...s.reports, [a.emp]: { ...s.reports[a.emp], [a.date]: { ...r, comment: a.comment, commentBy: a.by } } } } : s;
+    }
+    case "kpi-save": {
+      const exists = s.kpis.some((x) => x.id === a.kpi.id);
+      return logged(s, a.by, `KPI${exists ? "更新" : "登録"}: ${a.kpi.name}`, { kpis: exists ? s.kpis.map((x) => (x.id === a.kpi.id ? a.kpi : x)) : [...s.kpis, a.kpi] });
+    }
+    case "kpi-del": return logged(s, a.by, `KPI削除: ${s.kpis.find((x) => x.id === a.id)?.name ?? a.id}`, { kpis: s.kpis.filter((x) => x.id !== a.id) });
+    case "kpi-value": return { ...s, kpis: s.kpis.map((k) => { if (k.id !== a.id) return k; const values = { ...k.values }; if (a.value == null) delete values[a.month]; else values[a.month] = a.value; return { ...k, values }; }) };
+    case "remote-save": {
+      const exists = s.remotes.some((x) => x.id === a.remote.id);
+      return logged(s, a.by, `リモート接続先${exists ? "更新" : "登録"}: ${a.remote.name}`, { remotes: exists ? s.remotes.map((x) => (x.id === a.remote.id ? a.remote : x)) : [...s.remotes, a.remote] });
+    }
+    case "remote-del": return logged(s, a.by, `リモート接続先削除: ${s.remotes.find((x) => x.id === a.id)?.name ?? a.id}`, { remotes: s.remotes.filter((x) => x.id !== a.id) });
   }
 }
 
@@ -203,6 +249,13 @@ export function StoreProvider({ meId, role, children }: { meId: string; role: Ro
     if (!can.manageEmployees(role)) { delete o.employees; delete o.conditions; }
     if (!can.admin(role)) delete o.news;
     if (!can.viewAccounting(role)) for (const k of ["journal", "jApprovals", "closed", "ipo"]) delete o[k];
+    // 書き込み権限のない業務データは送らない（サーバー側でも検証する）
+    if (!can.manageDocs(role)) delete o.docs;
+    if (!can.editCalendar(role)) delete o.events;
+    if (!can.manageRemotes(role)) delete o.remotes;
+    if (!can.manageKpis(role)) o.kpis = st.kpis.filter((k) => k.ownerId === meId);
+    if (!can.viewAllReports(role)) o.reports = { [meId]: st.reports[meId] ?? {} };
+    o.docAck = { [meId]: st.docAck[meId] ?? {} };
     return o;
   }, [role, meId]);
   const fromServer = useCallback((raw: Partial<State>): State => ({ ...seedState(false), ...raw, audit: raw.audit ?? [], auditOutbox: [] }), []);
@@ -212,7 +265,12 @@ export function StoreProvider({ meId, role, children }: { meId: string; role: Ro
       try {
         if (STATIC) {
           const raw = localStorage.getItem(KEY);
-          if (raw) d({ t: "load", s: { ...seedState(true), ...JSON.parse(raw) } });
+          if (raw) {
+            const base = seedState(true), saved = JSON.parse(raw) as Partial<State>;
+            // 旧データに無い項目（部署・上司・メール等）は、同じ番号のサンプルから補う
+            const employees = (saved.employees ?? base.employees).map((e) => ({ ...(base.employees.find((b) => b.id === e.id) ?? {}), ...e }));
+            d({ t: "load", s: { ...base, ...saved, employees } });
+          }
         } else {
           const r = await fetch(`${BASE}/api/state`, { credentials: "same-origin", cache: "no-store" });
           if (r.ok) {

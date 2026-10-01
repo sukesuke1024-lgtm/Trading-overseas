@@ -83,3 +83,41 @@ test("audit is server-appended with forced actor; closed months only grow", () =
   const a = mergeWrite(b, { auditOutbox: [{ at: "t", actor: "001", action: "x" }], audit: [{ fake: 1 }] }, "003", "employee").state;
   assert.equal(a.audit.length, 1); assert.equal(a.audit[0].actor, "003"); assert.equal(a.audit[0].seq, 1);
 });
+
+const lead = (over = {}) => ({ ...base(), docs: [], events: [], remotes: [{ id: "r1", name: "A", kind: "RDP", host: "a.example", ownerId: "003" }, { id: "r2", name: "B", kind: "RDP", host: "b.example", ownerId: "004" }], kpis: [{ id: "k0", name: "全社", unit: "件", target: 10, ownerId: "", values: {} }, { id: "k1", name: "個人", unit: "件", target: 10, ownerId: "003", values: {} }, { id: "k2", name: "他人", unit: "件", target: 10, ownerId: "004", values: {} }], reports: { "003": { "2026-09-01": { date: "2026-09-01", done: "x", plan: "", issues: "", status: "提出済" } }, "004": {} }, docAck: {}, ...over });
+
+test("read: employee sees only own reports/remotes and company+own KPIs; executive sees all", () => {
+  const e = sanitizeForRead(lead(), "003", "employee")!;
+  assert.deepEqual(Object.keys(e.reports), ["003"]); assert.deepEqual(e.remotes.map((r: { id: string }) => r.id), ["r1"]); assert.deepEqual(e.kpis.map((k: { id: string }) => k.id), ["k0", "k1"]);
+  const x = sanitizeForRead(lead(), "002", "executive")!;
+  assert.equal(x.remotes.length, 2); assert.equal(x.kpis.length, 3); assert.deepEqual(Object.keys(x.reports).sort(), ["003", "004"]);
+});
+
+test("write: docs admin-only, events exec/admin, remotes admin-only", () => {
+  const doc = { id: "d", title: "t", category: "就業規則", version: "v1", effective: "2026-09-01", body: "b", updatedAt: "2026-09-01", updatedBy: "x" };
+  assert.ok(mergeWrite(lead(), { docs: [doc] }, "002", "executive").denied.includes("docs"));
+  assert.equal(mergeWrite(lead(), { docs: [doc] }, "001", "admin").denied.length, 0);
+  const ev = { id: "e", title: "会議", date: "2026-09-10", start: "10:00", category: "会議", by: "002" };
+  assert.ok(mergeWrite(lead(), { events: [ev] }, "003", "employee").denied.includes("events"));
+  assert.equal(mergeWrite(lead(), { events: [ev] }, "002", "executive").denied.length, 0);
+  assert.ok(mergeWrite(lead(), { events: [{ ...ev, date: "bad" }] }, "001", "admin").denied.includes("events"));
+  assert.ok(mergeWrite(lead(), { remotes: [] }, "002", "executive").denied.includes("remotes"));
+  assert.ok(mergeWrite(lead(), { remotes: [{ id: "r", name: "x", kind: "RDP", host: "bad host;", ownerId: "" }] }, "001", "admin").denied.includes("remotes"));
+});
+
+test("write: KPI owner may edit only own values; reports: own only, comments by leads", () => {
+  const own = lead().kpis.map((k) => (k.id === "k1" ? { ...k, values: { "2026-09": 5 } } : k));
+  const r = mergeWrite(lead(), { kpis: own.filter((k) => k.ownerId === "003") }, "003", "employee");
+  assert.equal(r.denied.length, 0); assert.deepEqual(r.state.kpis.find((k: { id: string }) => k.id === "k1").values, { "2026-09": 5 });
+  const tamper = lead().kpis.map((k) => (k.id === "k1" ? { ...k, target: 1 } : k.id === "k2" ? { ...k, values: { "2026-09": 1 } } : k));
+  assert.ok(mergeWrite(lead(), { kpis: tamper }, "003", "employee").denied.includes("kpis"));
+  // 日報：本人は自分の分のみ、コメント欄は触れない
+  const rep = { date: "2026-09-02", done: "y", plan: "", issues: "", status: "提出済" };
+  const w = mergeWrite(lead(), { reports: { "003": { "2026-09-02": { ...rep, comment: "自分で書いた", commentBy: "003" } }, "004": { "2026-09-02": rep } } }, "003", "employee");
+  assert.ok(w.denied.includes("reports")); assert.equal(w.state.reports["003"]["2026-09-02"].comment, undefined); assert.equal(w.state.reports["004"]["2026-09-02"], undefined);
+  // 役員は他人の日報にコメントのみ可（本文の改ざん不可）
+  const ok = mergeWrite(lead(), { reports: { "003": { "2026-09-01": { ...lead().reports["003"]["2026-09-01"], comment: "確認しました" } } } }, "002", "executive");
+  assert.equal(ok.denied.length, 0); assert.equal(ok.state.reports["003"]["2026-09-01"].commentBy, "002");
+  const bad = mergeWrite(lead(), { reports: { "003": { "2026-09-01": { ...lead().reports["003"]["2026-09-01"], done: "改ざん", comment: "c" } } } }, "002", "executive");
+  assert.ok(bad.denied.includes("reports")); assert.equal(bad.state.reports["003"]["2026-09-01"].done, "x");
+});
