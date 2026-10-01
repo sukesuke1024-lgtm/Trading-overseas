@@ -6,6 +6,8 @@ export const COMPANY = {
   short: "H-LINK",
   ceo: "長尾 晃佑",
   tagline: "つなぐ、越える、食の可能性をひらく。",
+  /** ログインできない・PINを忘れた人の連絡先の表示（NEXT_PUBLIC_HELPDESK で変更） */
+  helpdesk: process.env.NEXT_PUBLIC_HELPDESK ?? "人事・情報システム担当",
 };
 
 /** 権限（3区分）。従業員＝自分のみ／役員＝全社の閲覧（読み取り専用）／管理者＝全社の閲覧と編集・Excel連携 */
@@ -33,7 +35,10 @@ export type Employee = {
   scheduled: number; // 所定労働時間（時間/日）
   joined?: string;
   left?: string;
-  paidGranted?: number; // 有給付与日数
+  paidGranted?: number; // 有給付与日数（今期の有効日数・繰越込み。未設定なら入社日から法定で算出）
+  dept?: string; // 部署（組織図）
+  bossId?: string; // 上司の従業員番号（組織図）
+  email?: string; // 会社メール（PIN再設定の本人確認に使う。管理者・役員以外には非公開）
   role: Role;
   sample?: boolean; // デモ用のサンプル
 };
@@ -45,18 +50,18 @@ export function defaultRole(job: string, employment: string): Role {
 
 /** 社長（代表取締役）。承認ルートの既定の承認者 */
 export const PRESIDENT_ID = "001";
-export const PRESIDENT: Employee = { id: PRESIDENT_ID, name: COMPANY.ceo, employment: "役員", job: "代表取締役", scheduled: 7.5, role: "admin" };
+export const PRESIDENT: Employee = { id: PRESIDENT_ID, name: COMPANY.ceo, employment: "役員", job: "代表取締役", scheduled: 7.5, role: "admin", dept: "経営" };
 
 /** デモ（GitHub Pages）専用のサンプル。サーバー版には入らない */
 export const SAMPLE_EMPLOYEES: Employee[] = [
-  { id: "901", name: "サンプル 役員", kana: "サンプル ヤクイン", employment: "役員", job: "取締役", scheduled: 7.5, role: "executive", sample: true },
-  { id: "902", name: "サンプル 従業員", kana: "サンプル ジュウギョウイン", employment: "正社員", job: "営業", scheduled: 7.5, role: "employee", sample: true },
-  { id: "903", name: "サンプル 管理者", kana: "サンプル カンリシャ", employment: "正社員", job: "経理・財務", scheduled: 7.5, role: "admin", sample: true },
+  { id: "901", name: "サンプル 役員", kana: "サンプル ヤクイン", employment: "役員", job: "取締役", scheduled: 7.5, role: "executive", sample: true, dept: "経営", bossId: "001", email: "901@hlink.example", joined: "2020-04-01" },
+  { id: "902", name: "サンプル 従業員", kana: "サンプル ジュウギョウイン", employment: "正社員", job: "営業", scheduled: 7.5, role: "employee", sample: true, dept: "営業部", bossId: "901", email: "902@hlink.example", joined: "2024-04-01" },
+  { id: "903", name: "サンプル 管理者", kana: "サンプル カンリシャ", employment: "正社員", job: "経理・財務", scheduled: 7.5, role: "admin", sample: true, dept: "管理部", bossId: "001", email: "903@hlink.example", joined: "2022-10-01" },
 ];
 
 // ---------- お知らせ ----------
-export type NewsCategory = "全社" | "勤怠・給与" | "人事" | "総務" | "システム";
-export const NEWS_CATEGORIES: NewsCategory[] = ["全社", "勤怠・給与", "人事", "総務", "システム"];
+export type NewsCategory = "全社" | "慶弔" | "新入社員" | "人事" | "勤怠・給与" | "総務" | "システム" | "その他";
+export const NEWS_CATEGORIES: NewsCategory[] = ["全社", "慶弔", "新入社員", "人事", "勤怠・給与", "総務", "システム", "その他"];
 export type News = { id: string; title: string; body: string; category: NewsCategory; date: string; important: boolean; author: string };
 export const NEWS_SEED: News[] = [
   { id: "n1", title: "社内ポータルの運用を開始します", body: "勤怠の入力・申請と承認は、このポータルから行います。入力した勤怠は Excel（勤怠ブック→賃金計算ブック）へ反映され、給与計算につながります。\n操作で困ったときは管理者にご連絡ください。", category: "全社", date: "2026-10-01", important: true, author: "管理者" },
@@ -69,7 +74,7 @@ export const WF_TYPES: { type: WfType; desc: string }[] = [
   { type: "経費精算", desc: "交通費・接待交際費・立替金などの精算" },
   { type: "休暇申請", desc: "年次有給休暇、特別休暇、振替休日" },
   { type: "出張申請", desc: "国内・海外出張の事前申請" },
-  { type: "稟議", desc: "契約・投資・購買などの決裁申請" },
+  { type: "稟議", desc: "稟議書・決裁（契約・投資・購買など）" },
   { type: "IT機器・アカウント申請", desc: "PC・ソフトウェア・アクセス権の申請" },
 ];
 export type WfStatus = "承認待ち" | "承認済" | "差戻し" | "却下" | "取下げ";

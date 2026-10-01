@@ -5,13 +5,14 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   Home, Megaphone, FileCheck2, Clock, Users, Search, Bell, Menu, X, ShieldCheck, CornerDownLeft, LogOut, Ellipsis, Cloud, CloudOff,
-  Landmark, BookText, FileSearch, Rocket, FileSpreadsheet,
+  Landmark, BookText, FileSearch, Rocket, FileSpreadsheet, KeyRound, CalendarDays, NotebookPen, Target, Receipt, FileSignature, FolderOpen, Network, CalendarCheck2, MonitorUp,
 } from "lucide-react";
 import { COMPANY, ROLE_LABEL } from "@/lib/data";
 import { BASE, STATIC, AuthProvider, useAuth } from "@/lib/auth";
 import { can, type RoleName } from "@/lib/perm";
 import { StoreProvider, useStore } from "@/lib/store";
-import { LoginScreen } from "./Login";
+import { LoginScreen, PinInput, ResetScreen } from "./Login";
+import { PIN_HINT } from "@/lib/pin";
 import { Logo } from "./ui";
 
 type NavItem = { href: string; label: string; icon: typeof Home; show?: (r: RoleName) => boolean; group?: string };
@@ -20,6 +21,15 @@ const NAV: NavItem[] = [
   { href: "/attendance", label: "勤怠", icon: Clock },
   { href: "/workflow", label: "申請・承認", icon: FileCheck2 },
   { href: "/news", label: "お知らせ", icon: Megaphone },
+  { href: "/calendar", label: "業務カレンダー", icon: CalendarDays, group: "業務" },
+  { href: "/reports", label: "業務日報", icon: NotebookPen, group: "業務" },
+  { href: "/kpi", label: "KPI管理", icon: Target, group: "業務" },
+  { href: "/workflow?type=経費精算", label: "経費精算", icon: Receipt, group: "業務" },
+  { href: "/workflow?type=稟議", label: "決裁・稟議書", icon: FileSignature, group: "業務" },
+  { href: "/leave", label: "有給管理", icon: CalendarCheck2, group: "業務" },
+  { href: "/docs", label: "文書管理・社内規程", icon: FolderOpen, group: "社内情報" },
+  { href: "/directory", label: "従業員名簿・組織図", icon: Network, group: "社内情報" },
+  { href: "/remote", label: "リモート接続", icon: MonitorUp, group: "社内情報" },
   { href: "/employees", label: "従業員・権限", icon: Users, show: can.viewEmployees, group: "管理" },
   { href: "/excel", label: "Excel連携・CSV", icon: FileSpreadsheet, show: can.excel, group: "管理" },
   { href: "/accounting", label: "決算書・販管費", icon: Landmark, show: can.viewAccounting, group: "経理・会計" },
@@ -41,49 +51,63 @@ const IDLE_MS = 30 * 60 * 1000; // 無操作30分で自動ログアウト
 
 function Gate({ children }: { children: ReactNode }) {
   const { user, ready, logout, mustChange } = useAuth();
+  const path = usePathname();
+  const router = useRouter();
+  const signOut = () => logout().then(() => router.replace("/")); // ログアウト後は必ずログイン画面（トップ）へ
   useEffect(() => {
     if (!user) return;
-    let t = setTimeout(() => logout(), IDLE_MS);
-    const reset = () => { clearTimeout(t); t = setTimeout(() => logout(), IDLE_MS); };
+    let t = setTimeout(() => { logout().then(() => router.replace("/")); }, IDLE_MS);
+    const reset = () => { clearTimeout(t); t = setTimeout(() => { logout().then(() => router.replace("/")); }, IDLE_MS); };
     const ev = ["pointerdown", "keydown", "visibilitychange"] as const;
     ev.forEach((e) => window.addEventListener(e, reset));
     return () => { clearTimeout(t); ev.forEach((e) => window.removeEventListener(e, reset)); };
-  }, [user, logout]);
+  }, [user, logout, router]);
   useEffect(() => {
     if ("serviceWorker" in navigator && process.env.NODE_ENV === "production") navigator.serviceWorker.register(`${BASE}/sw.js`, { scope: `${BASE}/` }).catch(() => {});
   }, []);
 
   if (!ready) return <div className="grid min-h-dvh place-items-center text-ink-3">読み込み中…</div>;
-  if (!user) return <LoginScreen />;
+  if (!user) return path.startsWith("/reset") ? <ResetScreen /> : <LoginScreen />;
   return (
     <StoreProvider meId={user.id} role={user.role}>
-      <Frame>{children}</Frame>
-      {mustChange && !STATIC && <ForcePassword />}
+      <Frame onLogout={signOut}>{children}</Frame>
+      {mustChange && !STATIC && <PinDialog forced onClose={() => {}} onLogout={signOut} />}
     </StoreProvider>
   );
 }
 
-function ForcePassword() {
-  const { changePassword, logout } = useAuth();
-  const [cur, setCur] = useState(""); const [next, setNext] = useState(""); const [err, setErr] = useState("");
+/** PINの変更。forced=初期PINのままのとき（変更するまで他の操作はできない） */
+function PinDialog({ forced = false, onClose, onLogout }: { forced?: boolean; onClose: () => void; onLogout: () => void }) {
+  const { changePin } = useAuth();
+  const [cur, setCur] = useState(""), [next, setNext] = useState(""), [next2, setNext2] = useState("");
+  const [err, setErr] = useState(""), [ok, setOk] = useState(false);
   return (
-    <div className="fixed inset-0 z-[60] grid place-items-center bg-black/50 p-4" role="dialog" aria-modal="true" aria-label="パスワード変更">
-      <form className="card w-full max-w-sm space-y-3 p-5" onSubmit={async (e) => { e.preventDefault(); const r = await changePassword(cur, next); if (r) setErr(r); }}>
-        <h2 className="text-lg font-bold">パスワードの変更（必須）</h2>
-        <p className="text-[13px] text-ink-2">初期パスワードのままではご利用いただけません。12文字以上で英字・数字・記号を含めてください。</p>
-        <div><label className="label" htmlFor="cp">現在のパスワード</label><input id="cp" type="password" autoComplete="current-password" className="input" value={cur} onChange={(e) => setCur(e.target.value)} /></div>
-        <div><label className="label" htmlFor="np">新しいパスワード</label><input id="np" type="password" autoComplete="new-password" className="input" value={next} onChange={(e) => setNext(e.target.value)} /></div>
-        {err && <p role="alert" className="text-[13px] text-bad">{err}</p>}
-        <div className="flex justify-between"><button type="button" className="btn" onClick={() => logout()}>ログアウト</button><button className="btn btn-primary">変更する</button></div>
+    <div className="fixed inset-0 z-[60] grid place-items-center bg-black/50 p-4" role="dialog" aria-modal="true" aria-label="PINの変更" onClick={forced ? undefined : onClose}>
+      <form className="card w-full max-w-sm space-y-3 p-5" onClick={(e) => e.stopPropagation()} onSubmit={async (e) => {
+        e.preventDefault(); setErr("");
+        if (next !== next2) { setErr("確認用のPINが一致しません。"); return; }
+        const r = await changePin(cur, next);
+        if (r) setErr(r); else if (forced) setOk(true); else setOk(true);
+      }}>
+        <h2 className="text-lg font-bold">{forced ? "PINの設定（必須）" : "PINの変更"}</h2>
+        {ok ? <><p className="text-[13px] text-good">PINを変更しました。</p><div className="flex justify-end"><button type="button" className="btn btn-primary" onClick={onClose}>閉じる</button></div></> : <>
+          {forced && <p className="text-[13px] text-ink-2">初期PINのままではご利用いただけません。新しいPINを設定してください。</p>}
+          <p className="text-[12px] text-ink-3">{PIN_HINT}</p>
+          <PinInput id="cp" value={cur} onChange={setCur} label="現在のPIN" />
+          <PinInput id="np" value={next} onChange={setNext} autoComplete="new-password" label="新しいPIN" />
+          <PinInput id="np2" value={next2} onChange={setNext2} autoComplete="new-password" label="新しいPIN（確認）" />
+          {err && <p role="alert" className="text-[13px] text-bad">{err}</p>}
+          <div className="flex justify-between">{forced ? <button type="button" className="btn" onClick={onLogout}>ログアウト</button> : <button type="button" className="btn" onClick={onClose}>キャンセル</button>}<button className="btn btn-primary" disabled={cur.length < 4 || next.length < 4}>変更する</button></div>
+        </>}
       </form>
     </div>
   );
 }
 
-function Frame({ children }: { children: ReactNode }) {
+function Frame({ children, onLogout }: { children: ReactNode; onLogout: () => void }) {
   const path = usePathname();
   const { s, meId, role, sync, me } = useStore();
-  const { logout } = useAuth();
+  const [pinOpen, setPinOpen] = useState(false);
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState(false);
 
@@ -110,7 +134,8 @@ function Frame({ children }: { children: ReactNode }) {
         <nav className="px-2 pb-6">
           {NAV.filter((n) => !n.show || n.show(role)).map(({ href, label, icon: Icon, group }, idx, arr) => {
             const head = group && group !== arr[idx - 1]?.group ? <div key={`g-${group}`} className="mb-1 mt-4 px-3 text-[10.5px] font-semibold tracking-wide text-side-text/60">{group}</div> : null;
-            const active = href === "/" ? path === "/" : path.startsWith(href);
+            const base = href.split("?")[0], hasQuery = href.includes("?");
+            const active = hasQuery ? false : href === "/" ? path === "/" : path.startsWith(base);
             const badge = href === "/workflow" ? pending : href === "/news" ? unread : 0;
             return (
               <div key={href}>{head}
@@ -144,7 +169,8 @@ function Frame({ children }: { children: ReactNode }) {
               <div className="text-[11px] text-ink-3">{me.job || ROLE_LABEL[role]}・{ROLE_LABEL[role]}</div>
             </div>
             <div className="grid h-9 w-9 place-items-center rounded-full bg-ink text-[13px] font-bold text-white" aria-hidden>{me.name[0]}</div>
-            <button className="btn !h-9 !w-9 !p-0" aria-label="ログアウト" title="ログアウト" onClick={() => logout()}><LogOut size={16} /></button>
+            <button className="btn !h-9 !w-9 !p-0" aria-label="PINを変更" title="PINを変更" onClick={() => setPinOpen(true)}><KeyRound size={16} /></button>
+            <button className="btn !h-9 !w-9 !p-0" aria-label="ログアウト" title="ログアウト" onClick={onLogout}><LogOut size={16} /></button>
           </div>
         </header>
         <main id="main" className="mx-auto max-w-[1180px] px-4 py-6 pb-[calc(88px+env(safe-area-inset-bottom))] lg:px-8 lg:pb-6">{children}</main>
@@ -166,6 +192,7 @@ function Frame({ children }: { children: ReactNode }) {
         <button onClick={() => setOpen(true)} className="flex flex-col items-center gap-0.5 py-2 text-[10.5px] text-ink-3"><Ellipsis size={21} aria-hidden />メニュー</button>
       </nav>
       {q && <Palette onClose={() => setQ(false)} />}
+      {pinOpen && <PinDialog onClose={() => setPinOpen(false)} onLogout={onLogout} />}
     </div>
   );
 }
@@ -181,8 +208,10 @@ function Palette({ onClose }: { onClose: () => void }) {
   const all = useMemo<Hit[]>(() => [
     ...(can.viewEmployees(role) ? s.employees.map((e) => ({ kind: "従業員", title: e.name, sub: `${e.id}・${e.job}・${ROLE_LABEL[e.role]}`, href: `/employees?q=${encodeURIComponent(e.name)}` })) : []),
     ...s.news.map((n) => ({ kind: "お知らせ", title: n.title, sub: `${n.category}・${n.date}`, href: `/news?id=${n.id}` })),
+    ...s.docs.map((x) => ({ kind: "文書", title: x.title, sub: `${x.category}・${x.version}`, href: `/docs?id=${x.id}` })),
+    ...s.employees.map((e) => ({ kind: "名簿", title: e.name, sub: `${e.dept ?? ""} ${e.job}`.trim(), href: `/directory` })),
     ...s.workflows.map((w) => ({ kind: "申請", title: w.title, sub: `${w.type}・${w.status}`, href: `/workflow?id=${w.id}` })),
-  ], [s.employees, s.news, s.workflows, role]);
+  ], [s.employees, s.news, s.workflows, s.docs, role]);
   const hits = useMemo(() => {
     const t = text.trim().toLowerCase();
     if (!t) return all.slice(0, 6);

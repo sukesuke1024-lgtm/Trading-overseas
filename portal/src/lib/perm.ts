@@ -20,6 +20,18 @@ export const can = {
   /** お知らせの投稿・全社設定（管理者） */
   admin: (r: RoleName) => r === "admin",
   /** 全申請の閲覧（役員・管理者）。従業員は自分の申請と自分が承認者のものだけ */
+  /** 社内規程などの文書の登録・更新（管理者） */
+  manageDocs: (r: RoleName) => r === "admin",
+  /** 業務カレンダーの予定の登録・更新（役員・管理者）。閲覧は全社員 */
+  editCalendar: (r: RoleName) => r === "executive" || r === "admin",
+  /** 業務日報：全員分の閲覧とコメント（役員・管理者） */
+  viewAllReports: (r: RoleName) => r === "executive" || r === "admin",
+  /** KPIの定義・目標の設定（管理者）。担当者は自分のKPIの実績を入力できる */
+  manageKpis: (r: RoleName) => r === "admin",
+  /** リモート接続先の登録（管理者）。従業員は自分に割り当てられた接続先だけ見える */
+  manageRemotes: (r: RoleName) => r === "admin",
+  /** 有給の付与日数の編集・全員分の閲覧 */
+  viewAllLeave: (r: RoleName) => r === "executive" || r === "admin",
   viewAllWorkflows: (r: RoleName) => r === "executive" || r === "admin",
 };
 
@@ -33,4 +45,10 @@ export const PERMISSION_MATRIX: { label: string; employee: string; executive: st
   { label: "Excel連携（勤怠ブック→賃金計算ブック）・CSV出力", employee: "—", executive: "—", admin: "可" },
   { label: "監査ログ・監査出力", employee: "—", executive: "閲覧・出力", admin: "閲覧・出力" },
   { label: "お知らせの投稿・全社設定", employee: "—", executive: "—", admin: "可" },
+  { label: "社内規程などの文書", employee: "閲覧・確認", executive: "閲覧・確認", admin: "登録・更新" },
+  { label: "業務カレンダー（全社共通）", employee: "閲覧", executive: "閲覧・予定の登録", admin: "閲覧・予定の登録" },
+  { label: "業務日報", employee: "自分の日報", executive: "全員分を閲覧・コメント", admin: "全員分を閲覧・コメント" },
+  { label: "KPI", employee: "全社KPI・自分のKPI（担当分は実績入力）", executive: "全KPIを閲覧", admin: "定義・目標・実績の編集" },
+  { label: "リモート接続先", employee: "自分に割り当てられたPCのみ", executive: "全て閲覧", admin: "登録・編集" },
+  { label: "有給管理", employee: "自分の残日数", executive: "全員分を閲覧", admin: "全員分を閲覧・付与日数の調整" },
 ];
