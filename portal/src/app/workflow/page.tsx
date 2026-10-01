@@ -1,5 +1,6 @@
 "use client";
 
+import { NumInput } from "@/components/NumInput";
 import { useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, Check, CircleDot, Paperclip, Plus, RotateCcw, X, Circle } from "lucide-react";
@@ -9,6 +10,7 @@ import { WF_TYPES, type WfStatus, type WfType, type Workflow } from "@/lib/data"
 import { EXPENSE_ACCOUNTS, useStore, ymd } from "@/lib/store";
 import { Badge, Empty, PageHeader, yen } from "@/components/ui";
 import { FileDownload, UploadButton } from "@/components/Files";
+import { DropZone } from "@/components/DropZone";
 import { uploadFile, type Uploaded } from "@/lib/files";
 import { deptOf, fmtBytes } from "@/lib/ops";
 import { describeRule, ruleFor } from "@/lib/authority";
@@ -101,7 +103,7 @@ function NewForm({ initial }: { initial: WfType }) {
       <form onSubmit={submit} className="card space-y-4 p-5">
         <div className="grid gap-4 sm:grid-cols-2">
           <div><label className="label" htmlFor="wt">申請種別</label><select id="wt" className="input" value={f.type} onChange={(e) => setF({ ...f, type: e.target.value as WfType })}>{WF_TYPES.filter((t) => t.type !== "異動変更届").map((t) => <option key={t.type}>{t.type}</option>)}</select></div>
-          {!isLeave && <div><label className="label" htmlFor="wa">金額（円）</label><input id="wa" type="number" min={0} className="input tabular" value={f.amount} onChange={(e) => setF({ ...f, amount: e.target.value })} /></div>}
+          {!isLeave && <div><label className="label" htmlFor="wa">金額（円）</label><NumInput id="wa" className="input" value={f.amount} onChange={(v) => setF({ ...f, amount: v })} /></div>}
         </div>
         {isLeave && <div className="grid gap-4 sm:grid-cols-2"><div><label className="label" htmlFor="lf">開始日</label><input id="lf" type="date" className="input" value={f.from} onChange={(e) => setF({ ...f, from: e.target.value })} /></div><div><label className="label" htmlFor="lt">終了日</label><input id="lt" type="date" min={f.from} className="input" value={f.to} onChange={(e) => setF({ ...f, to: e.target.value })} /></div><p className="text-[12.5px] text-ink-2 sm:col-span-2">取得日数（土日祝を除く自動計算）：<b className="tabular">{days.length}日</b>{days.length === 0 && <span className="ml-2 text-bad">対象期間に営業日がありません</span>}</p></div>}
         {isExpense && (
@@ -122,8 +124,8 @@ function NewForm({ initial }: { initial: WfType }) {
           {(() => { const r = ruleFor(s.authority, f.type, amt); return r ? <p className="mt-2 text-[12px] text-ink-3">職務権限規程：{describeRule(r)}（金額に応じて自動で分岐します。<a href="/authority" className="underline">規程を見る</a>）</p> : null; })()}
         </div>
         <div>
-          <label className="label" htmlFor="wf-att">添付ファイル（領収書・見積書など）</label>
-          <input id="wf-att" type="file" multiple className="block text-[13px]" onChange={async (e) => { setUpErr(""); for (const file of Array.from(e.target.files ?? [])) { const r = await uploadFile(file); if ("error" in r) setUpErr(r.error); else setPending((p) => [...p, r]); } e.target.value = ""; }} />
+          <div className="label">添付ファイル（領収書・見積書など）</div>
+          <DropZone multiple compact label="ここに領収書・見積書をドラッグ＆ドロップ" onFiles={async (files) => { setUpErr(""); for (const file of files) { const r = await uploadFile(file); if ("error" in r) setUpErr(`${file.name}：${r.error}`); else setPending((p) => [...p, r]); } }} />
           {upErr && <p role="alert" className="mt-1 text-[12px] text-bad">{upErr}</p>}
           <ul className="mt-1 space-y-0.5 text-[12.5px]">{pending.map((u) => <li key={u.id} className="flex items-center gap-2"><Paperclip size={12} aria-hidden />{u.name}（{fmtBytes(u.size)}）<button type="button" className="text-ink-3 underline" onClick={() => setPending((p) => p.filter((x) => x.id !== u.id))}>外す</button></li>)}</ul>
         </div>
@@ -167,7 +169,7 @@ function Detail({ w, onBack }: { w: Workflow; onBack: () => void }) {
         <h2 className="mb-2 mt-6 flex items-center gap-2 font-bold"><Paperclip size={15} aria-hidden />添付ファイル</h2>
         {files.length === 0 && <p className="mb-2 text-[12.5px] text-ink-3">添付はありません。</p>}
         <ul className="mb-2 space-y-1.5 text-[13px]">{files.map((f) => <li key={f.id} className="flex flex-wrap items-center gap-2"><span className="break-all font-medium">{f.name}</span><span className="text-[11.5px] text-ink-3">{fmtBytes(f.size)}・{nameOf(f.uploadedBy)}・{stamp(f.at)}</span><FileDownload rec={f} /></li>)}</ul>
-        {(mine || role === "admin") && (w.status === "承認待ち" || w.status === "差戻し") && <UploadButton label="添付を追加" meta={{ kind: "申請添付", scope: "申請", wfId: w.id, dept: deptOf(me) }} />}
+        {(mine || role === "admin") && (w.status === "承認待ち" || w.status === "差戻し") && <UploadButton compact label="添付を追加（ドラッグ＆ドロップ可）" meta={{ kind: "申請添付", scope: "申請", wfId: w.id, dept: deptOf(me) }} />}
 
         <h2 className="mb-2 mt-6 font-bold">承認ルート</h2>
         <ol className="space-y-3">
@@ -226,7 +228,7 @@ function ResubmitForm({ w, route, onClose }: { w: Workflow; route: (t: WfType, a
     }}>
       <h3 className="font-bold">修正して再申請</h3>
       <div><label className="label" htmlFor="rt">件名</label><input id="rt" required className="input" value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} /></div>
-      {w.type !== "休暇申請" && <div className="max-w-xs"><label className="label" htmlFor="ra">金額（円）</label><input id="ra" type="number" min={0} className="input tabular" value={f.amount} onChange={(e) => setF({ ...f, amount: e.target.value })} /></div>}
+      {w.type !== "休暇申請" && <div className="max-w-xs"><label className="label" htmlFor="ra">金額（円）</label><NumInput id="ra" className="input" value={f.amount} onChange={(v) => setF({ ...f, amount: v })} /></div>}
       <div><label className="label" htmlFor="rd">内容</label><textarea id="rd" required rows={4} className="input" value={f.detail} onChange={(e) => setF({ ...f, detail: e.target.value })} /></div>
       <div><label className="label" htmlFor="rr">変更の理由（必須）</label><textarea id="rr" required rows={2} className="input" placeholder="例：金額の根拠資料を追加し、金額を見直したため" value={f.reason} onChange={(e) => setF({ ...f, reason: e.target.value })} /></div>
       <div className="text-[12.5px] text-ink-2">再申請後の承認ルート：{r.map((x) => `${x.label}（${nameOf(x.approverId)}）`).join(" → ")}</div>

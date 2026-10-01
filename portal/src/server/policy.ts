@@ -6,7 +6,7 @@ import { checkEntry, postJournal, workflowJournal } from "../lib/accounting.ts";
 import { KINDS, toMin } from "../lib/work.ts";
 import { EVENT_CATEGORIES, REMOTE_KINDS, remoteLink } from "../lib/biz.ts";
 import { APPROVERS, routeFor } from "../lib/authority.ts";
-import { ASSET_CATEGORIES, ASSET_STATUS, BENEFIT_CATEGORIES, CHECK_KINDS, CHECK_RESULTS, EXT_KINDS, FILE_KINDS, FILE_SCOPES, MAIL_CATEGORIES, MAIL_STATUS, PAY_KINDS, canSeeFile, canSeeMail, deptOf, isClientCode, isHttps, maskMail, viewerOf, type Viewer } from "../lib/ops.ts";
+import { ORDER_CATEGORIES, ORDER_STATUS, orderMoveOk, creditStatementIssue, isFiscalPeriod, statementPeriods, ASSET_CATEGORIES, ASSET_STATUS, BENEFIT_CATEGORIES, CHECK_KINDS, CHECK_RESULTS, EXT_KINDS, FILE_KINDS, FILE_SCOPES, MAIL_CATEGORIES, MAIL_STATUS, PAY_KINDS, canSeeFile, canSeeMail, deptOf, isClientCode, isHttps, maskMail, viewerOf, type Viewer } from "../lib/ops.ts";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type S = Record<string, any>;
@@ -48,6 +48,7 @@ export function sanitizeForRead(state: S | null, uid: string, role: RoleName): S
     const codes = new Set(myClients.map((c: S) => c.code));
     if (out.checks) out.checks = out.checks.filter((c: S) => codes.has(c.clientCode));
     if (out.assets) out.assets = out.assets.filter((a: S) => a.assigneeId === uid);
+    if (out.orders) out.orders = out.orders.filter((o: S) => o.dept === v.dept || o.requesterId === uid);
   }
   if (role !== "admin") {
     if (out.extLinks) out.extLinks = out.extLinks.filter((l: S) => !l.dept || l.dept === v.dept || role === "executive");
@@ -283,19 +284,28 @@ export function mergeWrite(cur: S | null, inc: S, uid: string, role: RoleName, c
     if (can.manageAuthority(role) && r && ["attendance", "reports", "mails", "workflows", "audit"].every((k) => Number.isInteger(r[k]) && r[k] >= 1 && r[k] <= 240) && r.attendance >= 36 && r.audit >= 36) out.retention = r; else deny("retention");
   }
 
-  // ---- 与信・反社の確認記録：追記のみ。自分の名義で、見える関与先についてだけ ----
-  if (inc.checks) {
-    const baseIds = new Set<string>((base.checks ?? []).map((c: S) => c.id));
-    const clients: S[] = base.checks ? (base.clients ?? []) : (base.clients ?? []);
+  // ---- 備品・名刺の注文：依頼は自分の名義・自事業部で。承認〜納品は管理者、取消は依頼者（依頼中のみ）も可 ----
+  if (inc.orders) {
     const me = employeesOf(out, base).find((e: S) => e.id === uid);
-    const added: S[] = [];
-    for (const c of inc.checks as S[]) {
-      if (baseIds.has(c.id)) { if (!same(c, (base.checks ?? []).find((x: S) => x.id === c.id))) deny("checks"); continue; }
-      const cl = clients.find((x) => x.code === c?.clientCode);
-      const okClient = !!cl && (role !== "employee" || cl.dept === deptOf(me as never));
-      if (okClient && str(c.id, 40) && c.id && c.checkedBy === uid && (CHECK_KINDS as readonly string[]).includes(c.kind) && (CHECK_RESULTS as readonly string[]).includes(c.result) && str(c.source, 80) && (c.note == null || str(c.note, 500)) && (c.limit == null || (typeof c.limit === "number" && c.limit >= 0))) added.push({ ...c, at: now }); else deny("checks");
+    const baseOrders: S[] = base.orders ?? [];
+    let orders = [...baseOrders];
+    let seq = baseOrders.length;
+    for (const o of (inc.orders as S[]).slice(0, 500)) {
+      const cur = baseOrders.find((x) => x.id === o?.id);
+      if (!cur) {
+        const ok = str(o?.id, 40) && o.id && (ORDER_CATEGORIES as readonly string[]).includes(o.category) && str(o.vendor, 40) && o.vendor && str(o.item, 120) && o.item
+          && Number.isInteger(o.qty) && o.qty >= 1 && o.qty <= 9999 && (o.unitPrice == null || (Number.isFinite(o.unitPrice) && o.unitPrice >= 0 && o.unitPrice <= 100_000_000))
+          && (o.url == null || o.url === "" || isHttps(o.url)) && (o.reason == null || str(o.reason, 300))
+          && o.requesterId === uid && o.status === "依頼中" && (role === "admin" || o.dept === deptOf(me as never));
+        if (!ok) { deny("orders"); continue; }
+        seq += 1;
+        orders = [{ id: o.id, no: `ORD-${now.slice(0, 4)}-${String(seq).padStart(4, "0")}`, category: o.category, vendor: o.vendor, item: o.item, qty: o.qty, ...(o.unitPrice != null ? { unitPrice: o.unitPrice } : {}), ...(o.url ? { url: o.url } : {}), ...(o.reason ? { reason: o.reason } : {}), dept: o.dept, requesterId: uid, status: "依頼中", history: [{ at: now, by: uid, status: "依頼中" }], at: now }, ...orders];
+      } else if (o.status !== cur.status) {
+        if (orderMoveOk(cur.status, o.status, role === "admin", cur.requesterId === uid) && (ORDER_STATUS as readonly string[]).includes(o.status)) orders = orders.map((x) => (x.id === cur.id ? { ...x, status: o.status, history: [...x.history, { at: now, by: uid, status: o.status }] } : x));
+        else deny("orders");
+      } else if (!same({ ...o, history: undefined }, { ...cur, history: undefined })) deny("orders");
     }
-    if (added.length) out.checks = [...added, ...(base.checks ?? [])];
+    out.orders = orders;
   }
 
   // ---- 問い合わせ・ヘルプデスク ----
@@ -354,11 +364,32 @@ export function mergeWrite(cur: S | null, inc: S, uid: string, role: RoleName, c
       if (ok && isPay) ok = can.managePay(role) && f.scope === "本人" && emps.some((e: S) => e.id === f.ownerId) && typeof f.period === "string" && /^\d{4}(-\d{2})?$/.test(f.period);
       else if (ok && f.kind === "申請添付") { const w = wfOf(f.wfId); ok = !!w && f.scope === "申請" && (w.applicantId === uid || role === "admin"); }
       else if (ok && f.kind === "規程添付") ok = can.manageDocs(role) && (out.docs ?? base.docs ?? []).some((d: S) => d.id === f.docId) && ["全社", "役員・部長"].includes(f.scope);
+      else if (ok && f.kind === "決算書") { const cl = (out.clients ?? base.clients ?? []).find((x: S) => x.code === f.clientCode); ok = !!cl && typeof f.period === "string" && isFiscalPeriod(f.period) && f.scope === "事業部" && f.dept === cl.dept && (role !== "employee" || cl.dept === v.dept); }
       else if (ok && f.kind === "共有") ok = ["全社", "事業部", "役員・部長"].includes(f.scope) && f.dept === v.dept && (f.scope !== "役員・部長" || v.lead);
       else if (ok) ok = false; // アーカイブはサーバーだけが作る
-      if (ok) files = [{ id: f.id, name: f.name, size: f.size, mime: f.mime, kind: f.kind, scope: f.scope, dept: f.dept, ownerId: f.ownerId, wfId: f.wfId, docId: f.docId, period: f.period, note: f.note, uploadedBy: uid, at: now }, ...files]; else deny("files");
+      if (ok) files = [{ id: f.id, name: f.name, size: f.size, mime: f.mime, kind: f.kind, scope: f.scope, dept: f.dept, ownerId: f.ownerId, wfId: f.wfId, docId: f.docId, clientCode: f.clientCode, period: f.period, note: f.note, uploadedBy: uid, at: now }, ...files]; else deny("files");
     }
     out.files = files;
+  }
+
+  // ---- 与信・反社の確認記録：追記のみ。自分の名義で、見える関与先についてだけ ----
+  if (inc.checks) {
+    const baseIds = new Set<string>((base.checks ?? []).map((c: S) => c.id));
+    const clients: S[] = base.checks ? (base.clients ?? []) : (base.clients ?? []);
+    const me = employeesOf(out, base).find((e: S) => e.id === uid);
+    const added: S[] = [];
+    for (const c of inc.checks as S[]) {
+      if (baseIds.has(c.id)) { if (!same(c, (base.checks ?? []).find((x: S) => x.id === c.id))) deny("checks"); continue; }
+      const cl = clients.find((x) => x.code === c?.clientCode);
+      const okClient = !!cl && (role !== "employee" || cl.dept === deptOf(me as never));
+      if (okClient && str(c.id, 40) && c.id && c.checkedBy === uid && (CHECK_KINDS as readonly string[]).includes(c.kind) && (CHECK_RESULTS as readonly string[]).includes(c.result) && str(c.source, 80) && (c.note == null || str(c.note, 500)) && (c.limit == null || (typeof c.limit === "number" && c.limit >= 0)) && (c.stmtReason == null || str(c.stmtReason, 200))) {
+        // 与信は決算書3期分（または受領できない理由）が必要。期はサーバー側のファイル台帳から数える
+        const periods = c.kind === "与信" ? statementPeriods(out.files ?? base.files ?? [], c.clientCode) : undefined;
+        if (periods && creditStatementIssue(c.kind, c.result, periods, c.stmtReason)) deny("checks");
+        else added.push({ ...c, ...(periods ? { periods } : { periods: undefined }), at: now });
+      } else deny("checks");
+    }
+    if (added.length) out.checks = [...added, ...(base.checks ?? [])];
   }
 
   // 経理：閲覧は役員・管理者、編集は管理者のみ。仕訳は追記のみ・貸借一致・締め済み月への計上不可

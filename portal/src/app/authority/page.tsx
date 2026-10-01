@@ -1,5 +1,6 @@
 "use client";
 
+import { NumInput } from "@/components/NumInput";
 import { useState } from "react";
 import { Plus, RotateCcw, Trash2 } from "lucide-react";
 import { APPROVERS, APPROVER_DESC, DEFAULT_AUTHORITY, describeRule, routeFor, yenJp, type Approver, type AuthorityRule } from "@/lib/authority";
@@ -35,7 +36,7 @@ export default function AuthorityPage() {
                 <li key={i} className="rounded-lg bg-surface-2 p-2.5 text-[13px]">
                   {manage ? (
                     <div className="space-y-2">
-                      <div className="flex items-center gap-2"><label className="text-[12px] text-ink-3" htmlFor={`min-${i}`}>金額</label><input id={`min-${i}`} type="number" min={0} step={10000} disabled={r.min === 0 && k === 0} className="input tabular !h-8 !w-36" value={r.min} onChange={(e) => update(i, { min: Math.max(0, Number(e.target.value) || 0) })} /><span className="text-[12px] text-ink-3">円以上</span>{!(r.min === 0 && k === 0) && <button className="btn btn-danger !ml-auto !h-8 !w-8 !p-0" aria-label="この区分を削除" onClick={() => setRules(rules.filter((_, x) => x !== i))}><Trash2 size={13} /></button>}</div>
+                      <div className="flex items-center gap-2"><label className="text-[12px] text-ink-3" htmlFor={`min-${i}`}>金額</label><NumInput id={`min-${i}`} disabled={r.min === 0 && k === 0} className="input !h-8 !w-36" value={String(r.min)} onChange={(v) => update(i, { min: Math.max(0, Number(v) || 0) })} /><span className="text-[12px] text-ink-3">円以上</span>{!(r.min === 0 && k === 0) && <button className="btn btn-danger !ml-auto !h-8 !w-8 !p-0" aria-label="この区分を削除" onClick={() => setRules(rules.filter((_, x) => x !== i))}><Trash2 size={13} /></button>}</div>
                       <div className="flex flex-wrap gap-1.5">{APPROVERS.map((a) => <label key={a} className={`flex cursor-pointer items-center gap-1 rounded-full border px-2.5 py-0.5 text-[12px] ${r.steps.includes(a) ? "border-brand bg-brand-soft font-semibold" : "border-line-strong"}`}><input type="checkbox" className="sr-only" checked={r.steps.includes(a)} onChange={() => toggle(i, a)} />{a}</label>)}</div>
                       <p className="text-[12px] text-ink-3">承認の順番：{r.steps.join(" → ") || "（承認者を選んでください）"}</p>
                     </div>

@@ -12,14 +12,14 @@ export const UNASSIGNED_DEPT = "（事業部未設定）";
 export const deptOf = (e: Pick<Employee, "dept"> | undefined) => e?.dept || UNASSIGNED_DEPT;
 
 // ---------- ファイル（文書管理・給与明細・源泉徴収票・申請添付・アーカイブ） ----------
-export const FILE_KINDS = ["共有", "規程添付", "給与明細", "賞与明細", "源泉徴収票", "申請添付", "アーカイブ"] as const;
+export const FILE_KINDS = ["共有", "規程添付", "給与明細", "賞与明細", "源泉徴収票", "申請添付", "決算書", "アーカイブ"] as const;
 export type FileKind = (typeof FILE_KINDS)[number];
 /** 全社＝全員／事業部＝同じ事業部＋役員・管理者／役員・部長＝役員・管理者・部長／本人＝本人（＋管理者）／申請＝申請者・承認者／管理者＝管理者のみ */
 export const FILE_SCOPES = ["全社", "事業部", "役員・部長", "本人", "申請", "管理者"] as const;
 export type FileScope = (typeof FILE_SCOPES)[number];
 export type FileRec = {
   id: string; name: string; size: number; mime: string; kind: FileKind; scope: FileScope;
-  dept?: string; ownerId?: string; wfId?: string; docId?: string; period?: string; note?: string;
+  dept?: string; ownerId?: string; wfId?: string; docId?: string; clientCode?: string; period?: string; note?: string;
   uploadedBy: string; at: string;
 };
 export const PAY_KINDS: FileKind[] = ["給与明細", "賞与明細", "源泉徴収票"];
@@ -67,12 +67,15 @@ export type Client = { code: string; name: string; dept: string; kana?: string; 
 export const isClientCode = (c: string) => /^[A-Za-z0-9-]{2,16}$/.test(c);
 export const CHECK_KINDS = ["与信", "反社"] as const;
 export const CHECK_RESULTS = ["問題なし", "要注意", "取引不可", "確認中"] as const;
-export type CreditCheck = { id: string; clientCode: string; kind: (typeof CHECK_KINDS)[number]; result: (typeof CHECK_RESULTS)[number]; source: string; note?: string; checkedBy: string; at: string; limit?: number };
+export type CreditCheck = { id: string; clientCode: string; kind: (typeof CHECK_KINDS)[number]; result: (typeof CHECK_RESULTS)[number]; source: string; note?: string; checkedBy: string; at: string; limit?: number; periods?: string[]; stmtReason?: string };
 export const EXT_KINDS = ["与信", "反社", "公的情報", "その他"] as const;
 /** 外部の調査サービス・公的サイトへのリンク。事業部ごとに、外部サービス上のアカウントID（accountId）を持てる */
 export type ExtLink = { id: string; name: string; url: string; kind: (typeof EXT_KINDS)[number]; dept: string; accountId?: string; note?: string };
 export const isHttps = (u: string) => /^https:\/\/[^\s"'<>]{3,300}$/.test(u);
 export const DEFAULT_EXT_LINKS: ExtLink[] = [
+  { id: "x-tdb", name: "帝国データバンク（COSMOS／企業情報）", url: "https://www.tdb.co.jp/", kind: "与信", dept: "", note: "企業の信用調査・評点。契約している事業部のIDで利用（調査報告書は決算書とあわせて保管）" },
+  { id: "x-gsearch", name: "G-Search 企業情報", url: "https://db.g-search.or.jp/", kind: "与信", dept: "", note: "企業概要・財務・信用情報の検索。契約している事業部のIDで利用" },
+  { id: "x-tsr", name: "東京商工リサーチ（TSR企業情報）", url: "https://www.tsr-net.co.jp/", kind: "与信", dept: "", note: "企業の信用調査・倒産情報" },
   { id: "x-houjin", name: "国税庁 法人番号公表サイト", url: "https://www.houjin-bangou.nta.go.jp/", kind: "公的情報", dept: "", note: "法人番号・所在地・商号の確認" },
   { id: "x-invoice", name: "国税庁 適格請求書発行事業者公表サイト", url: "https://www.invoice-kohyo.nta.go.jp/", kind: "公的情報", dept: "", note: "登録番号（T＋13桁）の確認" },
   { id: "x-kanpo", name: "官報（破産・会社法公告の確認）", url: "https://www.kanpo.go.jp/", kind: "公的情報", dept: "", note: "破産・解散等の公告" },
@@ -176,3 +179,44 @@ export function ipAllowed(ip: string, nets: string[]): boolean {
   });
 }
 export { PRESIDENT_ID };
+
+// ---------- 与信判断：決算書（直近3期分）の受領 ----------
+export const STMT_PERIODS_REQUIRED = 3;
+export const isFiscalPeriod = (p: string) => /^\d{4}-(0[1-9]|1[0-2])$/.test(p);
+/** その関与先について受領済みの決算書の「決算期（期末年月）」一覧（新しい順・重複なし） */
+export function statementPeriods(files: Pick<FileRec, "kind" | "clientCode" | "period">[], clientCode: string): string[] {
+  return [...new Set(files.filter((f) => f.kind === "決算書" && f.clientCode === clientCode && f.period && isFiscalPeriod(f.period)).map((f) => f.period as string))].sort().reverse();
+}
+/** 与信の確認を「問題なし／要注意」で記録するには、決算書3期分、または受領できない理由が必要。問題があれば文言を返す */
+export function creditStatementIssue(kind: string, result: string, periods: string[], reason?: string): string | null {
+  if (kind !== "与信" || result === "取引不可" || result === "確認中") return null;
+  if (periods.length >= STMT_PERIODS_REQUIRED) return null;
+  if ((reason ?? "").trim().length >= 5) return null;
+  return `決算書が${STMT_PERIODS_REQUIRED}期分そろっていません（現在${periods.length}期）。受領できない理由（新設法人など）を入力するか、決算書を添付してください。`;
+}
+
+// ---------- 備品・名刺の注文リスト ----------
+export const ORDER_CATEGORIES = ["備品", "消耗品", "名刺", "印刷物", "その他"] as const;
+/** よく使う発注先。URL のあるものは「サイトを開く」で注文先へ移動できる（社内アカウントのIDやパスワードは登録しない） */
+export const ORDER_VENDORS: { name: string; url?: string; note: string }[] = [
+  { name: "モノタロウ", url: "https://www.monotaro.com/", note: "工具・事務用品・消耗品" },
+  { name: "トータル企画", note: "名刺・印刷物などの発注先（社内の取引先）" },
+  { name: "Amazon", url: "https://www.amazon.co.jp/", note: "備品・書籍・小物（Amazonビジネス）" },
+  { name: "アスクル", url: "https://www.askul.co.jp/", note: "オフィス用品・文具" },
+  { name: "その他", note: "上記以外" },
+];
+export const ORDER_STATUS = ["依頼中", "承認済", "発注済", "納品済", "取消"] as const;
+export type OrderStatus = (typeof ORDER_STATUS)[number];
+export type OrderHist = { at: string; by: string; status: OrderStatus; note?: string };
+export type Order = {
+  id: string; no: string; category: (typeof ORDER_CATEGORIES)[number]; vendor: string; item: string; qty: number;
+  unitPrice?: number; url?: string; reason?: string; dept: string; requesterId: string; status: OrderStatus; history: OrderHist[]; at: string;
+};
+export const orderTotal = (o: Pick<Order, "qty" | "unitPrice">) => (o.unitPrice ?? 0) * o.qty;
+/** 注文ステータスの遷移：管理者は先へ進める／取消できる。依頼者は「依頼中」のものだけ取り消せる */
+export function orderMoveOk(cur: OrderStatus, next: OrderStatus, isAdmin: boolean, isRequester: boolean): boolean {
+  if (cur === next || cur === "取消" || cur === "納品済") return false;
+  if (next === "取消") return isAdmin || (isRequester && cur === "依頼中");
+  if (!isAdmin) return false;
+  return ORDER_STATUS.indexOf(next) > ORDER_STATUS.indexOf(cur);
+}

@@ -1,11 +1,13 @@
 "use client";
 
+import { NumInput } from "@/components/NumInput";
 import { useMemo, useState } from "react";
 import { ExternalLink, Pencil, Plus, ShieldCheck, Trash2 } from "lucide-react";
-import { CHECK_KINDS, CHECK_RESULTS, EXT_KINDS, deptOf, isClientCode, isHttps, latestCheck, type Client, type CreditCheck, type ExtLink } from "@/lib/ops";
+import { STMT_PERIODS_REQUIRED, creditStatementIssue, isFiscalPeriod, statementPeriods, CHECK_KINDS, CHECK_RESULTS, EXT_KINDS, deptOf, isClientCode, isHttps, latestCheck, type Client, type CreditCheck, type ExtLink } from "@/lib/ops";
 import { can } from "@/lib/perm";
 import { useStore } from "@/lib/store";
-import { Badge, Empty, PageHeader } from "@/components/ui";
+import { FileDownload, UploadButton } from "@/components/Files";
+import { Fold, Badge, Empty, PageHeader } from "@/components/ui";
 
 type Tab = "clients" | "checks" | "links";
 const tone = (r?: string) => (!r ? "gray" : r === "問題なし" ? "good" : r === "確認中" ? "warn" : "bad") as "gray" | "good" | "warn" | "bad";
@@ -84,7 +86,7 @@ function Links({ depts }: { depts: string[] }) {
   const list = manage ? s.extLinks : linksFor(s.extLinks, mine);
   return (
     <div>
-      <div className="mb-3 flex items-center justify-between gap-2"><p className="text-[12.5px] text-ink-2">リンクは新しいタブで開きます。事業部ごとの外部サービスのIDは、<b>自事業部の分だけ</b>表示されます。パスワードは登録しないでください。</p>{manage && <button className="btn btn-primary shrink-0" onClick={() => setEdit("new")}><Plus size={15} />リンクを追加</button>}</div>
+      <div className="mb-3 flex items-center justify-between gap-2"><p className="text-[12.5px] text-ink-2">リンクは新しいタブで開きます。事業部ごとの外部サービスのIDは、<b>自事業部の分だけ</b>表示されます。パスワードは登録しないでください。</p>{manage && <div className="flex shrink-0 gap-2"><button className="btn" onClick={() => d({ t: "ext-defaults", by: meId })} title="帝国データバンク・G-Search・TSR・国税庁等の標準リンクのうち、未登録のものを追加します">標準リンクを補完</button><button className="btn btn-primary" onClick={() => setEdit("new")}><Plus size={15} />リンクを追加</button></div>}</div>
       <div className="grid gap-3 md:grid-cols-2">
         {list.map((l) => (
           <section key={l.id} className="card p-4" aria-label={l.name}>
@@ -153,24 +155,40 @@ function ClientForm({ init, depts, onClose }: { init: Client | null; depts: stri
 function CheckForm({ client, onClose }: { client: Client; onClose: () => void }) {
   const { s, d, meId } = useStore();
   const [newId] = useState(() => `k${Date.now()}`);
-  const [f, setF] = useState({ kind: "与信" as CreditCheck["kind"], result: "確認中" as CreditCheck["result"], source: "", note: "", limit: "" });
+  const [f, setF] = useState({ kind: "与信" as CreditCheck["kind"], result: "確認中" as CreditCheck["result"], source: "", note: "", limit: "", reason: "", period: "" });
   const links = linksFor(s.extLinks, client.dept).filter((l) => l.kind === f.kind || l.kind === "公的情報");
+  const stmts = s.files.filter((x) => x.kind === "決算書" && x.clientCode === client.code).sort((a, b) => (b.period ?? "").localeCompare(a.period ?? ""));
+  const periods = statementPeriods(s.files, client.code);
+  const issue = creditStatementIssue(f.kind, f.result, periods, f.reason);
   const hist = s.checks.filter((c) => c.clientCode === client.code).slice(0, 5);
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4" role="dialog" aria-modal="true" aria-label="確認の記録" onClick={onClose}>
-      <form className="card max-h-[92vh] w-full max-w-xl space-y-3 overflow-y-auto p-5" onClick={(e) => e.stopPropagation()} onSubmit={(e) => { e.preventDefault(); d({ t: "check-add", check: { id: newId, clientCode: client.code, kind: f.kind, result: f.result, source: f.source || "その他", ...(f.note.trim() ? { note: f.note.trim() } : {}), ...(f.kind === "与信" && f.limit !== "" && Number.isFinite(Number(f.limit)) ? { limit: Number(f.limit) } : {}), checkedBy: meId, at: new Date().toISOString() } }); onClose(); }}>
+      <form className="card max-h-[92vh] w-full max-w-xl space-y-3 overflow-y-auto p-5" onClick={(e) => e.stopPropagation()} onSubmit={(e) => { e.preventDefault(); d({ t: "check-add", check: { id: newId, clientCode: client.code, kind: f.kind, result: f.result, source: f.source || "その他", ...(f.note.trim() ? { note: f.note.trim() } : {}), ...(f.kind === "与信" && f.reason.trim() ? { stmtReason: f.reason.trim() } : {}), ...(f.kind === "与信" && f.limit !== "" && Number.isFinite(Number(f.limit)) ? { limit: Number(f.limit) } : {}), checkedBy: meId, at: new Date().toISOString() } }); onClose(); }}>
         <h2 className="text-lg font-bold">{client.name}（{client.code}）の確認</h2>
         <div className="grid grid-cols-2 gap-1 rounded-lg bg-surface-2 p-1 text-[13px]">{CHECK_KINDS.map((k) => <button type="button" key={k} aria-pressed={f.kind === k} onClick={() => setF({ ...f, kind: k, source: "" })} className={`rounded-md py-1.5 ${f.kind === k ? "bg-surface font-bold shadow-sm" : "text-ink-2"}`}>{k === "与信" ? "与信判断" : "反社確認"}</button>)}</div>
         <div><div className="label">① 外部の調査先を開いて確認（新しいタブ）</div>
           <div className="flex flex-wrap gap-2">{links.map((l) => <a key={l.id} href={l.url} target="_blank" rel="noopener noreferrer" className="btn !h-8" onClick={() => setF((x) => ({ ...x, source: x.source || l.name }))}><ExternalLink size={13} />{l.name}{l.accountId ? `（ID ${l.accountId}）` : ""}</a>)}{links.length === 0 && <span className="text-[12.5px] text-ink-3">リンクが登録されていません（管理者が「外部リンク」で追加できます）</span>}</div></div>
+        {f.kind === "与信" && (
+          <div className="rounded-lg border border-line p-3">
+            <div className="mb-1 flex items-center justify-between gap-2"><div className="label !mb-0">② 決算書（直近{STMT_PERIODS_REQUIRED}期分）をいただく</div><Badge tone={periods.length >= STMT_PERIODS_REQUIRED ? "good" : "warn"}>{periods.length}／{STMT_PERIODS_REQUIRED}期</Badge></div>
+            <p className="mb-2 text-[12px] text-ink-3">帝国データバンク・G-Search等の調査報告書だけでなく、取引先から<b>直近3期分の決算書（貸借対照表・損益計算書）</b>を受け取り、決算期ごとに添付します。</p>
+            {stmts.length > 0 && <ul className="mb-2 space-y-1 text-[12.5px]">{stmts.map((x) => <li key={x.id} className="flex items-center gap-2"><Badge tone="good">{x.period?.replace("-", "年")}月期</Badge><FileDownload rec={x}>{x.name}</FileDownload></li>)}</ul>}
+            <div className="grid items-end gap-2 sm:grid-cols-[10rem_1fr]">
+              <div><label className="label" htmlFor="kp">決算期（期末の年月）</label><input id="kp" type="month" className="input" value={f.period} onChange={(e) => setF({ ...f, period: e.target.value })} /></div>
+              <div>{isFiscalPeriod(f.period) ? <UploadButton compact label={`${f.period.replace("-", "年")}月期の決算書をドラッグ＆ドロップ`} meta={{ kind: "決算書", scope: "事業部", dept: client.dept, clientCode: client.code, period: f.period }} onDone={() => setF((x) => ({ ...x, period: "" }))} /> : <p className="rounded-lg bg-surface-2 px-3 py-4 text-center text-[12.5px] text-ink-3">先に「決算期」を選ぶと、添付の枠が出ます</p>}</div>
+            </div>
+            {periods.length < STMT_PERIODS_REQUIRED && <div className="mt-2"><label className="label" htmlFor="kq">3期分そろわない理由（新設法人・個人事業主・開示拒否など）</label><input id="kq" maxLength={200} className="input" placeholder="例：設立2期目のため、第1期のみ受領" value={f.reason} onChange={(e) => setF({ ...f, reason: e.target.value })} /></div>}
+            {issue && <p role="status" className="mt-2 text-[12.5px] text-warn">{issue}</p>}
+          </div>
+        )}
         <div className="grid gap-3 sm:grid-cols-2">
-          <div><label className="label" htmlFor="kr">② 結果</label><select id="kr" className="input" value={f.result} onChange={(e) => setF({ ...f, result: e.target.value as CreditCheck["result"] })}>{CHECK_RESULTS.map((r) => <option key={r}>{r}</option>)}</select></div>
+          <div><label className="label" htmlFor="kr">③ 結果</label><select id="kr" className="input" value={f.result} onChange={(e) => setF({ ...f, result: e.target.value as CreditCheck["result"] })}>{CHECK_RESULTS.map((r) => <option key={r}>{r}</option>)}</select></div>
           <div><label className="label" htmlFor="ks">確認に使った情報源</label><input id="ks" required maxLength={80} className="input" value={f.source} onChange={(e) => setF({ ...f, source: e.target.value })} list="srcs" /><datalist id="srcs">{links.map((l) => <option key={l.id} value={l.name} />)}</datalist></div>
         </div>
-        {f.kind === "与信" && <div className="max-w-xs"><label className="label" htmlFor="kl">与信限度額（円・任意）</label><input id="kl" inputMode="numeric" className="input tabular" value={f.limit} onChange={(e) => setF({ ...f, limit: e.target.value.replace(/\D/g, "") })} /></div>}
+        {f.kind === "与信" && <div className="max-w-xs"><label className="label" htmlFor="kl">与信限度額（円・任意）</label><NumInput id="kl" className="input" value={f.limit} onChange={(v) => setF({ ...f, limit: v })} /></div>}
         <div><label className="label" htmlFor="kn">メモ（根拠・判断の理由）</label><textarea id="kn" rows={3} maxLength={500} className="input" value={f.note} onChange={(e) => setF({ ...f, note: e.target.value })} /></div>
-        {hist.length > 0 && <div className="rounded-lg bg-surface-2 p-2.5 text-[12px]"><b>これまでの記録</b><ul className="mt-1 space-y-0.5">{hist.map((c) => <li key={c.id}>{c.at.slice(0, 10)} {c.kind}：{c.result}（{c.source}）</li>)}</ul></div>}
-        <div className="flex justify-end gap-2"><button type="button" className="btn" onClick={onClose}>キャンセル</button><button className="btn btn-primary" disabled={!f.source.trim()}>記録する</button></div>
+        {hist.length > 0 && <Fold title={`これまでの記録（${hist.length}件）`}><ul className="space-y-0.5">{hist.map((c) => <li key={c.id}>{c.at.slice(0, 10)} {c.kind}：{c.result}（{c.source}）{c.periods ? `・決算書${c.periods.length}期` : ""}</li>)}</ul></Fold>}
+        <div className="flex justify-end gap-2"><button type="button" className="btn" onClick={onClose}>キャンセル</button><button className="btn btn-primary" disabled={!f.source.trim() || !!issue}>記録する</button></div>
       </form>
     </div>
   );

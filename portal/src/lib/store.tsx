@@ -9,7 +9,7 @@ import { seedState } from "./seed";
 import { checkEntry, isPosted, postJournal, reversal, workflowJournal, type Approvals, type Journal, type JournalCore, type TaxKind } from "./accounting";
 import { holidaySet, workdaysBetween, type Conditions, type DayInput } from "./work";
 import type { CalEvent, Doc, Kpi, Remote, Report, Reports } from "./biz";
-import { canSeeFile, canSeeMail, maskMail, viewerOf, type Asset, type Benefit, type Client, type CreditCheck, type ExtLink, type FileRec, type Mail, type Retention } from "./ops";
+import { DEFAULT_EXT_LINKS, canSeeFile, statementPeriods, canSeeMail, maskMail, viewerOf, type Asset, type Benefit, type Client, type CreditCheck, type ExtLink, type FileRec, type Mail, type Order, type OrderStatus, type Retention } from "./ops";
 import { routeFor, type AuthorityRule } from "./authority";
 
 export type AuditBody = { at: string; actor: string; action: string };
@@ -41,6 +41,7 @@ export type State = {
   extLinks: ExtLink[]; // 外部調査サービス・公的サイトへのリンク
   mails: Mail[]; // 問い合わせ・ヘルプデスク
   assets: Asset[]; // 固定資産台帳
+  orders: Order[]; // 備品・名刺の注文リスト
   authority: AuthorityRule[]; // 職務権限規程（承認ルート）
   benefits: Benefit[]; // 福利厚生の案内
   retention: Retention; // 履歴の保存期間（月）
@@ -98,11 +99,14 @@ type Action =
   | { t: "client-save"; client: Client; by: string }
   | { t: "client-del"; code: string; by: string }
   | { t: "check-add"; check: CreditCheck }
+  | { t: "ext-defaults"; by: string }
   | { t: "ext-save"; link: ExtLink; by: string }
   | { t: "ext-del"; id: string; by: string }
   | { t: "mail-new"; mail: Mail }
   | { t: "mail-reply"; id: string; by: string; body: string }
   | { t: "mail-status"; id: string; status: Mail["status"]; by: string }
+  | { t: "order-add"; order: Order }
+  | { t: "order-status"; id: string; status: OrderStatus; by: string; note?: string; now?: string }
   | { t: "asset-save"; asset: Asset; by: string }
   | { t: "asset-del"; id: string; by: string }
   | { t: "authority-set"; rules: AuthorityRule[]; by: string }
@@ -240,12 +244,23 @@ function reducer(s: State, a: Action): State {
     case "file-del": return logged(s, a.by, `ファイル削除: ${s.files.find((f) => f.id === a.id)?.name ?? a.id}`, { files: s.files.filter((f) => f.id !== a.id), filesDel: STATIC ? s.filesDel : [...s.filesDel, a.id] });
     case "client-save": { const ex = s.clients.some((c) => c.code === a.client.code); return logged(s, a.by, `関与先${ex ? "更新" : "登録"}: ${a.client.code} ${a.client.name}`, { clients: ex ? s.clients.map((c) => (c.code === a.client.code ? a.client : c)) : [...s.clients, a.client] }); }
     case "client-del": return logged(s, a.by, `関与先削除: ${a.code}`, { clients: s.clients.filter((c) => c.code !== a.code) });
-    case "check-add": return logged(s, a.check.checkedBy, `${a.check.kind}確認: ${a.check.clientCode} → ${a.check.result}`, { checks: [a.check, ...s.checks] });
+    case "check-add": { const periods = statementPeriods(s.files, a.check.clientCode); return logged(s, a.check.checkedBy, `${a.check.kind}確認: ${a.check.clientCode} → ${a.check.result}`, { checks: [{ ...a.check, ...(a.check.kind === "与信" ? { periods } : {}) }, ...s.checks] }); }
+    case "ext-defaults": { const add = DEFAULT_EXT_LINKS.filter((l) => !s.extLinks.some((x) => x.id === l.id)); return add.length ? logged(s, a.by, `標準の外部リンクを補完: ${add.length}件`, { extLinks: [...s.extLinks, ...add] }) : s; }
     case "ext-save": { const ex = s.extLinks.some((l) => l.id === a.link.id); return logged(s, a.by, `外部リンク${ex ? "更新" : "登録"}: ${a.link.name}`, { extLinks: ex ? s.extLinks.map((l) => (l.id === a.link.id ? a.link : l)) : [...s.extLinks, a.link] }); }
     case "ext-del": return logged(s, a.by, `外部リンク削除: ${a.id}`, { extLinks: s.extLinks.filter((l) => l.id !== a.id) });
     case "mail-new": return { ...s, mails: [a.mail, ...s.mails] };
     case "mail-reply": return { ...s, mails: s.mails.map((m) => (m.id === a.id ? { ...m, thread: [...m.thread, { by: a.by, at: nowIso(), body: a.body }], status: m.status === "未対応" && m.from !== a.by ? "対応中" : m.status } : m)) };
     case "mail-status": return logged(s, a.by, `問い合わせ状態: ${a.id} → ${a.status}`, { mails: s.mails.map((m) => (m.id === a.id ? { ...m, status: a.status } : m)) });
+    case "order-add": {
+      const no = a.order.no || `ORD-${a.order.at.slice(0, 4)}-${String(s.orders.length + 1).padStart(4, "0")}`; // サーバー版は保存時にサーバーが採番し直す
+      const order = { ...a.order, no, history: a.order.history.length ? a.order.history : [{ at: a.order.at, by: a.order.requesterId, status: a.order.status }] };
+      return logged(s, a.order.requesterId, `備品注文の依頼: ${no} ${a.order.item}`, { orders: [order, ...s.orders] });
+    }
+    case "order-status": {
+      const o = s.orders.find((x) => x.id === a.id);
+      if (!o) return s;
+      return logged(s, a.by, `備品注文 ${o.no} → ${a.status}`, { orders: s.orders.map((x) => (x.id === a.id ? { ...x, status: a.status, history: [...x.history, { at: a.now ?? new Date().toISOString(), by: a.by, status: a.status, ...(a.note ? { note: a.note } : {}) }] } : x)) });
+    }
     case "asset-save": { const ex = s.assets.some((x) => x.id === a.asset.id); return logged(s, a.by, `固定資産${ex ? "更新" : "登録"}: ${a.asset.id} ${a.asset.name}`, { assets: ex ? s.assets.map((x) => (x.id === a.asset.id ? a.asset : x)) : [...s.assets, a.asset] }); }
     case "asset-del": return logged(s, a.by, `固定資産削除: ${a.id}`, { assets: s.assets.filter((x) => x.id !== a.id) });
     case "authority-set": return logged(s, a.by, "職務権限規程（承認ルート）を更新", { authority: a.rules });

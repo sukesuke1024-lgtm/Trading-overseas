@@ -94,6 +94,7 @@ export function seedState(demo: boolean): State {
     extLinks: DEFAULT_EXT_LINKS,
     mails: [],
     assets: demo ? demoAssets() : [],
+    orders: [],
     authority: DEFAULT_AUTHORITY,
     benefits: demo ? BENEFIT_TEMPLATES.map((b, i) => ({ ...b, id: `b${i + 1}`, updatedAt: TODAY(), updatedBy: "管理者" })) : [],
     retention: DEFAULT_RETENTION,

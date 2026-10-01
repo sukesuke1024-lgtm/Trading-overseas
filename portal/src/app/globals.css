@@ -52,7 +52,9 @@
 :root[data-theme="dark"] .bg-purple-100 { background: #2c1d44; color: #cfb3ff; }
 :root[data-theme="dark"] .bg-red-100 { background: #3d1816; color: #ff9d97; }
 :root[data-theme="dark"] .text-blue-700, :root[data-theme="dark"] .text-blue-800 { color: #8db8ff; }
-:root[data-theme="dark"] img[alt="H-LINK"] { filter: brightness(1.05); }
+.logo-night { display: none; }
+:root[data-theme="dark"] .logo-day { display: none; }
+:root[data-theme="dark"] .logo-night { display: inline; }
 :root[data-text="large"] body { zoom: 1.12; }
 /* ブルーライトカット：画面全体にやや暖色のフィルターを重ねる（--bl は 0〜0.28） */
 .bluelight { position: fixed; inset: 0; z-index: 9999; pointer-events: none; background: rgb(255, 150, 40); opacity: var(--bl, 0); mix-blend-mode: multiply; transition: opacity .3s; }

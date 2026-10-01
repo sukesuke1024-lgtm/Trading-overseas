@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   Home, Megaphone, FileCheck2, Clock, Users, Search, Menu, X, ShieldCheck, CornerDownLeft, LogOut, Ellipsis, Cloud, CloudOff,
-  Landmark, BookText, FileSearch, Rocket, FileSpreadsheet, Settings as Gear, ShieldAlert, Lock, HeartHandshake, LifeBuoy, FileUser, Mail, Boxes, Archive, ScrollText, Banknote, CalendarDays, NotebookPen, Target, Receipt, FileSignature, FolderOpen, Network, CalendarCheck2, MonitorUp,
+  Landmark, ShoppingCart, ChevronDown, ChevronRight, BookText, FileSearch, Rocket, FileSpreadsheet, Settings as Gear, ShieldAlert, Lock, HeartHandshake, LifeBuoy, FileUser, Mail, Boxes, Archive, ScrollText, Banknote, CalendarDays, NotebookPen, Target, Receipt, FileSignature, FolderOpen, Network, CalendarCheck2, MonitorUp,
 } from "lucide-react";
 import { COMPANY, ROLE_LABEL } from "@/lib/data";
 import { BASE, STATIC, AuthProvider, useAuth } from "@/lib/auth";
@@ -35,6 +35,7 @@ const NAV: NavItem[] = [
   { href: "/changes", label: "異動・変更届", icon: FileUser, group: "業務" },
   { href: "/clients", label: "関与先・与信/反社", icon: HeartHandshake, group: "業務" },
   { href: "/leave", label: "有給管理", icon: CalendarCheck2, group: "業務" },
+  { href: "/orders", label: "備品・名刺の注文", icon: ShoppingCart, group: "業務" },
   { href: "/payslips", label: "給与明細・源泉徴収票", icon: Banknote, group: "マイページ" },
   { href: "/docs", label: "文書管理・社内規程", icon: FolderOpen, group: "社内情報" },
   { href: "/directory", label: "従業員名簿・組織図", icon: Network, group: "社内情報" },
@@ -150,6 +151,9 @@ function Frame({ children, onLogout }: { children: ReactNode; onLogout: (all: bo
     runLocalArchive(sRef.current, today).then(({ next, recs }) => dispatch({ t: "archive-apply", next, recs })).catch(() => {});
   }, [role, dispatch]);
 
+  // メニューの見出し（業務・社内情報…）は▸で折りたたみ。開いているページの見出しは常に開く。状態はこの端末に保存
+  const [fold, setFold] = useState<string[]>(() => { try { const v = JSON.parse(localStorage.getItem("hlink-navfold") ?? "[]"); return Array.isArray(v) ? v.filter((x) => typeof x === "string") : []; } catch { return []; } });
+  const toggleFold = (g: string) => setFold((f) => { const n = f.includes(g) ? f.filter((x) => x !== g) : [...f, g]; try { localStorage.setItem("hlink-navfold", JSON.stringify(n)); } catch {} return n; });
   const pending = s.workflows.filter((w) => w.status === "承認待ち" && w.steps.find((st) => st.state === "承認待ち")?.approverId === meId).length;
   const unread = s.news.filter((n) => !(s.read[meId] ?? []).includes(n.id)).length;
   const unreadMail = mails.filter((m) => isMailUnread(m, s.read[meId] ?? [], meId)).length;
@@ -174,7 +178,16 @@ function Frame({ children, onLogout }: { children: ReactNode; onLogout: (all: bo
         </div>
         <nav className="px-2 pb-6">
           {NAV.filter((n) => !n.show || n.show(role)).map(({ href, label, icon: Icon, group }, idx, arr) => {
-            const head = group && group !== arr[idx - 1]?.group ? <div key={`g-${group}`} className="mb-1 mt-4 px-3 text-[10.5px] font-semibold tracking-wide text-side-text/60">{group}</div> : null;
+            const here = (n: NavItem) => { const b = n.href.split("?")[0]; return !n.href.includes("?") && (b === "/" ? path === "/" : path.startsWith(b)); };
+            const groupHasActive = !!group && arr.some((n) => n.group === group && here(n));
+            const folded = !!group && fold.includes(group) && !groupHasActive;
+            if (folded && group === arr[idx - 1]?.group) return null;
+            const head = group && group !== arr[idx - 1]?.group ? (
+              <button key={`g-${group}`} type="button" aria-expanded={!folded} onClick={() => toggleFold(group)} className="mb-1 mt-4 flex w-full items-center gap-1 px-3 text-left text-[10.5px] font-semibold tracking-wide text-side-text/60 hover:text-side-text">
+                {folded ? <ChevronRight size={12} aria-hidden /> : <ChevronDown size={12} aria-hidden />}{group}
+              </button>
+            ) : null;
+            if (folded) return <div key={href}>{head}</div>;
             const base = href.split("?")[0], hasQuery = href.includes("?");
             const active = hasQuery ? false : href === "/" ? path === "/" : path.startsWith(base);
             const badge = href === "/workflow" ? pending : href === "/news" ? unread : href === "/inbox" ? unreadMail : 0;
@@ -196,6 +209,7 @@ function Frame({ children, onLogout }: { children: ReactNode; onLogout: (all: bo
       <div className="min-w-0 overflow-x-clip">
         <header className="print:hidden sticky top-0 z-20 flex h-14 items-center gap-3 border-b border-line bg-surface/95 px-4 backdrop-blur lg:px-8">
           <button className="btn !h-9 !w-9 !p-0 lg:hidden" aria-label="メニューを開く" onClick={() => setOpen(true)}><Menu size={18} /></button>
+          <Link href="/" className="shrink-0 lg:hidden" aria-label="H-LINK ホーム"><Logo variant="circle" height={32} /></Link>
           <button onClick={() => setQ(true)} className="flex h-9 min-w-0 flex-1 items-center gap-2 rounded-lg border border-line-strong bg-bg px-3 text-left text-ink-3 sm:max-w-md">
             <Search size={15} aria-hidden /><span className="flex-1 truncate">従業員・お知らせ・申請を検索</span>
             <kbd className="hidden rounded border border-line-strong bg-surface px-1.5 text-[11px] sm:block">⌘K</kbd>

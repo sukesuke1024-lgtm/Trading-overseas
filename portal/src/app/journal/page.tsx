@@ -1,5 +1,6 @@
 "use client";
 
+import { NumInput } from "@/components/NumInput";
 import { useMemo, useState } from "react";
 import { Check, Download, Plus, RotateCcw, Trash2 } from "lucide-react";
 import { ACCOUNTS, TAX_KINDS, acct, checkEntry, isInvoiceNo, isPosted, type JLine, type TaxKind } from "@/lib/accounting";
@@ -43,8 +44,8 @@ export default function Journal() {
         <input className="input" placeholder="摘要・番号" aria-label="摘要" value={q.text} onChange={(e) => setQ({ ...q, text: e.target.value })} />
         <input className="input" type="date" aria-label="取引日（自）" value={q.from} onChange={(e) => setQ({ ...q, from: e.target.value })} />
         <input className="input" type="date" aria-label="取引日（至）" value={q.to} onChange={(e) => setQ({ ...q, to: e.target.value })} />
-        <input className="input tabular" type="number" placeholder="金額 下限" aria-label="金額下限" value={q.min} onChange={(e) => setQ({ ...q, min: e.target.value })} />
-        <input className="input tabular" type="number" placeholder="金額 上限" aria-label="金額上限" value={q.max} onChange={(e) => setQ({ ...q, max: e.target.value })} />
+        <NumInput className="input" placeholder="金額 下限" aria-label="金額下限" value={q.min} onChange={(v) => setQ({ ...q, min: v })} />
+        <NumInput className="input" placeholder="金額 上限" aria-label="金額上限" value={q.max} onChange={(v) => setQ({ ...q, max: v })} />
         <input className="input" placeholder="取引先" aria-label="取引先" value={q.partner} onChange={(e) => setQ({ ...q, partner: e.target.value })} />
         <select className="input" aria-label="状態" value={q.state} onChange={(e) => setQ({ ...q, state: e.target.value })}><option value="">状態: すべて</option><option>承認待ち</option><option>転記済</option></select>
       </div>
@@ -103,7 +104,7 @@ function Compose({ onClose }: { onClose: () => void }) {
             <div key={i} className="grid grid-cols-[3rem_1fr_7rem] items-center gap-2 sm:grid-cols-[3rem_1fr_7rem_6.5rem_8rem_2rem]">
               <select aria-label="貸借" className="input !px-1" value={l.side} onChange={(e) => set(i, { side: e.target.value as "D" | "C" })}><option value="D">借</option><option value="C">貸</option></select>
               <select aria-label="勘定科目" className="input" value={l.account} onChange={(e) => set(i, { account: e.target.value })}>{ACCOUNTS.map((a) => <option key={a.code} value={a.code}>{a.code} {a.name}</option>)}</select>
-              <input aria-label="金額" type="number" min={1} className="input tabular" placeholder="金額" value={l.amt} onChange={(e) => set(i, { amt: e.target.value })} />
+              <NumInput aria-label="金額" className="input" placeholder="金額" value={l.amt} onChange={(v) => set(i, { amt: v })} />
               <select aria-label="税区分" className="input hidden sm:block" value={l.tax} onChange={(e) => set(i, { tax: e.target.value as TaxKind })}>{TAX_KINDS.map((t) => <option key={t}>{t}</option>)}</select>
               <select aria-label="部門" className="input hidden sm:block" value={l.dept} onChange={(e) => set(i, { dept: e.target.value })}><option value="">部門</option>{DEPTS.map((x) => <option key={x}>{x}</option>)}</select>
               <button type="button" aria-label="行を削除" className="hidden text-ink-3 sm:block" disabled={lines.length <= 2} onClick={() => setLines(lines.filter((_, k) => k !== i))}><Trash2 size={15} /></button>

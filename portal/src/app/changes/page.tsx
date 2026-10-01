@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { FilePlus2, Paperclip } from "lucide-react";
+import { DropZone } from "@/components/DropZone";
 import { uploadFile, type Uploaded } from "@/lib/files";
 import { deptOf, fmtBytes } from "@/lib/ops";
 import { useStore, ymd } from "@/lib/store";
@@ -68,8 +69,8 @@ function NewChange({ onClose }: { onClose: () => void }) {
         {k.fields.map((f, i) => <div key={f.key}><label className="label" htmlFor={`cf-${f.key}`}>{f.label}{i === 0 ? "（必須）" : ""}</label><input id={`cf-${f.key}`} required={i === 0} maxLength={300} placeholder={f.ph} className="input" value={vals[f.key] ?? ""} onChange={(e) => setVals({ ...vals, [f.key]: e.target.value })} /></div>)}
         <div className="grid gap-3 sm:grid-cols-2"><div><label className="label" htmlFor="ce">変更日（効力発生日）</label><input id="ce" type="date" required className="input" value={eff} onChange={(e) => setEff(e.target.value)} /></div></div>
         <div><label className="label" htmlFor="cr">理由・経緯（必須）</label><textarea id="cr" required rows={3} className="input" value={reason} onChange={(e) => setReason(e.target.value)} /></div>
-        <div><label className="label" htmlFor="ca">添付書類</label><p className="mb-1 text-[12px] text-ink-3">必要書類の目安：{k.docs}</p>
-          <input id="ca" type="file" multiple className="block text-[13px]" onChange={async (e) => { setErr(""); for (const file of Array.from(e.target.files ?? [])) { const r = await uploadFile(file); if ("error" in r) setErr(r.error); else setPending((p) => [...p, r]); } e.target.value = ""; }} />
+        <div><div className="label">添付書類</div><p className="mb-1 text-[12px] text-ink-3">必要書類の目安：{k.docs}</p>
+          <DropZone multiple compact label="ここに添付書類をドラッグ＆ドロップ" onFiles={async (files) => { setErr(""); for (const file of files) { const r = await uploadFile(file); if ("error" in r) setErr(`${file.name}：${r.error}`); else setPending((p) => [...p, r]); } }} />
           {err && <p role="alert" className="mt-1 text-[12px] text-bad">{err}</p>}
           <ul className="mt-1 space-y-0.5 text-[12.5px]">{pending.map((u) => <li key={u.id} className="flex items-center gap-2"><Paperclip size={12} aria-hidden />{u.name}（{fmtBytes(u.size)}）<button type="button" className="text-ink-3 underline" onClick={() => setPending((p) => p.filter((x) => x.id !== u.id))}>外す</button></li>)}</ul></div>
         <p className="text-[12px] text-ink-3">承認ルート：{route.map((r) => r.label).join(" → ")}。個人情報を含むため、届出者・人事・管理者以外には表示されません。</p>

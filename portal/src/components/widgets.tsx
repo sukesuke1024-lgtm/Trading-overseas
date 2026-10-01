@@ -51,14 +51,26 @@ function Todo() {
 function Schedule() {
   const { s } = useStore();
   const today = ymd(new Date());
-  const days = Array.from({ length: 3 }, (_, i) => { const d = new Date(); d.setDate(d.getDate() + i); return ymd(d); });
+  const days = Array.from({ length: 7 }, (_, i) => { const d = new Date(); d.setDate(d.getDate() + i); return ymd(d); });
+  const WD = ["日", "月", "火", "水", "木", "金", "土"];
   return (
     <>
-      <div className="mb-2 flex items-center justify-between"><h2 className="font-bold">予定（今日から3日間）</h2><More href="/calendar">カレンダーへ</More></div>
-      <ul className="space-y-2 text-[13px]">
-        {days.map((iso) => { const evs = eventsOn(s.events, iso), h = holidayName(iso, s.conditions); return (
-          <li key={iso} className="flex gap-3"><span className={`tabular w-16 shrink-0 text-[12px] ${iso === today ? "font-bold text-brand" : "text-ink-3"}`}>{iso === today ? "今日" : `${Number(iso.slice(5, 7))}/${Number(iso.slice(8))}`}</span>
-            <div className="min-w-0 flex-1">{h && <Badge tone="bad">{h}</Badge>}{evs.map((e) => <div key={e.id} className="truncate"><span className="tabular mr-2 text-ink-3">{eventTime(e)}</span>{e.title}</div>)}{!h && evs.length === 0 && <span className="text-ink-3">予定なし</span>}</div></li>); })}
+      <div className="mb-3 flex items-center justify-between"><h2 className="font-bold">スケジュール（今日から1週間・全社共通）</h2><More href="/calendar">カレンダー（日・週・月）へ</More></div>
+      <ul className="grid grid-cols-2 gap-2">
+        {days.map((iso) => {
+          const evs = eventsOn(s.events, iso), h = holidayName(iso, s.conditions), wd = new Date(`${iso}T00:00:00`).getDay(), isToday = iso === today;
+          return (
+            <li key={iso} className={`min-h-28 rounded-lg border p-2.5 ${isToday ? "border-brand bg-brand-soft" : "border-line bg-surface-2"}`}>
+              <div className="mb-1.5 flex items-baseline gap-1.5"><span className={`tabular text-[15px] font-bold ${isToday ? "text-brand" : ""}`}>{Number(iso.slice(5, 7))}/{Number(iso.slice(8))}</span><span className={`text-[12px] ${wd === 0 ? "text-bad" : wd === 6 ? "text-brand-2" : "text-ink-3"}`}>（{WD[wd]}）</span>{isToday && <span className="whitespace-nowrap"><Badge tone="brand">今日</Badge></span>}</div>
+              <div className="space-y-1 text-[12.5px]">
+                {h && <Badge tone="bad">{h}</Badge>}
+                {evs.map((e) => <div key={e.id} className="rounded bg-surface px-1.5 py-1"><span className="tabular mr-1.5 text-ink-3">{eventTime(e)}</span>{e.title}</div>)}
+                {!h && evs.length === 0 && <span className="text-ink-3">予定なし</span>}
+              </div>
+            </li>
+          );
+        })}
+        <li><Link href="/calendar" className="grid h-full min-h-28 place-items-center rounded-lg border border-dashed border-line-strong p-2.5 text-[13px] text-brand-2 hover:bg-surface-2">カレンダー（日・週・月）を開く →</Link></li>
       </ul>
     </>
   );
@@ -206,7 +218,7 @@ export const WIDGETS: WidgetDef[] = [
   { id: "punch", title: "打刻", col: "side", show: () => true, C: TodayCard },
   { id: "attendance", title: "今月の勤怠", col: "main", show: () => true, C: Attendance },
   { id: "todo", title: "ToDo・承認依頼", col: "main", show: () => true, C: Todo },
-  { id: "schedule", title: "予定", col: "side", show: () => true, C: Schedule },
+  { id: "schedule", title: "スケジュール", col: "main", show: () => true, C: Schedule },
   { id: "quick", title: "よく使う操作", col: "side", show: () => true, C: Quick },
   { id: "report", title: "今日の日報", col: "side", show: () => true, C: ReportToday },
   { id: "leave", title: "有給休暇", col: "side", show: () => true, C: LeaveMine },
@@ -218,8 +230,8 @@ export const WIDGETS: WidgetDef[] = [
   { id: "excel", title: "給与計算への連携", col: "side", show: can.excel, C: ExcelCard },
   { id: "news", title: "お知らせ", col: "main", flat: true, show: () => true, C: NewsList },
 ];
-/** 初期の表示順（一般社員／役職者で異なる）。勤怠のすぐ下にお知らせ。役職者向けのウィジェットは役職者のみ */
+/** 初期の表示順（一般社員／役職者で異なる）。勤怠のすぐ下にお知らせ。ToDoと全社の状況の間に大きなスケジュール枠。役職者向けのウィジェットは役職者のみ */
 export const DEFAULT_ORDER = {
   employee: ["punch", "attendance", "news", "todo", "schedule", "report", "leave", "quick"],
-  lead: ["punch", "attendance", "news", "todo", "team", "kpi", "security", "schedule", "reportsTeam", "leaveAlert", "excel", "report", "leave", "quick"],
+  lead: ["punch", "attendance", "news", "todo", "schedule", "team", "kpi", "security", "reportsTeam", "leaveAlert", "excel", "report", "leave", "quick"],
 } as const;

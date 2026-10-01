@@ -146,3 +146,41 @@ test("reports: submitted needs lines with an existing client code; names are fil
   for (const bad of [rep({ lines: [] }), rep({ lines: undefined }), rep({ lines: [{ clientCode: "ZZZ", clientName: "", task: "t", hours: 1 }] }), rep({ lines: [{ clientCode: "C001", clientName: "", task: " ", hours: 1 }] }), rep({ lines: [{ clientCode: "C001", clientName: "", task: "t", hours: 0 }] })]) assert.ok(mergeWrite(base(), { reports: { "011": { "2026-09-02": bad } } }, "011", "employee", ctx).denied.includes("reports"));
   assert.equal(mergeWrite(base(), { reports: { "011": { "2026-09-02": rep({ status: "下書き", lines: [] }) } } }, "011", "employee", ctx).denied.length, 0); // 下書きは未完成でもよい
 });
+
+test("与信: 決算書3期分（または受領できない理由）が必要。決算書は関与先の事業部に紐づく", () => {
+  const hex = (n: number) => `${n}`.padStart(24, "a");
+  const blobs: Record<string, { owner: string; name: string; size: number; mime: string }> = {};
+  const stmt = (n: number, period: string, over: Record<string, unknown> = {}) => { blobs[hex(n)] = { owner: "011", name: `決算${n}.pdf`, size: 10, mime: "application/pdf" }; return { id: hex(n), name: `決算${n}.pdf`, size: 10, mime: "application/pdf", kind: "決算書", scope: "事業部", dept: "営業部", clientCode: "C001", period, uploadedBy: "011", at: "x", ...over }; };
+  const c = { now: NOW, blob: (i: string) => blobs[i] };
+  const chk = (over: Record<string, unknown> = {}) => ({ id: "K2", clientCode: "C001", kind: "与信", result: "問題なし", source: "帝国データバンク", checkedBy: "011", at: "x", ...over });
+  assert.ok(mergeWrite(base(), { checks: [chk()] }, "011", "employee", c).denied.includes("checks")); // 決算書なし
+  assert.equal(mergeWrite(base(), { checks: [chk({ stmtReason: "設立2期目のため第1期のみ" })] }, "011", "employee", c).denied.length, 0); // 理由あり
+  assert.equal(mergeWrite(base(), { checks: [chk({ result: "確認中" })] }, "011", "employee", c).denied.length, 0); // 確認中は不要
+  const three = [stmt(1, "2026-03"), stmt(2, "2025-03"), stmt(3, "2024-03")];
+  const ok = mergeWrite(base(), { files: three, checks: [chk()] }, "011", "employee", c);
+  assert.equal(ok.denied.length, 0); assert.deepEqual(ok.state.checks[0].periods, ["2026-03", "2025-03", "2024-03"]);
+  const dup = mergeWrite(base(), { files: [stmt(4, "2026-03"), stmt(5, "2026-03"), stmt(6, "2025-03")], checks: [chk()] }, "011", "employee", c); // 同じ期は1期と数える
+  assert.ok(dup.denied.includes("checks"));
+  assert.ok(mergeWrite(base(), { files: [stmt(7, "2026-03", { clientCode: "C900", dept: "製造部" })] }, "011", "employee", c).denied.includes("files")); // 他事業部の関与先
+  assert.ok(mergeWrite(base(), { files: [stmt(8, "令和7年")] }, "011", "employee", c).denied.includes("files")); // 決算期の形式
+});
+
+test("備品注文: 依頼は自分の名義・自事業部で。承認〜納品は管理者のみ、取消は依頼者（依頼中のみ）も可。番号と履歴はサーバーが付ける", () => {
+  const ord = (over: Record<string, unknown> = {}) => ({ id: "o1", no: "", category: "名刺", vendor: "トータル企画", item: "名刺100枚", qty: 1, dept: "営業部", requesterId: "011", status: "依頼中", history: [], at: "x", ...over });
+  const r = mergeWrite(base(), { orders: [ord()] }, "011", "employee", ctx);
+  assert.equal(r.denied.length, 0); assert.equal(r.state.orders[0].no, "ORD-2026-0001"); assert.equal(r.state.orders[0].history[0].at, NOW);
+  assert.ok(mergeWrite(base(), { orders: [ord({ requesterId: "010" })] }, "011", "employee", ctx).denied.includes("orders")); // なりすまし
+  assert.ok(mergeWrite(base(), { orders: [ord({ dept: "製造部" })] }, "011", "employee", ctx).denied.includes("orders")); // 他事業部名義
+  assert.ok(mergeWrite(base(), { orders: [ord({ status: "発注済" })] }, "011", "employee", ctx).denied.includes("orders")); // いきなり発注済
+  assert.ok(mergeWrite(base(), { orders: [ord({ qty: 0 })] }, "011", "employee", ctx).denied.includes("orders"));
+  const st = r.state;
+  assert.ok(mergeWrite(st, { orders: [{ ...st.orders[0], status: "承認済" }] }, "011", "employee", ctx).denied.includes("orders")); // 依頼者は承認できない
+  const ap = mergeWrite(st, { orders: [{ ...st.orders[0], status: "承認済" }] }, "003", "admin", ctx);
+  assert.equal(ap.denied.length, 0); assert.equal(ap.state.orders[0].history.at(-1).by, "003");
+  assert.ok(mergeWrite(ap.state, { orders: [{ ...ap.state.orders[0], status: "依頼中" }] }, "003", "admin", ctx).denied.includes("orders")); // 戻せない
+  assert.equal(mergeWrite(st, { orders: [{ ...st.orders[0], status: "取消" }] }, "011", "employee", ctx).denied.length, 0); // 依頼者の取消
+  assert.ok(mergeWrite(ap.state, { orders: [{ ...ap.state.orders[0], status: "取消" }] }, "011", "employee", ctx).denied.includes("orders")); // 承認後は依頼者は取消不可
+  assert.ok(mergeWrite(st, { orders: [{ ...st.orders[0], item: "改ざん" }] }, "011", "employee", ctx).denied.includes("orders"));
+  const seen = sanitizeForRead({ ...st, employees: emps }, "020", "employee");
+  assert.equal(seen!.orders.length, 0); // 他事業部の注文は見えない
+});
