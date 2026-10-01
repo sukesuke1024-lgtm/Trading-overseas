@@ -68,6 +68,21 @@ jobs:
           mkdir -p ../lp/dist/portal
           cp -r out/. ../lp/dist/portal/
           touch ../lp/dist/.nojekyll
+      # 前の版（Mirai HD 版ポータル）も /portal-v1/ で引き続き使えるように同梱する（固定コミットから別途ビルド）
+      - name: Checkout previous portal version
+        uses: actions/checkout@v4
+        with:
+          ref: 682fa3e
+          path: legacy
+      - name: Build previous portal version
+        working-directory: legacy/portal
+        env:
+          NEXT_PUBLIC_BASE_PATH: ${{ steps.pages.outputs.base_path }}/portal-v1
+        run: |
+          npm ci
+          npm run build:static
+          mkdir -p ../../lp/dist/portal-v1
+          cp -r out/. ../../lp/dist/portal-v1/
       - uses: actions/upload-pages-artifact@v3
         with:
           path: lp/dist
