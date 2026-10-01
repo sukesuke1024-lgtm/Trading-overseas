@@ -3,6 +3,11 @@
 H-LINK の社内ポータル（勤怠・申請承認・Excel連携・経理・監査）。
 Next.js 16 + Tailwind v4。PC・スマホ（PWA）対応。ログイン + セキュリティコード（TOTP）、勤怠の自動計算つき。
 
+## 前の版（Mirai HD 版）も使えます
+
+公開サイトでは、今回の H-LINK 版が `/portal/`、前の版（5W1H削除後・コミット `682fa3e`）が `/portal-v1/` です。
+手元で前の版を動かす場合: `git worktree add ../portal-v1 682fa3e && cd ../portal-v1/portal && npm ci && npm run dev`。
+
 ## 2つの動かし方
 
 | モード | 認証 | データ | 用途 |
