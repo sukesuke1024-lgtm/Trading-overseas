@@ -24,7 +24,7 @@ function Frame({ children }: { children: React.ReactNode }) {
           <p className="text-[12px] text-ink-3">{COMPANY.tagline}</p>
         </div>
         <div className="card p-6">{children}</div>
-        <p className="mt-4 text-center text-[11.5px] text-ink-3">社外秘。許可されていないアクセスは記録されます。</p>
+        <p className="mt-4 text-center text-[11.5px] text-ink-3">社外秘。許可されていないアクセスは記録されます。<br /><span className="tabular">{COMPANY.version}</span></p>
       </div>
     </div>
   );

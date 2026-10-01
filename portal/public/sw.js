@@ -1,7 +1,7 @@
 // H-LINK ポータル Service Worker
 // - 画面部品（静的ファイル）はキャッシュ優先、画面（HTML）は通信優先で、圏外のときは直近の画面を表示
 // - /api/ はキャッシュしない（業務データ・認証情報を端末のキャッシュに残さない）
-const CACHE = "hlink-portal-v3";
+const CACHE = "hlink-portal-v4";
 const SCOPE = new URL(self.registration.scope).pathname; // 例: "/" or "/Trading-overseas/portal/"
 
 self.addEventListener("install", (e) => {
@@ -21,6 +21,6 @@ self.addEventListener("fetch", (e) => {
     return;
   }
   if (req.mode === "navigate") {
-    e.respondWith(fetch(req).then((res) => { if (res.ok) caches.open(CACHE).then((c) => c.put(req, res.clone())); return res; }).catch(() => caches.match(req).then((h) => h || caches.match(SCOPE))));
+    e.respondWith(fetch(req, { cache: "no-cache" }).then((res) => { if (res.ok) caches.open(CACHE).then((c) => c.put(req, res.clone())); return res; }).catch(() => caches.match(req).then((h) => h || caches.match(SCOPE))));
   }
 });

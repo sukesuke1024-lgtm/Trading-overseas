@@ -6,6 +6,8 @@ export const COMPANY = {
   short: "H-LINK",
   ceo: "長尾 晃佑",
   tagline: "つなぐ、越える、食の可能性をひらく。",
+  /** 画面に出す版表示（更新が反映されたか確認する目安） */
+  version: "版 2026.10.1-PIN",
   /** ログインできない・PINを忘れた人の連絡先の表示（NEXT_PUBLIC_HELPDESK で変更） */
   helpdesk: process.env.NEXT_PUBLIC_HELPDESK ?? "人事・情報システム担当",
 };
