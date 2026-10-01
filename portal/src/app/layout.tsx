@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { Shell } from "@/components/Shell";
+import { EARLY_SCRIPT } from "@/lib/prefs";
 
 const B = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 
@@ -17,7 +18,8 @@ export const viewport: Viewport = { themeColor: "#111111", width: "device-width"
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="ja">
+    <html lang="ja" suppressHydrationWarning>
+      <head><script dangerouslySetInnerHTML={{ __html: EARLY_SCRIPT }} /></head>
       <body><Shell>{children}</Shell></body>
     </html>
   );

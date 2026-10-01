@@ -32,6 +32,19 @@ export const can = {
   manageRemotes: (r: RoleName) => r === "admin",
   /** 有給の付与日数の編集・全員分の閲覧 */
   viewAllLeave: (r: RoleName) => r === "executive" || r === "admin",
+  /** 関与先マスタ・外部リンク・固定資産台帳・福利厚生・職務権限規程・保存期間の編集（管理者） */
+  manageClients: (r: RoleName) => r === "admin",
+  manageExtLinks: (r: RoleName) => r === "admin",
+  manageAssets: (r: RoleName) => r === "admin",
+  viewAssets: (r: RoleName) => r === "executive" || r === "admin",
+  manageBenefits: (r: RoleName) => r === "admin",
+  manageAuthority: (r: RoleName) => r === "admin",
+  /** 窓口宛ての問い合わせ（ハラスメント相談を含む）の閲覧・対応（管理者） */
+  manageMail: (r: RoleName) => r === "admin",
+  /** 端末・IP・アラートの管理（管理者） */
+  manageSecurity: (r: RoleName) => r === "admin",
+  /** 給与明細・源泉徴収票の登録（管理者） */
+  managePay: (r: RoleName) => r === "admin",
   viewAllWorkflows: (r: RoleName) => r === "executive" || r === "admin",
 };
 
@@ -50,5 +63,11 @@ export const PERMISSION_MATRIX: { label: string; employee: string; executive: st
   { label: "業務日報", employee: "自分の日報", executive: "全員分を閲覧・コメント", admin: "全員分を閲覧・コメント" },
   { label: "KPI", employee: "全社KPI・自分のKPI（担当分は実績入力）", executive: "全KPIを閲覧", admin: "定義・目標・実績の編集" },
   { label: "リモート接続先", employee: "自分に割り当てられたPCのみ", executive: "全て閲覧", admin: "登録・編集" },
+  { label: "問い合わせ・ヘルプデスク", employee: "自分宛・自事業部宛・自分が送った分", executive: "同左＋事業部宛を閲覧", admin: "窓口宛（ハラスメント相談を含む）の対応" },
+  { label: "異動・変更届", employee: "自分の届出", executive: "自分の届出・承認", admin: "全件の確認・承認" },
+  { label: "固定資産台帳", employee: "自分に割り当てられた資産", executive: "全て閲覧", admin: "登録・編集" },
+  { label: "給与明細・源泉徴収票", employee: "自分の分（PIN再入力）", executive: "自分の分（PIN再入力）", admin: "全員分の登録・自分の分" },
+  { label: "関与先・与信/反社の確認", employee: "自事業部の関与先の確認・記録", executive: "全て閲覧・記録", admin: "マスタ・外部リンクの管理" },
+  { label: "職務権限規程・保存期間・セキュリティ", employee: "規程の閲覧", executive: "規程の閲覧", admin: "編集（端末・IP・アラート含む）" },
   { label: "有給管理", employee: "自分の残日数", executive: "全員分を閲覧", admin: "全員分を閲覧・付与日数の調整" },
 ];

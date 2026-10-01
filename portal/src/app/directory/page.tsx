@@ -24,7 +24,7 @@ export default function DirectoryPage() {
       <PageHeader title="従業員名簿・組織図" sub="社内の連絡先と組織。部署・上司は管理者が従業員マスタで設定します。" />
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <div className="grid grid-cols-3 gap-0.5 rounded-lg bg-surface-2 p-1 text-[13px]" role="tablist">
-          {([["org", "組織図", Network], ["dept", "部署別", Building2], ["list", "名簿", Search]] as const).map(([k, l, I]) => <button key={k} role="tab" aria-selected={tab === k} onClick={() => setTab(k)} className={`flex items-center justify-center gap-1 rounded-md px-3 py-1 ${tab === k ? "bg-white font-bold shadow-sm" : "text-ink-2"}`}><I size={13} aria-hidden />{l}</button>)}
+          {([["org", "組織図", Network], ["dept", "部署別", Building2], ["list", "名簿", Search]] as const).map(([k, l, I]) => <button key={k} role="tab" aria-selected={tab === k} onClick={() => setTab(k)} className={`flex items-center justify-center gap-1 rounded-md px-3 py-1 ${tab === k ? "bg-surface font-bold shadow-sm" : "text-ink-2"}`}><I size={13} aria-hidden />{l}</button>)}
         </div>
         {tab === "list" && <input className="input !w-64" placeholder="氏名・部署・職種で検索" aria-label="検索" value={q} onChange={(e) => setQ(e.target.value)} />}
       </div>

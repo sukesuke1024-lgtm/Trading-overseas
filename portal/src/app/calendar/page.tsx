@@ -33,7 +33,7 @@ export default function CalendarPage() {
         actions={editable ? <button className="btn btn-primary" onClick={() => setEdit("new")}><Plus size={15} />予定を登録</button> : undefined} />
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <div className="grid grid-cols-3 gap-0.5 rounded-lg bg-surface-2 p-1 text-[13px]" role="tablist" aria-label="表示単位">
-          {([["day", "日"], ["week", "週"], ["month", "月"]] as const).map(([k, l]) => <button key={k} role="tab" aria-selected={view === k} onClick={() => setView(k)} className={`rounded-md px-4 py-1 ${view === k ? "bg-white font-bold shadow-sm" : "text-ink-2"}`}>{l}</button>)}
+          {([["day", "日"], ["week", "週"], ["month", "月"]] as const).map(([k, l]) => <button key={k} role="tab" aria-selected={view === k} onClick={() => setView(k)} className={`rounded-md px-4 py-1 ${view === k ? "bg-surface font-bold shadow-sm" : "text-ink-2"}`}>{l}</button>)}
         </div>
         <button className="btn !h-9 !w-9 !p-0" aria-label="前へ" onClick={() => move(-1)}><ChevronLeft size={16} /></button>
         <button className="btn !h-9" onClick={() => setDate(today)}>今日</button>

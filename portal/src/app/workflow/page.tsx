@@ -2,12 +2,16 @@
 
 import { useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft, Check, CircleDot, Plus, RotateCcw, X, Circle } from "lucide-react";
+import { ArrowLeft, Check, CircleDot, Paperclip, Plus, RotateCcw, X, Circle } from "lucide-react";
 import { workdaysBetween } from "@/lib/work";
 import { TAX_KINDS, acct, isInvoiceNo } from "@/lib/accounting";
 import { WF_TYPES, type WfStatus, type WfType, type Workflow } from "@/lib/data";
 import { EXPENSE_ACCOUNTS, useStore, ymd } from "@/lib/store";
 import { Badge, Empty, PageHeader, yen } from "@/components/ui";
+import { FileDownload, UploadButton } from "@/components/Files";
+import { uploadFile, type Uploaded } from "@/lib/files";
+import { deptOf, fmtBytes } from "@/lib/ops";
+import { describeRule, ruleFor } from "@/lib/authority";
 
 const TONE: Record<WfStatus, "warn" | "good" | "bad" | "gray"> = { 承認待ち: "warn", 承認済: "good", 差戻し: "bad", 却下: "bad", 取下げ: "gray" };
 type Tab = "todo" | "mine" | "all";
@@ -63,8 +67,11 @@ export default function WorkflowPage() {
 }
 
 function NewForm({ initial }: { initial: WfType }) {
-  const { d, meId, nextWfId, approvalRoute, nameOf, holidays } = useStore();
+  const { s, d, me, meId, nextWfId, approvalRoute, nameOf, holidays } = useStore();
   const router = useRouter();
+  const [pending, setPending] = useState<Uploaded[]>([]);
+  const [upErr, setUpErr] = useState("");
+  const [wfId] = useState(() => nextWfId());
   const [f, setF] = useState({ type: initial, title: "", amount: "", detail: "", from: ymd(new Date()), to: ymd(new Date()), category: "6210", taxKind: "課税10%", invoiceNo: "" });
   const amt = Number(f.amount) || 0;
   const route = approvalRoute(f.type, amt, meId);
@@ -76,7 +83,7 @@ function NewForm({ initial }: { initial: WfType }) {
     e.preventDefault();
     if (invErr) return;
     const w: Workflow = {
-      id: nextWfId(), type: f.type,
+      id: wfId, type: f.type,
       title: f.title || (isLeave ? `年次有給休暇 ${f.from}〜${f.to}（${days.length}日）` : f.type),
       applicantId: meId, amount: isLeave || !amt ? undefined : amt,
       ...(isLeave ? { from: f.from, to: f.to } : {}),
@@ -84,6 +91,7 @@ function NewForm({ initial }: { initial: WfType }) {
       detail: f.detail, createdAt: ymd(new Date()), status: "承認待ち", steps: route,
     };
     d({ t: "wf-new", w });
+    for (const u of pending) d({ t: "file-add", rec: { id: u.id, name: u.name, size: u.size, mime: u.mime, kind: "申請添付", scope: "申請", wfId: w.id, dept: deptOf(me), uploadedBy: meId, at: new Date().toISOString() } });
     router.push(`/workflow?id=${w.id}`);
   };
   return (
@@ -92,7 +100,7 @@ function NewForm({ initial }: { initial: WfType }) {
       <PageHeader title="新規申請" />
       <form onSubmit={submit} className="card space-y-4 p-5">
         <div className="grid gap-4 sm:grid-cols-2">
-          <div><label className="label" htmlFor="wt">申請種別</label><select id="wt" className="input" value={f.type} onChange={(e) => setF({ ...f, type: e.target.value as WfType })}>{WF_TYPES.map((t) => <option key={t.type}>{t.type}</option>)}</select></div>
+          <div><label className="label" htmlFor="wt">申請種別</label><select id="wt" className="input" value={f.type} onChange={(e) => setF({ ...f, type: e.target.value as WfType })}>{WF_TYPES.filter((t) => t.type !== "異動変更届").map((t) => <option key={t.type}>{t.type}</option>)}</select></div>
           {!isLeave && <div><label className="label" htmlFor="wa">金額（円）</label><input id="wa" type="number" min={0} className="input tabular" value={f.amount} onChange={(e) => setF({ ...f, amount: e.target.value })} /></div>}
         </div>
         {isLeave && <div className="grid gap-4 sm:grid-cols-2"><div><label className="label" htmlFor="lf">開始日</label><input id="lf" type="date" className="input" value={f.from} onChange={(e) => setF({ ...f, from: e.target.value })} /></div><div><label className="label" htmlFor="lt">終了日</label><input id="lt" type="date" min={f.from} className="input" value={f.to} onChange={(e) => setF({ ...f, to: e.target.value })} /></div><p className="text-[12.5px] text-ink-2 sm:col-span-2">取得日数（土日祝を除く自動計算）：<b className="tabular">{days.length}日</b>{days.length === 0 && <span className="ml-2 text-bad">対象期間に営業日がありません</span>}</p></div>}
@@ -111,7 +119,13 @@ function NewForm({ initial }: { initial: WfType }) {
           <ol className="flex flex-wrap items-center gap-2 text-[12.5px]">
             {route.map((r, i) => <li key={i} className="flex items-center gap-2"><span className="rounded-md bg-surface-2 px-2 py-1">{r.label}：{nameOf(r.approverId)}</span>{i < route.length - 1 && <span className="text-ink-3">→</span>}</li>)}
           </ol>
-          {f.type === "稟議" && amt >= 1000000 && <p className="mt-2 text-[12px] text-warn">100万円以上のため、決裁権限表により経営企画部の承認が追加されました。</p>}
+          {(() => { const r = ruleFor(s.authority, f.type, amt); return r ? <p className="mt-2 text-[12px] text-ink-3">職務権限規程：{describeRule(r)}（金額に応じて自動で分岐します。<a href="/authority" className="underline">規程を見る</a>）</p> : null; })()}
+        </div>
+        <div>
+          <label className="label" htmlFor="wf-att">添付ファイル（領収書・見積書など）</label>
+          <input id="wf-att" type="file" multiple className="block text-[13px]" onChange={async (e) => { setUpErr(""); for (const file of Array.from(e.target.files ?? [])) { const r = await uploadFile(file); if ("error" in r) setUpErr(r.error); else setPending((p) => [...p, r]); } e.target.value = ""; }} />
+          {upErr && <p role="alert" className="mt-1 text-[12px] text-bad">{upErr}</p>}
+          <ul className="mt-1 space-y-0.5 text-[12.5px]">{pending.map((u) => <li key={u.id} className="flex items-center gap-2"><Paperclip size={12} aria-hidden />{u.name}（{fmtBytes(u.size)}）<button type="button" className="text-ink-3 underline" onClick={() => setPending((p) => p.filter((x) => x.id !== u.id))}>外す</button></li>)}</ul>
         </div>
         <div className="flex justify-end gap-2"><button type="button" className="btn" onClick={() => router.push("/workflow")}>キャンセル</button><button className="btn btn-primary" disabled={isLeave && days.length === 0}>申請する</button></div>
       </form>
@@ -119,14 +133,21 @@ function NewForm({ initial }: { initial: WfType }) {
   );
 }
 
+const ACTION_TONE: Record<string, "good" | "bad" | "warn" | "gray"> = { 申請: "gray", 承認: "good", 差戻し: "warn", 却下: "bad", 取下げ: "gray", 修正再申請: "warn" };
+const stamp = (iso?: string) => (iso && iso.length > 10 ? iso.slice(0, 16).replace("T", " ") : iso ?? "");
+
 function Detail({ w, onBack }: { w: Workflow; onBack: () => void }) {
-  const { d, meId, nameOf, emp } = useStore();
+  const { d, me, meId, role, nameOf, emp, approvalRoute, files: vfiles } = useStore();
   const [comment, setComment] = useState("");
+  const [cancelReason, setCancelReason] = useState("");
+  const [edit, setEdit] = useState(false);
   const active = w.steps.find((x) => x.state === "承認待ち");
   const canAct = w.status === "承認待ち" && active?.approverId === meId;
   const mine = w.applicantId === meId;
+  const files = vfiles.filter((f) => f.wfId === w.id);
+  const history = w.history ?? [];
   const act = (a: "承認" | "差戻し" | "却下") => {
-    if (a !== "承認" && !comment.trim()) { alert("差戻し・却下の場合はコメントを入力してください。"); return; }
+    if (a !== "承認" && !comment.trim()) { alert("差戻し・却下は、理由の入力が必要です。"); return; }
     d({ t: "wf-act", id: w.id, approverId: meId, act: a, comment });
     setComment("");
   };
@@ -137,13 +158,18 @@ function Detail({ w, onBack }: { w: Workflow; onBack: () => void }) {
         <div className="mb-1 flex items-center gap-2"><Badge tone={TONE[w.status]}>{w.status}</Badge><span className="tabular text-[12px] text-ink-3">{w.id}・{w.type}</span></div>
         <h1 className="mb-4 text-xl font-bold">{w.title}</h1>
         <dl className="grid gap-3 text-[13.5px] sm:grid-cols-3">
-          <div><dt className="text-[12px] text-ink-3">申請者</dt><dd>{nameOf(w.applicantId)}（{emp(w.applicantId)?.job}）</dd></div>
+          <div><dt className="text-[12px] text-ink-3">申請者</dt><dd>{nameOf(w.applicantId)}（{emp(w.applicantId)?.dept ?? ""} {emp(w.applicantId)?.job}）</dd></div>
           <div><dt className="text-[12px] text-ink-3">申請日</dt><dd className="tabular">{w.createdAt}</dd></div>
           <div><dt className="text-[12px] text-ink-3">金額</dt><dd className="tabular">{w.amount ? yen(w.amount) : "—"}</dd></div>
         </dl>
         <p className="mt-4 whitespace-pre-wrap rounded-lg bg-bg p-3">{w.detail}</p>
 
-        <h2 className="mb-2 mt-6 font-bold">承認履歴</h2>
+        <h2 className="mb-2 mt-6 flex items-center gap-2 font-bold"><Paperclip size={15} aria-hidden />添付ファイル</h2>
+        {files.length === 0 && <p className="mb-2 text-[12.5px] text-ink-3">添付はありません。</p>}
+        <ul className="mb-2 space-y-1.5 text-[13px]">{files.map((f) => <li key={f.id} className="flex flex-wrap items-center gap-2"><span className="break-all font-medium">{f.name}</span><span className="text-[11.5px] text-ink-3">{fmtBytes(f.size)}・{nameOf(f.uploadedBy)}・{stamp(f.at)}</span><FileDownload rec={f} /></li>)}</ul>
+        {(mine || role === "admin") && (w.status === "承認待ち" || w.status === "差戻し") && <UploadButton label="添付を追加" meta={{ kind: "申請添付", scope: "申請", wfId: w.id, dept: deptOf(me) }} />}
+
+        <h2 className="mb-2 mt-6 font-bold">承認ルート</h2>
         <ol className="space-y-3">
           {w.steps.map((st, i) => {
             const Icon = st.state === "承認" ? Check : st.state === "承認待ち" ? CircleDot : st.state === "待機" ? Circle : X;
@@ -151,22 +177,60 @@ function Detail({ w, onBack }: { w: Workflow; onBack: () => void }) {
             return (
               <li key={i} className="flex gap-3">
                 <Icon size={18} className={`mt-0.5 shrink-0 ${c}`} aria-hidden />
-                <div><div className="font-medium">{st.label}：{nameOf(st.approverId)}<span className={`ml-2 text-[12px] ${c}`}>{st.state}</span>{st.at && <span className="tabular ml-2 text-[12px] text-ink-3">{st.at}</span>}</div>{st.comment && <div className="text-[13px] text-ink-2">「{st.comment}」</div>}</div>
+                <div><div className="font-medium">{st.label}：{nameOf(st.approverId)}<span className="ml-1 text-[12px] text-ink-3">{emp(st.approverId)?.job}</span><span className={`ml-2 text-[12px] ${c}`}>{st.state}</span>{st.at && <span className="tabular ml-2 text-[12px] text-ink-3">{stamp(st.at)}</span>}</div>{st.comment && <div className="text-[13px] text-ink-2">「{st.comment}」</div>}</div>
               </li>
             );
           })}
         </ol>
 
+        <h2 className="mb-2 mt-6 font-bold">操作の記録（いつ・誰が・何を・理由）</h2>
+        <div className="overflow-x-auto rounded-lg border border-line">
+          <table className="w-full min-w-[560px] text-[13px]"><thead><tr><th className="th">日時</th><th className="th">実行者</th><th className="th">操作</th><th className="th">理由・コメント</th></tr></thead>
+            <tbody>{history.map((h, i) => <tr key={i}><td className="td tabular whitespace-nowrap">{stamp(h.at)}</td><td className="td">{nameOf(h.by)}<span className="ml-1 text-[11.5px] text-ink-3">{emp(h.by)?.job}</span></td><td className="td"><Badge tone={ACTION_TONE[h.action]}>{h.action}</Badge></td><td className="td whitespace-pre-wrap">{h.reason ?? "—"}</td></tr>)}
+              {history.length === 0 && <tr><td className="td text-ink-3" colSpan={4}>記録はありません（この機能の導入前の申請です）</td></tr>}</tbody></table>
+        </div>
+        <p className="mt-1 text-[11.5px] text-ink-3">社長・役員を含め、承認・差戻し・却下・取下げ・修正の全てが、実行者・日時（サーバー時刻）・理由とともに残り、後から書き換えられません。</p>
+
         {canAct && (
           <div className="mt-6 border-t border-line pt-4">
-            <label className="label" htmlFor="cm">コメント（差戻し・却下は必須）</label>
+            <label className="label" htmlFor="cm">理由・コメント（差戻し・却下は必須）</label>
             <textarea id="cm" rows={2} className="input mb-3" value={comment} onChange={(e) => setComment(e.target.value)} />
-            <div className="flex gap-2"><button className="btn btn-primary" onClick={() => act("承認")}><Check size={15} />承認</button><button className="btn" onClick={() => act("差戻し")}><RotateCcw size={14} />差戻し</button><button className="btn btn-danger" onClick={() => act("却下")}><X size={15} />却下</button></div>
+            <div className="flex gap-2"><button className="btn btn-primary" onClick={() => act("承認")}><Check size={15} />承認</button><button className="btn" onClick={() => act("差戻し")}><RotateCcw size={14} />差戻し</button><button className="btn btn-danger" onClick={() => act("却下")}><X size={14} />却下</button></div>
           </div>
         )}
-        {mine && w.status === "承認待ち" && <div className="mt-6 border-t border-line pt-4"><button className="btn btn-danger" onClick={() => confirm("この申請を取り下げますか？") && d({ t: "wf-cancel", id: w.id, by: meId })}>申請を取り下げる</button></div>}
+        {mine && w.status === "承認待ち" && (
+          <div className="mt-6 border-t border-line pt-4">
+            <label className="label" htmlFor="cr">取り下げる理由（必須）</label>
+            <div className="flex gap-2"><input id="cr" className="input" value={cancelReason} onChange={(e) => setCancelReason(e.target.value)} /><button className="btn btn-danger shrink-0" disabled={!cancelReason.trim()} onClick={() => confirm("この申請を取り下げますか？") && d({ t: "wf-cancel", id: w.id, by: meId, reason: cancelReason.trim() })}>取り下げる</button></div>
+          </div>
+        )}
+        {mine && w.status === "差戻し" && !edit && <div className="mt-6 border-t border-line pt-4"><p className="mb-2 text-[13px] text-warn">差戻しされました。内容を修正して再申請してください（変更の理由が必要です。承認ルートは金額に応じて自動で再設定されます）。</p><button className="btn btn-primary" onClick={() => setEdit(true)}>修正して再申請する</button></div>}
+        {edit && <ResubmitForm w={w} route={approvalRoute} onClose={() => setEdit(false)} />}
         {!canAct && w.status === "承認待ち" && !mine && <p className="mt-4 text-[12px] text-ink-3">この案件の現在の承認者は {nameOf(active?.approverId ?? "")} です。</p>}
       </div>
     </div>
+  );
+}
+
+function ResubmitForm({ w, route, onClose }: { w: Workflow; route: (t: WfType, a: number | undefined, id: string) => Workflow["steps"]; onClose: () => void }) {
+  const { d, meId, nameOf } = useStore();
+  const [f, setF] = useState({ title: w.title, detail: w.detail, amount: w.amount ? String(w.amount) : "", reason: "" });
+  const amt = Number(f.amount) || 0;
+  const r = route(w.type, w.type === "休暇申請" ? undefined : amt, meId);
+  return (
+    <form className="mt-6 space-y-3 border-t border-line pt-4" onSubmit={(e) => {
+      e.preventDefault();
+      if (!f.reason.trim()) return;
+      d({ t: "wf-edit", id: w.id, by: meId, reason: f.reason.trim(), route: r, patch: { title: f.title, detail: f.detail, ...(w.type === "休暇申請" ? {} : { amount: amt || undefined }) } });
+      onClose();
+    }}>
+      <h3 className="font-bold">修正して再申請</h3>
+      <div><label className="label" htmlFor="rt">件名</label><input id="rt" required className="input" value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} /></div>
+      {w.type !== "休暇申請" && <div className="max-w-xs"><label className="label" htmlFor="ra">金額（円）</label><input id="ra" type="number" min={0} className="input tabular" value={f.amount} onChange={(e) => setF({ ...f, amount: e.target.value })} /></div>}
+      <div><label className="label" htmlFor="rd">内容</label><textarea id="rd" required rows={4} className="input" value={f.detail} onChange={(e) => setF({ ...f, detail: e.target.value })} /></div>
+      <div><label className="label" htmlFor="rr">変更の理由（必須）</label><textarea id="rr" required rows={2} className="input" placeholder="例：金額の根拠資料を追加し、金額を見直したため" value={f.reason} onChange={(e) => setF({ ...f, reason: e.target.value })} /></div>
+      <div className="text-[12.5px] text-ink-2">再申請後の承認ルート：{r.map((x) => `${x.label}（${nameOf(x.approverId)}）`).join(" → ")}</div>
+      <div className="flex justify-end gap-2"><button type="button" className="btn" onClick={onClose}>キャンセル</button><button className="btn btn-primary" disabled={!f.reason.trim()}>再申請する</button></div>
+    </form>
   );
 }

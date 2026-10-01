@@ -2,9 +2,11 @@
 // クライアントの申告は信用せず、「誰が・どの項目を・どう変えてよいか」をここで強制する。
 import { can, type RoleName } from "../lib/perm.ts";
 import { append, verifyChain } from "../lib/chain.ts";
-import { checkEntry } from "../lib/accounting.ts";
+import { checkEntry, postJournal, workflowJournal } from "../lib/accounting.ts";
 import { KINDS, toMin } from "../lib/work.ts";
 import { EVENT_CATEGORIES, REMOTE_KINDS, remoteLink } from "../lib/biz.ts";
+import { APPROVERS, routeFor } from "../lib/authority.ts";
+import { ASSET_CATEGORIES, ASSET_STATUS, BENEFIT_CATEGORIES, CHECK_KINDS, CHECK_RESULTS, EXT_KINDS, FILE_KINDS, FILE_SCOPES, MAIL_CATEGORIES, MAIL_STATUS, PAY_KINDS, canSeeFile, canSeeMail, deptOf, isClientCode, isHttps, maskMail, viewerOf, type Viewer } from "../lib/ops.ts";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type S = Record<string, any>;
@@ -26,23 +28,78 @@ export function sanitizeForRead(state: S | null, uid: string, role: RoleName): S
   if (!can.viewAllReports(role) && out.docAck) out.docAck = { [uid]: out.docAck[uid] ?? {} };
   if (!lead && out.kpis) out.kpis = out.kpis.filter((k: S) => k.ownerId === "" || k.ownerId === uid);
   if (!lead && out.remotes) out.remotes = out.remotes.filter((r: S) => r.ownerId === uid);
-  if (!can.viewAllWorkflows(role) && out.workflows) out.workflows = out.workflows.filter((w: S) => w.applicantId === uid || w.steps?.some((s: S) => s.approverId === uid));
+  if (out.workflows) {
+    // 異動・変更届は個人情報を含むため、届出者・承認者・管理者だけ（役員でも他人の届出は見えない）
+    const mine = (w: S) => w.applicantId === uid || w.steps?.some((s: S) => s.approverId === uid);
+    out.workflows = out.workflows.filter((w: S) => (w.type === "異動変更届" ? role === "admin" || mine(w) : can.viewAllWorkflows(role) || mine(w)));
+  }
   if (!can.audit(role) && out.audit) out.audit = out.audit.filter((a: S) => a.actor === uid).slice(-50);
   if (!can.viewAllAttendance(role) && out.read) out.read = { [uid]: out.read[uid] ?? [] };
+
+  // ---- 追加機能：閲覧できるものだけを返す ----
+  const me = (state.employees ?? []).find((e: S) => e.id === uid);
+  const v: Viewer = me ? viewerOf(me as never) : { id: uid, role, dept: "", lead: role !== "employee" };
+  const wfOf = (id?: string) => (state.workflows ?? []).find((w: S) => w.id === id);
+  if (out.files) out.files = out.files.filter((f: S) => canSeeFile(f as never, v, f.wfId ? wfOf(f.wfId) : undefined));
+  if (out.mails) out.mails = out.mails.filter((m: S) => canSeeMail(m as never, v)).map((m: S) => maskMail(m as never, uid));
+  if (role === "employee") {
+    const myClients = (out.clients ?? []).filter((c: S) => c.dept === v.dept);
+    out.clients = myClients;
+    const codes = new Set(myClients.map((c: S) => c.code));
+    if (out.checks) out.checks = out.checks.filter((c: S) => codes.has(c.clientCode));
+    if (out.assets) out.assets = out.assets.filter((a: S) => a.assigneeId === uid);
+  }
+  if (role !== "admin") {
+    if (out.extLinks) out.extLinks = out.extLinks.filter((l: S) => !l.dept || l.dept === v.dept || role === "executive");
+    delete out.retention; delete out.archiveMeta;
+  }
   return out;
 }
 
-function validWf(o: S, n: S, uid: string): boolean {
-  for (const k of ["id", "applicantId", "type", "title", "amount", "detail", "createdAt", "from", "to", "category", "taxKind", "invoiceNo"]) if (JSON.stringify(o[k]) !== JSON.stringify(n[k])) return false;
-  const same = (i: number) => JSON.stringify(o.steps[i]) === JSON.stringify(n.steps[i]);
-  if (o.steps.length !== n.steps.length) return false;
-  if (n.status === "取下げ" && o.status === "承認待ち" && o.applicantId === uid) return o.steps.every((_: unknown, i: number) => same(i));
-  if (o.status !== "承認待ち") return false;
+type Ctx = { now: string; blob: (id: string) => { owner: string; name: string; size: number; mime: string } | undefined };
+const WF_EDITABLE = ["title", "amount", "detail", "category", "taxKind", "invoiceNo", "from", "to"];
+const WF_FIXED = ["id", "applicantId", "type", "createdAt"];
+const sameJson = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
+const pending = (steps: S[]) => steps.map((s, i) => ({ approverId: s.approverId, label: s.label, state: i === 0 ? "承認待ち" : "待機" }));
+
+/** 申請の新規作成：本人名義・職務権限規程どおりの承認ルート・申請の記録が1件 */
+function validNewWf(w: S, uid: string, employees: S[], authority: S[]): boolean {
+  if (w.applicantId !== uid || w.status !== "承認待ち" || !Array.isArray(w.steps) || !str(w.type, 40) || !str(w.title, 200) || !str(w.detail, 8000)) return false;
+  const route = routeFor(employees as never, authority as never, w.type, w.amount, uid);
+  if (!sameJson(w.steps.map((s: S) => [s.approverId, s.label, s.state, s.at, s.comment]), pending(route).map((s) => [s.approverId, s.label, s.state, undefined, undefined]))) return false;
+  const h = w.history;
+  return Array.isArray(h) && h.length === 1 && h[0].action === "申請" && h[0].by === uid;
+}
+
+/** 既存の申請の更新：取下げ／現在の承認者の承認・差戻し・却下／差戻し後の修正再申請。全て「誰が・理由」を履歴に1件追加する */
+function validWf(o: S, n: S, uid: string, employees: S[], authority: S[]): boolean {
+  for (const k of WF_FIXED) if (!sameJson(o[k], n[k])) return false;
+  const oh: S[] = o.history ?? [], nh: S[] = n.history ?? [];
+  if (nh.length !== oh.length + 1 || !oh.every((h, i) => sameJson(h, nh[i]))) return false;
+  const ev = nh[nh.length - 1];
+  if (ev.by !== uid || typeof ev.action !== "string") return false;
+  const reason = typeof ev.reason === "string" ? ev.reason.trim() : "";
+  if (reason.length > 500) return false;
+  const editableSame = WF_EDITABLE.every((k) => sameJson(o[k], n[k]));
+  const same = (i: number) => sameJson(o.steps[i], n.steps[i]);
+  if (o.steps.length !== n.steps.length && n.status !== "承認待ち") return false;
+
+  if (n.status === "取下げ" && o.status === "承認待ち" && o.applicantId === uid) return ev.action === "取下げ" && !!reason && editableSame && o.steps.every((_: unknown, i: number) => same(i));
+
+  if (o.status === "差戻し" && n.status === "承認待ち" && o.applicantId === uid) { // 修正再申請
+    if (ev.action !== "修正再申請" || !reason) return false;
+    const route = routeFor(employees as never, authority as never, n.type, n.amount, uid);
+    return sameJson(n.steps.map((s: S) => [s.approverId, s.label, s.state, s.at, s.comment]), pending(route).map((s) => [s.approverId, s.label, s.state, undefined, undefined])) && str(n.title, 200) && str(n.detail, 8000) && !!n.title;
+  }
+
+  if (o.status !== "承認待ち" || !editableSame) return false;
   const idx = o.steps.findIndex((s: S) => s.state === "承認待ち");
   if (idx < 0 || o.steps[idx].approverId !== uid) return false;
+  if (o.applicantId === uid && o.steps.length > 1) return false; // 自己承認は不可（他に承認者がいない代表者のみ）
   if (o.steps.some((_: unknown, i: number) => i !== idx && i !== idx + 1 && !same(i))) return false;
   const st = n.steps[idx];
-  if (st.approverId !== uid || !["承認", "差戻し", "却下"].includes(st.state)) return false;
+  if (st.approverId !== uid || !["承認", "差戻し", "却下"].includes(st.state) || ev.action !== st.state) return false;
+  if (st.state !== "承認" && !reason) return false; // 差戻し・却下は理由が必須
   if (st.state === "承認") return idx + 1 < o.steps.length ? n.steps[idx + 1].state === "承認待ち" && n.status === "承認待ち" : n.status === "承認済";
   return n.status === st.state && (idx + 1 >= o.steps.length || same(idx + 1));
 }
@@ -71,6 +128,7 @@ export function validEmployees(list: S[]): boolean {
   return !!pres && pres.role === "admin" && list.some((e) => e.role === "admin");
 }
 
+const employeesOf = (out: S, base: S): S[] => out.employees ?? base.employees ?? [];
 const str = (v: unknown, max: number) => typeof v === "string" && v.length <= max;
 const isDate = (v: unknown) => typeof v === "string" && DATE.test(v);
 const isMonth = (v: unknown) => typeof v === "string" && /^\d{4}-\d{2}$/.test(v);
@@ -88,10 +146,24 @@ export function validKpis(list: S[]): boolean {
 export function validRemotes(list: S[]): boolean {
   return Array.isArray(list) && list.length <= 1000 && list.every((r) => str(r?.id, 40) && r.id && str(r.name, 80) && r.name && (REMOTE_KINDS as readonly string[]).includes(r.kind) && str(r.host, 300) && !!remoteLink(r as never) && (r.port == null || (Number.isInteger(r.port) && r.port > 0 && r.port < 65536)) && str(r.ownerId, 20) && (r.note == null || str(r.note, 300)));
 }
-const validReport = (date: string, r: S) => isDate(date) && r?.date === date && str(r.done, 4000) && str(r.plan, 4000) && str(r.issues, 4000) && (r.hours == null || (typeof r.hours === "number" && r.hours >= 0 && r.hours <= 24)) && ["下書き", "提出済"].includes(r.status);
+/** 日報：提出済みには「業務内容・時間・関与先コード」の明細が1行以上必須。関与先コードは関与先マスタに存在するもの */
+const validReport = (date: string, r: S, clients: S[]) => {
+  if (!(isDate(date) && r?.date === date && str(r.done, 4000) && str(r.plan, 4000) && str(r.issues, 4000) && (r.hours == null || (typeof r.hours === "number" && r.hours >= 0 && r.hours <= 24)) && ["下書き", "提出済"].includes(r.status))) return false;
+  const lines: S[] = r.lines ?? [];
+  if (!Array.isArray(lines) || lines.length > 30) return false;
+  for (const l of lines) if (!(str(l?.task, 500) && str(l.clientCode, 16) && str(l.clientName, 100) && typeof l.hours === "number" && l.hours > 0 && l.hours <= 24)) return false;
+  if (lines.reduce((s, l) => s + l.hours, 0) > 24) return false;
+  if (r.status === "提出済") {
+    if (lines.length === 0 || lines.some((l) => !l.task.trim() || !clients.some((c) => c.code === l.clientCode && c.active !== false))) return false;
+  }
+  return true;
+};
+const fixClientNames = (r: S, clients: S[]): S => (r.lines ? { ...r, lines: r.lines.map((l: S) => ({ ...l, clientName: clients.find((c) => c.code === l.clientCode)?.name ?? l.clientName })) } : r);
 
 /** 書き込み：サーバーの現状（cur）に、許可された変更だけを取り込む。拒否した項目は denied に列挙 */
-export function mergeWrite(cur: S | null, inc: S, uid: string, role: RoleName): { state: S; denied: string[] } {
+export function mergeWrite(cur: S | null, inc: S, uid: string, role: RoleName, ctx: Partial<Ctx> = {}): { state: S; denied: string[] } {
+  const now = ctx.now ?? new Date().toISOString();
+  const blob = ctx.blob ?? (() => undefined);
   const base: S = cur ?? {};
   const out: S = { ...base };
   const denied: string[] = [];
@@ -137,9 +209,9 @@ export function mergeWrite(cur: S | null, inc: S, uid: string, role: RoleName): 
       for (const [date, r] of Object.entries(days as S)) {
         if (same(r, cur[date])) continue;
         if (emp === uid) {
-          if (!validReport(date, r)) { deny("reports"); continue; }
+          if (!validReport(date, r as S, base.clients ?? [])) { deny("reports"); continue; }
           const { comment, commentBy } = cur[date] ?? {};
-          const nr: S = { ...(r as S) }; delete nr.comment; delete nr.commentBy;
+          const nr: S = fixClientNames({ ...(r as S) }, base.clients ?? []); delete nr.comment; delete nr.commentBy;
           if (comment !== undefined) { nr.comment = comment; nr.commentBy = commentBy; }
           merged[date] = nr;
         } else if (can.viewAllReports(role) && cur[date] && str((r as S).comment, 500) && same({ ...cur[date], comment: 0, commentBy: 0 }, { ...(r as S), comment: 0, commentBy: 0 })) {
@@ -166,19 +238,127 @@ export function mergeWrite(cur: S | null, inc: S, uid: string, role: RoleName): 
     out.read = { ...(base.read ?? {}) };
     for (const [emp, v] of Object.entries(inc.read as S)) { if (emp === uid) out.read[emp] = v; else if (!same(v, base.read?.[emp])) deny("read"); }
   }
-  // ワークフロー：新規は本人名義のみ／既存は「取下げ」「現在の承認者の承認・差戻し・却下」のみ
+  // ワークフロー：新規は本人名義・職務権限規程どおりのルール／既存は「取下げ」「現在の承認者の承認・差戻し・却下」「差戻し後の修正再申請」のみ。
+  // どの操作も、時刻はサーバーが付け、実行者（誰が）と理由を履歴に残す（社長・役員も同じ）
   if (inc.workflows) {
     const byId = new Map<string, S>((base.workflows ?? []).map((w: S) => [w.id, w]));
+    const employees: S[] = out.employees ?? base.employees ?? [], authority: S[] = base.authority ?? [];
     const next: S[] = [];
+    const stamp = (w: S, o?: S): S => {
+      const history = (w.history ?? []).map((h: S, i: number) => (i === (w.history.length - 1) ? { ...h, at: now } : h));
+      const steps = w.steps.map((s: S, i: number) => (o && !same(s, o.steps[i]) && s.at ? { ...s, at: now } : s));
+      return { ...w, history, steps };
+    };
     for (const w of inc.workflows as S[]) {
       const o = byId.get(w.id);
-      if (!o) { if (w.applicantId === uid && w.status === "承認待ち" && w.steps?.[0]?.state === "承認待ち" && w.steps.slice(1).every((s: S) => s.state === "待機")) next.push(w); else deny("workflows"); }
+      if (!o) { if (validNewWf(w, uid, employees, authority)) next.push(stamp(w)); else deny("workflows"); }
       else if (same(o, w)) next.push(o);
-      else if (validWf(o, w, uid)) next.push(w);
+      else if (validWf(o, w, uid, employees, authority)) next.push(stamp(w, o));
       else { next.push(o); deny("workflows"); }
     }
     for (const o of byId.values()) if (!next.some((x) => x.id === o.id)) next.push(o); // 削除は不可
     out.workflows = next.sort((a, b) => (b.id > a.id ? 1 : -1));
+    // 経費・出張の最終承認：サーバーが仕訳を自動作成（締め済みの月は計上しない）
+    for (const w of out.workflows as S[]) {
+      const o = byId.get(w.id);
+      if (!o || o.status === "承認済" || w.status !== "承認済") continue;
+      const core = workflowJournal(w as never, employees.find((e: S) => e.id === w.applicantId)?.job, now.slice(0, 10));
+      if (core && !(out.closed ?? base.closed ?? []).includes(core.date.slice(0, 7)) && !checkEntry(core)) out.journal = postJournal((out.journal ?? base.journal ?? []) as never, core as never);
+    }
+  }
+
+  // ---- 関与先・外部リンク・固定資産・福利厚生・職務権限規程・保存期間：管理者のみ ----
+  const adminList = (key: string, ok: (list: S[]) => boolean, visible: (list: S[]) => S[] = (l) => l) => {
+    if (inc[key] === undefined || same(inc[key], visible(base[key] ?? []))) return;
+    if (can.manageAuthority(role) && ok(inc[key])) out[key] = inc[key]; else deny(key);
+  };
+  const str2 = (v: unknown, n: number) => str(v, n);
+  adminList("clients", (l) => Array.isArray(l) && l.length <= 5000 && new Set(l.map((c) => c.code)).size === l.length && l.every((c) => isClientCode(c?.code) && str2(c.name, 100) && c.name && str2(c.dept, 40) && (c.kana == null || str2(c.kana, 100)) && (c.corpNo == null || /^\d{13}$/.test(c.corpNo) || c.corpNo === "") && (c.contact == null || str2(c.contact, 200)) && (c.note == null || str2(c.note, 300)) && typeof c.active === "boolean"));
+  adminList("extLinks", (l) => Array.isArray(l) && l.length <= 300 && l.every((x) => str2(x?.id, 40) && str2(x.name, 80) && x.name && isHttps(x.url) && (EXT_KINDS as readonly string[]).includes(x.kind) && str2(x.dept, 40) && (x.accountId == null || str2(x.accountId, 80)) && (x.note == null || str2(x.note, 300))));
+  adminList("assets", (l) => Array.isArray(l) && l.length <= 5000 && new Set(l.map((a) => a.id)).size === l.length && l.every((a) => str2(a?.id, 20) && a.id && str2(a.name, 100) && a.name && (ASSET_CATEGORIES as readonly string[]).includes(a.category) && isDate(a.purchaseDate) && typeof a.cost === "number" && a.cost >= 0 && a.cost < 1e11 && Number.isInteger(a.usefulLife) && a.usefulLife >= 1 && a.usefulLife <= 60 && (ASSET_STATUS as readonly string[]).includes(a.status) && ["maker", "model", "serial", "mgmtId", "assigneeId", "dept", "location", "note"].every((k) => a[k] == null || str2(a[k], 200)) && (a.disposedAt == null || isDate(a.disposedAt))), (l) => (role === "employee" ? l.filter((a) => a.assigneeId === uid) : l));
+  adminList("benefits", (l) => Array.isArray(l) && l.length <= 200 && l.every((b) => str2(b?.id, 40) && str2(b.title, 100) && b.title && (BENEFIT_CATEGORIES as readonly string[]).includes(b.category) && str2(b.summary, 300) && str2(b.body, 10000) && (b.link == null || b.link === "" || isHttps(b.link)) && (b.contact == null || str2(b.contact, 100))));
+  adminList("authority", (l) => Array.isArray(l) && l.length <= 100 && l.every((r) => r && typeof r.type === "string" && typeof r.min === "number" && r.min >= 0 && r.min < 1e11 && Array.isArray(r.steps) && r.steps.length >= 1 && r.steps.length <= 5 && r.steps.every((s: string) => (APPROVERS as readonly string[]).includes(s))) && ["経費精算", "休暇申請", "出張申請", "稟議", "IT機器・アカウント申請", "異動変更届"].every((ty) => l.some((r) => r.type === ty && r.min === 0)));
+  if (inc.retention !== undefined && !same(inc.retention, base.retention)) {
+    const r = inc.retention as S;
+    if (can.manageAuthority(role) && r && ["attendance", "reports", "mails", "workflows", "audit"].every((k) => Number.isInteger(r[k]) && r[k] >= 1 && r[k] <= 240) && r.attendance >= 36 && r.audit >= 36) out.retention = r; else deny("retention");
+  }
+
+  // ---- 与信・反社の確認記録：追記のみ。自分の名義で、見える関与先についてだけ ----
+  if (inc.checks) {
+    const baseIds = new Set<string>((base.checks ?? []).map((c: S) => c.id));
+    const clients: S[] = base.checks ? (base.clients ?? []) : (base.clients ?? []);
+    const me = employeesOf(out, base).find((e: S) => e.id === uid);
+    const added: S[] = [];
+    for (const c of inc.checks as S[]) {
+      if (baseIds.has(c.id)) { if (!same(c, (base.checks ?? []).find((x: S) => x.id === c.id))) deny("checks"); continue; }
+      const cl = clients.find((x) => x.code === c?.clientCode);
+      const okClient = !!cl && (role !== "employee" || cl.dept === deptOf(me as never));
+      if (okClient && str(c.id, 40) && c.id && c.checkedBy === uid && (CHECK_KINDS as readonly string[]).includes(c.kind) && (CHECK_RESULTS as readonly string[]).includes(c.result) && str(c.source, 80) && (c.note == null || str(c.note, 500)) && (c.limit == null || (typeof c.limit === "number" && c.limit >= 0))) added.push({ ...c, at: now }); else deny("checks");
+    }
+    if (added.length) out.checks = [...added, ...(base.checks ?? [])];
+  }
+
+  // ---- 問い合わせ・ヘルプデスク ----
+  if (inc.mails) {
+    const emps = employeesOf(out, base), me = emps.find((e: S) => e.id === uid);
+    const v: Viewer = me ? viewerOf(me as never) : { id: uid, role, dept: "", lead: role !== "employee" };
+    const depts = new Set(emps.map((e: S) => deptOf(e as never)));
+    let mails: S[] = [...(base.mails ?? [])];
+    for (const m of inc.mails as S[]) {
+      const i = mails.findIndex((x) => x.id === m?.id);
+      if (i < 0) {
+        const okTo = m.toType === "個人" ? emps.some((e: S) => e.id === m.toId) && m.toId !== uid : m.toType === "事業部" ? depts.has(m.toId) : m.toType === "窓口" ? str(m.toId, 20) && !!m.toId : false;
+        if (m.from === uid && str(m.id, 40) && m.id && typeof m.anon !== "string" && okTo && (MAIL_CATEGORIES as readonly string[]).includes(m.category) && str(m.subject, 120) && m.subject && str(m.body, 8000) && m.body && m.status === "未対応" && Array.isArray(m.thread) && m.thread.length === 0 && (!m.anon || m.toType === "窓口")) mails = [{ id: m.id, from: uid, anon: !!m.anon, toType: m.toType, toId: m.toId, category: m.category, subject: m.subject, body: m.body, at: now, status: "未対応", thread: [] }, ...mails];
+        else deny("mails");
+        continue;
+      }
+      const o = mails[i];
+      if (!canSeeMail(o as never, v)) { deny("mails"); continue; }
+      const view = maskMail(o as never, uid) as S;
+      if (same(view, m)) continue;
+      const t0: S[] = view.thread, t1: S[] = m.thread ?? [];
+      const prefix = t0.every((x, k) => same(x, t1[k]));
+      const added = t1.slice(t0.length);
+      const okAdded = added.every((x) => (x.by === uid || (o.anon && o.from === uid && x.by === "匿名")) && str(x.body, 8000) && x.body.trim());
+      const metaSame = same({ ...view, thread: 0, status: 0 }, { ...m, thread: 0, status: 0 });
+      const statusOk = m.status === view.status || ((MAIL_STATUS as readonly string[]).includes(m.status));
+      if (prefix && okAdded && metaSame && statusOk) mails[i] = { ...o, status: m.status, thread: [...o.thread, ...added.map((x) => ({ by: uid, at: now, body: x.body }))] };
+      else deny("mails");
+    }
+    out.mails = mails;
+  }
+
+  // ---- ファイルの台帳 ----
+  if (inc.files || inc.filesDel) {
+    const emps = employeesOf(out, base), me = emps.find((e: S) => e.id === uid);
+    const v: Viewer = me ? viewerOf(me as never) : { id: uid, role, dept: "", lead: role !== "employee" };
+    const wfOf = (id?: string) => (out.workflows ?? base.workflows ?? []).find((w: S) => w.id === id);
+    const baseFiles: S[] = base.files ?? [];
+    const visible = baseFiles.filter((f) => canSeeFile(f as never, v, f.wfId ? wfOf(f.wfId) : undefined));
+    let files = [...baseFiles];
+    // 削除は、明示した依頼（filesDel）だけ。画面に無いからといって消さない（古い画面からの上書きでデータが消えないように）
+    for (const id of Array.isArray(inc.filesDel) ? (inc.filesDel as string[]).slice(0, 200) : []) {
+      const f = visible.find((x) => x.id === id);
+      if (!f) continue;
+      const own = f.uploadedBy === uid && !PAY_KINDS.includes(f.kind) && f.kind !== "アーカイブ";
+      if ((own || role === "admin") && f.kind !== "アーカイブ") files = files.filter((x) => x.id !== id); else deny("files"); // 書き出したCSVは消せない
+    }
+    const visIds = new Set(visible.map((f) => f.id));
+    for (const f of (inc.files ?? []) as S[]) {
+      if (visIds.has(f.id)) { if (!same(f, visible.find((x) => x.id === f.id))) deny("files"); continue; }
+      if (baseFiles.some((x) => x.id === f.id)) { deny("files"); continue; }
+      const b = blob(f?.id);
+      const sizeOk = !!b && b.owner === uid && b.name === f.name && b.size === f.size && b.mime === f.mime;
+      const isPay = PAY_KINDS.includes(f?.kind);
+      let ok = sizeOk && f.uploadedBy === uid && /^[a-f0-9]{24,40}$/.test(f.id) && (FILE_KINDS as readonly string[]).includes(f.kind) && (FILE_SCOPES as readonly string[]).includes(f.scope) && str(f.name, 200) && (f.note == null || str(f.note, 300));
+      if (ok && isPay) ok = can.managePay(role) && f.scope === "本人" && emps.some((e: S) => e.id === f.ownerId) && typeof f.period === "string" && /^\d{4}(-\d{2})?$/.test(f.period);
+      else if (ok && f.kind === "申請添付") { const w = wfOf(f.wfId); ok = !!w && f.scope === "申請" && (w.applicantId === uid || role === "admin"); }
+      else if (ok && f.kind === "規程添付") ok = can.manageDocs(role) && (out.docs ?? base.docs ?? []).some((d: S) => d.id === f.docId) && ["全社", "役員・部長"].includes(f.scope);
+      else if (ok && f.kind === "共有") ok = ["全社", "事業部", "役員・部長"].includes(f.scope) && f.dept === v.dept && (f.scope !== "役員・部長" || v.lead);
+      else if (ok) ok = false; // アーカイブはサーバーだけが作る
+      if (ok) files = [{ id: f.id, name: f.name, size: f.size, mime: f.mime, kind: f.kind, scope: f.scope, dept: f.dept, ownerId: f.ownerId, wfId: f.wfId, docId: f.docId, period: f.period, note: f.note, uploadedBy: uid, at: now }, ...files]; else deny("files");
+    }
+    out.files = files;
   }
 
   // 経理：閲覧は役員・管理者、編集は管理者のみ。仕訳は追記のみ・貸借一致・締め済み月への計上不可

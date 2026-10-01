@@ -1,11 +1,11 @@
 // 出力CSVの定義（Excel で開ける UTF-8 BOM 付き）。
 //  ・日別勤怠CSV … 「勤怠入力_自動計算.xlsx」の 日別勤怠 シートにそのまま貼り付けられる列順（日付・従業員番号・氏名・区分・始業・終業・休憩・…）
 //  ・月次集計CSV … 同ブックの 月次集計 シートと同じ列（賃金計算ブックの⑤勤怠入力に対応）
-import { acct, isPosted, type Approvals, type Journal, type TbRow } from "./accounting";
-import { toCsv } from "./csv";
-import type { Employee, Workflow } from "./data";
-import type { Audit } from "./store";
-import { calcDay, holidaySet, isHoliday, type Conditions, type DayInput, type Summary } from "./work";
+import { acct, isPosted, type Approvals, type Journal, type TbRow } from "./accounting.ts";
+import { toCsv } from "./csv.ts";
+import type { Employee, Workflow } from "./data.ts";
+import type { Audit } from "./store.ts";
+import { calcDay, holidaySet, isHoliday, type Conditions, type DayInput, type Summary } from "./work.ts";
 
 const DOW = "日月火水木金土";
 
