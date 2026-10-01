@@ -149,3 +149,16 @@ export const monthsOfFy = (fyStart: string, upTo: string) => {
   return out;
 };
 export const fyStartOf = (date: string) => { const y = Number(date.slice(0, 4)), m = Number(date.slice(5, 7)); return `${m >= 4 ? y : y - 1}-04-01`; };
+
+/** 承認済みの経費・出張から自動作成する仕訳（適格請求書の登録番号がなければ仕入税額控除しない） */
+export function workflowJournal(w: { type: string; amount?: number; category?: string; taxKind?: string; invoiceNo?: string; title: string; id: string }, job: string | undefined, date: string): Omit<JournalCore, "id"> | null {
+  if ((w.type !== "経費精算" && w.type !== "出張申請") || !w.amount) return null;
+  const code = w.category && acct(w.category) ? w.category : "6210";
+  const taxable = (w.taxKind ?? "課税10%") === "課税10%" && !!w.invoiceNo && isInvoiceNo(w.invoiceNo); // 適格請求書がなければ仕入税額控除しない
+  const tax = taxable ? Math.round((w.amount * 10) / 110) : 0;
+  return {
+    date, memo: `${w.type}：${w.title}`, evidenceNo: w.id, invoiceNo: w.invoiceNo, source: "workflow", createdBy: "system",
+    lines: [{ account: code, side: "D", amount: w.amount - tax, tax: taxable ? "課税10%" : "対象外", dept: job }, ...(tax ? [{ account: "1510", side: "D" as const, amount: tax }] : []), { account: "2120", side: "C", amount: w.amount }],
+  };
+}
+

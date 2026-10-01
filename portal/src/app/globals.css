@@ -24,6 +24,41 @@
   --side-text: #cfcfcf;
 }
 
+/* ナイトモード（目の保護）：落ち着いた暗色。ブランドの赤は維持し、文字は読みやすさ優先 */
+:root[data-theme="dark"] {
+  --bg: #121214;
+  --surface: #1a1a1d;
+  --surface-2: #26262a;
+  --border: #33333a;
+  --border-strong: #46464e;
+  --text: #ececee;
+  --text-2: #c3c3c9;
+  --text-3: #9b9ba3;
+  --brand: #e60012;
+  --brand-2: #ff6b76;
+  --brand-soft: #3a1418;
+  --good: #5fd09a;
+  --good-soft: #14301f;
+  --warn: #f0b95b;
+  --warn-soft: #3a2c10;
+  --bad: #ff8b84;
+  --bad-soft: #3d1816;
+  --side: #08080a;
+  color-scheme: dark;
+}
+:root[data-theme="dark"] .bg-blue-100 { background: #172a45; color: #9cc4ff; }
+:root[data-theme="dark"] .bg-emerald-100 { background: #123326; color: #8fe0b8; }
+:root[data-theme="dark"] .bg-amber-100 { background: #3a2c10; color: #f3c97a; }
+:root[data-theme="dark"] .bg-purple-100 { background: #2c1d44; color: #cfb3ff; }
+:root[data-theme="dark"] .bg-red-100 { background: #3d1816; color: #ff9d97; }
+:root[data-theme="dark"] .text-blue-700, :root[data-theme="dark"] .text-blue-800 { color: #8db8ff; }
+:root[data-theme="dark"] img[alt="H-LINK"] { filter: brightness(1.05); }
+:root[data-text="large"] body { zoom: 1.12; }
+/* ブルーライトカット：画面全体にやや暖色のフィルターを重ねる（--bl は 0〜0.28） */
+.bluelight { position: fixed; inset: 0; z-index: 9999; pointer-events: none; background: rgb(255, 150, 40); opacity: var(--bl, 0); mix-blend-mode: multiply; transition: opacity .3s; }
+:root[data-theme="dark"] .bluelight { background: rgb(255, 120, 20); mix-blend-mode: soft-light; }
+@media print { .bluelight { display: none; } }
+
 @theme inline {
   --color-bg: var(--bg);
   --color-surface: var(--surface);

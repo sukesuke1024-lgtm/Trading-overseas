@@ -1,5 +1,6 @@
 import { getTotp, loadDb, roleOfServer, saveDb } from "@/server/db";
-import { SESSION_SEC, json, sameOrigin, setCookie, sign, verify } from "@/server/session";
+import { DEV_COOKIE, SESSION_SEC, cookieOf, json, sameOrigin, setCookie, sign, verify } from "@/server/session";
+import { checkAccess, noteFailure } from "@/server/security";
 import { clientIp, logAuth, rateLimited } from "@/server/authlog";
 import { verifyTotp } from "@/lib/totp";
 
@@ -24,10 +25,19 @@ export async function POST(req: Request) {
     if (u.fails >= MAX_FAILS) { u.lockedUntil = Date.now() + LOCK_MS; u.fails = 0; logAuth({ actor: id, event: "account_locked", ip, detail: "mfa" }); }
     saveDb();
     logAuth({ actor: id, event: "mfa_fail", ip });
+    noteFailure(`mfa:${id}`, id, ip);
     return json({ error: "セキュリティコードが正しくありません。" }, 401);
   }
   u.lastStep = step; u.totpEnrolled = true; u.fails = 0;
   saveDb();
+  if (!roleOfServer(id)) { logAuth({ actor: id, event: "login_blocked_inactive", ip }); return json({ error: "このアカウントは利用できません。" }, 403); }
+  // 登録済みの端末・許可ネットワークかを確認（未登録の端末はアラート検知）
+  const access = checkAccess(id, ip, req.headers.get("user-agent") ?? "", cookieOf(req, DEV_COOKIE));
+  const devCookie = access.setDevice ? setCookie(req, access.setDevice, 60 * 60 * 24 * 365, DEV_COOKIE) : undefined;
+  if (!access.ok) { logAuth({ actor: id, event: "login_blocked_device", ip, detail: access.code }); return new Response(JSON.stringify({ error: access.error, code: access.code }), { status: access.status, headers: { "content-type": "application/json", "cache-control": "no-store", ...(devCookie ? { "set-cookie": devCookie } : {}) } }); }
   logAuth({ actor: id, event: "login_ok", ip });
-  return json({ id, role: roleOfServer(id) ?? "employee", mustChange: u.mustChange }, 200, { "set-cookie": setCookie(req, sign(id, "session", SESSION_SEC), SESSION_SEC) });
+  const headers = new Headers({ "content-type": "application/json", "cache-control": "no-store" });
+  headers.append("set-cookie", setCookie(req, sign(id, "session", SESSION_SEC), SESSION_SEC));
+  if (devCookie) headers.append("set-cookie", devCookie);
+  return new Response(JSON.stringify({ id, role: roleOfServer(id) ?? "employee", mustChange: u.mustChange }), { status: 200, headers });
 }

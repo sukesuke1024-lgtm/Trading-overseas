@@ -22,6 +22,7 @@ const SESSION_KEY = "hlink-portal-session";
 const PINS_KEY = "hlink-demo-pins", RESETS_KEY = "hlink-demo-resets", REQS_KEY = "hlink-demo-reqs";
 const lsGet = <T,>(k: string, d: T): T => { try { return JSON.parse(localStorage.getItem(k) ?? "null") ?? d; } catch { return d; } };
 const lsSet = (k: string, v: unknown) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
+export const checkDemoPin = (id: string, pin: string) => pin === demoPin(id);
 const demoPin = (id: string) => lsGet<Record<string, string>>(PINS_KEY, {})[id] ?? DEMO_PIN;
 export const demoEmailOf = (id: string) => DEMO_ACCOUNTS.find((e) => e.id === id)?.email ?? `${id}@hlink.example`;
 const RESET_MIN = 15;
@@ -39,7 +40,7 @@ type AuthCtx = {
   mustChange: boolean;
   login: (id: string, pin: string) => Promise<LoginStep>;
   verify: (ticket: string, code: string) => Promise<{ ok: true } | { ok: false; error: string }>;
-  logout: () => Promise<void>;
+  logout: (all?: boolean) => Promise<void>;
   changePin: (current: string, next: string) => Promise<string | null>;
 };
 
@@ -169,8 +170,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { ok: true };
   }, []);
 
-  const logout = useCallback(async () => {
-    if (STATIC) localStorage.removeItem(SESSION_KEY); else await post("/api/auth/logout", {});
+  const logout = useCallback(async (all = false) => {
+    if (STATIC) localStorage.removeItem(SESSION_KEY); else await post("/api/auth/logout", { all });
+    try { sessionStorage.removeItem("hlink-su"); } catch {} // PIN再入力の有効状態も破棄
     setUser(null); setMustChange(false);
   }, []);
 

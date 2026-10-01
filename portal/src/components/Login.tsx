@@ -10,6 +10,7 @@ import { BASE, DEMO_ACCOUNTS, DEMO_PIN, STATIC, demoEmailOf, resetApi, useAuth, 
 import { PIN_HINT } from "@/lib/pin";
 import { totp } from "@/lib/totp";
 import { Logo } from "./ui";
+import { SettingsButton } from "./Settings";
 
 type Ok = Extract<LoginStep, { ok: true }>;
 type View = "id" | "pin" | "code" | "help";
@@ -17,6 +18,7 @@ type View = "id" | "pin" | "code" | "help";
 function Frame({ children }: { children: React.ReactNode }) {
   return (
     <div className="grid min-h-dvh place-items-center bg-bg px-4 py-8">
+      <div className="fixed right-3 top-3"><SettingsButton /></div>
       <div className="w-full max-w-[400px]">
         <div className="mb-6 flex flex-col items-center text-center">
           <Logo variant="vertical" height={120} />
@@ -96,7 +98,7 @@ export function LoginScreen() {
           {err && <Err>{err}</Err>}
           <button className="btn btn-primary w-full !h-11" disabled={busy || pin.length < 4}>{busy ? "確認中…" : "次へ（セキュリティコード）"}</button>
           <HelpLink onClick={help} />
-          {STATIC && <p className="rounded-lg bg-surface-2 p-3 text-[12.5px] text-ink-2"><b className="text-ink">デモ環境</b>：初期PINは <code className="rounded bg-white px-1">{DEMO_PIN}</code></p>}
+          {STATIC && <p className="rounded-lg bg-surface-2 p-3 text-[12.5px] text-ink-2"><b className="text-ink">デモ環境</b>：初期PINは <code className="rounded bg-surface px-1">{DEMO_PIN}</code></p>}
         </form>
       )}
       {view === "code" && step && (
@@ -128,7 +130,7 @@ function DemoBox({ onPick }: { onPick: (id: string) => void }) {
       <b className="text-ink">デモ環境</b>（実際の認証ではありません）<br />
       アカウント：
       {DEMO_ACCOUNTS.map((e) => (
-        <button type="button" key={e.id} className="ml-1 mt-1 rounded bg-white px-1.5 underline-offset-2 hover:underline" onClick={() => onPick(e.id)}>{e.id} {e.name}（{ROLE_LABEL[e.role]}）</button>
+        <button type="button" key={e.id} className="ml-1 mt-1 rounded bg-surface px-1.5 underline-offset-2 hover:underline" onClick={() => onPick(e.id)}>{e.id} {e.name}（{ROLE_LABEL[e.role]}）</button>
       ))}
     </div>
   );
@@ -180,7 +182,7 @@ function Help({ initialId, onBack }: { initialId: string; onBack: () => void }) 
     <div className="space-y-4">
       <h2 className="flex items-center gap-2 font-bold"><LifeBuoy size={16} aria-hidden />ログインできない・PINをお忘れの方</h2>
       <div className="grid grid-cols-2 gap-1 rounded-lg bg-surface-2 p-1 text-[13px]" role="tablist">
-        {([["mail", "メールで再設定"], ["admin", "管理者へ申請"]] as const).map(([k, l]) => <button key={k} role="tab" aria-selected={tab === k} onClick={() => { setTab(k); setErr(""); }} className={`rounded-md py-1.5 ${tab === k ? "bg-white font-bold shadow-sm" : "text-ink-2"}`}>{l}</button>)}
+        {([["mail", "メールで再設定"], ["admin", "管理者へ申請"]] as const).map(([k, l]) => <button key={k} role="tab" aria-selected={tab === k} onClick={() => { setTab(k); setErr(""); }} className={`rounded-md py-1.5 ${tab === k ? "bg-surface font-bold shadow-sm" : "text-ink-2"}`}>{l}</button>)}
       </div>
       {tab === "mail" ? (
         <form onSubmit={sendMail} className="space-y-3">

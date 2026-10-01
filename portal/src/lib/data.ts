@@ -71,19 +71,23 @@ export const NEWS_SEED: News[] = [
 ];
 
 // ---------- ワークフロー ----------
-export type WfType = "経費精算" | "休暇申請" | "出張申請" | "稟議" | "IT機器・アカウント申請";
+export type WfType = "経費精算" | "休暇申請" | "出張申請" | "稟議" | "IT機器・アカウント申請" | "異動変更届";
 export const WF_TYPES: { type: WfType; desc: string }[] = [
   { type: "経費精算", desc: "交通費・接待交際費・立替金などの精算" },
   { type: "休暇申請", desc: "年次有給休暇、特別休暇、振替休日" },
   { type: "出張申請", desc: "国内・海外出張の事前申請" },
   { type: "稟議", desc: "稟議書・決裁（契約・投資・購買など）" },
   { type: "IT機器・アカウント申請", desc: "PC・ソフトウェア・アクセス権の申請" },
+  { type: "異動変更届", desc: "住所・氏名・家族・通勤・口座などの変更届（人事）" },
 ];
 export type WfStatus = "承認待ち" | "承認済" | "差戻し" | "却下" | "取下げ";
 export type WfStep = { approverId: string; label: string; state: "待機" | "承認待ち" | "承認" | "差戻し" | "却下"; at?: string; comment?: string };
+/** 申請・承認の操作記録。いつ（サーバー時刻）・誰が・何をしたか・理由を残す（社長・役員も同じ） */
+export type WfEvent = { at: string; by: string; action: "申請" | "承認" | "差戻し" | "却下" | "取下げ" | "修正再申請"; reason?: string };
 export type Workflow = {
   id: string; type: WfType; title: string; applicantId: string; amount?: number;
   category?: string; taxKind?: string; invoiceNo?: string; // 経費精算：勘定科目コード・税区分・適格請求書の登録番号
   from?: string; to?: string; // 休暇申請：期間
   detail: string; createdAt: string; status: WfStatus; steps: WfStep[];
+  history?: WfEvent[];
 };

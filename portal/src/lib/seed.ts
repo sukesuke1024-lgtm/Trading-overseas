@@ -2,6 +2,8 @@
 // デモ版（GitHub Pages）だけ、権限の違いを試せるサンプル従業員と今月の勤怠サンプルを含む。
 import { NEWS_SEED, PRESIDENT, SAMPLE_EMPLOYEES } from "./data";
 import type { CalEvent, Doc, Kpi, Remote } from "./biz";
+import { BENEFIT_TEMPLATES, DEFAULT_EXT_LINKS, DEFAULT_RETENTION, type Asset, type Client } from "./ops";
+import { DEFAULT_AUTHORITY } from "./authority";
 import { DEFAULT_CONDITIONS, holidaySet, isHoliday, pad2, ymd, type DayInput } from "./work";
 import type { State } from "./store";
 
@@ -52,6 +54,19 @@ function demoRemotes(): Remote[] {
   return [{ id: "r1", name: "営業 PC-01（サンプル）", kind: "RDP", host: "pc-sales-01.example.internal", ownerId: "902", note: "社内VPN接続後に利用" }];
 }
 
+function demoClients(): Client[] {
+  return [
+    { code: "C001", name: "サンプル商事株式会社", dept: "営業部", corpNo: "1234567890123", contact: "03-0000-0000", active: true, note: "デモ用の架空データ" },
+    { code: "C002", name: "サンプル物産株式会社", dept: "営業部", active: true, note: "デモ用の架空データ" },
+  ];
+}
+function demoAssets(): Asset[] {
+  return [
+    { id: "PC-0001", name: "ノートPC（営業用）", category: "PC", maker: "サンプル", model: "SAMPLE-14", serial: "SN-DEMO-0001", purchaseDate: "2024-04-01", cost: 180000, usefulLife: 4, assigneeId: "902", dept: "営業部", location: "本社", status: "使用中", note: "デモ用の架空データ" },
+    { id: "SP-0001", name: "業務用スマートフォン", category: "スマートフォン", purchaseDate: "2025-04-01", cost: 90000, usefulLife: 4, assigneeId: "902", dept: "営業部", status: "使用中", note: "デモ用の架空データ（10万円未満は少額資産）" },
+  ];
+}
+
 export function seedState(demo: boolean): State {
   return {
     employees: demo ? [PRESIDENT, ...SAMPLE_EMPLOYEES] : [PRESIDENT],
@@ -72,6 +87,17 @@ export function seedState(demo: boolean): State {
     reports: {},
     kpis: demo ? demoKpis() : [],
     remotes: demo ? demoRemotes() : [],
+    files: [],
+    filesDel: [],
+    clients: demo ? demoClients() : [],
+    checks: [],
+    extLinks: DEFAULT_EXT_LINKS,
+    mails: [],
+    assets: demo ? demoAssets() : [],
+    authority: DEFAULT_AUTHORITY,
+    benefits: demo ? BENEFIT_TEMPLATES.map((b, i) => ({ ...b, id: `b${i + 1}`, updatedAt: TODAY(), updatedBy: "管理者" })) : [],
+    retention: DEFAULT_RETENTION,
+    archiveMeta: { at: "", auditUpTo: "" },
   };
 }
 export { ymd };

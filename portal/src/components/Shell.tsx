@@ -4,15 +4,20 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
-  Home, Megaphone, FileCheck2, Clock, Users, Search, Bell, Menu, X, ShieldCheck, CornerDownLeft, LogOut, Ellipsis, Cloud, CloudOff,
-  Landmark, BookText, FileSearch, Rocket, FileSpreadsheet, KeyRound, CalendarDays, NotebookPen, Target, Receipt, FileSignature, FolderOpen, Network, CalendarCheck2, MonitorUp,
+  Home, Megaphone, FileCheck2, Clock, Users, Search, Menu, X, ShieldCheck, CornerDownLeft, LogOut, Ellipsis, Cloud, CloudOff,
+  Landmark, BookText, FileSearch, Rocket, FileSpreadsheet, Settings as Gear, ShieldAlert, Lock, HeartHandshake, LifeBuoy, FileUser, Mail, Boxes, Archive, ScrollText, Banknote, CalendarDays, NotebookPen, Target, Receipt, FileSignature, FolderOpen, Network, CalendarCheck2, MonitorUp,
 } from "lucide-react";
 import { COMPANY, ROLE_LABEL } from "@/lib/data";
 import { BASE, STATIC, AuthProvider, useAuth } from "@/lib/auth";
 import { can, type RoleName } from "@/lib/perm";
-import { StoreProvider, useStore } from "@/lib/store";
+import { StoreProvider, useStore, ymd } from "@/lib/store";
 import { LoginScreen, PinInput, ResetScreen } from "./Login";
+import { LogoutDialog, NavBar, NotifyBell, StepUpGate, pathNeedsPin, pinLabel, type Notice } from "./Nav";
+import { PrefsApplier, SettingsDialog } from "./Settings";
 import { PIN_HINT } from "@/lib/pin";
+import { isMailUnread } from "@/lib/ops";
+import { archiveDue } from "@/lib/archive";
+import { runLocalArchive } from "@/lib/archive-client";
 import { Logo } from "./ui";
 
 type NavItem = { href: string; label: string; icon: typeof Home; show?: (r: RoleName) => boolean; group?: string };
@@ -21,27 +26,41 @@ const NAV: NavItem[] = [
   { href: "/attendance", label: "勤怠", icon: Clock },
   { href: "/workflow", label: "申請・承認", icon: FileCheck2 },
   { href: "/news", label: "お知らせ", icon: Megaphone },
+  { href: "/inbox", label: "問い合わせBox", icon: Mail },
   { href: "/calendar", label: "業務カレンダー", icon: CalendarDays, group: "業務" },
   { href: "/reports", label: "業務日報", icon: NotebookPen, group: "業務" },
   { href: "/kpi", label: "KPI管理", icon: Target, group: "業務" },
   { href: "/workflow?type=経費精算", label: "経費精算", icon: Receipt, group: "業務" },
   { href: "/workflow?type=稟議", label: "決裁・稟議書", icon: FileSignature, group: "業務" },
+  { href: "/changes", label: "異動・変更届", icon: FileUser, group: "業務" },
+  { href: "/clients", label: "関与先・与信/反社", icon: HeartHandshake, group: "業務" },
   { href: "/leave", label: "有給管理", icon: CalendarCheck2, group: "業務" },
+  { href: "/payslips", label: "給与明細・源泉徴収票", icon: Banknote, group: "マイページ" },
   { href: "/docs", label: "文書管理・社内規程", icon: FolderOpen, group: "社内情報" },
   { href: "/directory", label: "従業員名簿・組織図", icon: Network, group: "社内情報" },
+  { href: "/authority", label: "職務権限規程", icon: ScrollText, group: "社内情報" },
+  { href: "/benefits", label: "福利厚生のご案内", icon: HeartHandshake, group: "社内情報" },
+  { href: "/helpdesk", label: "ヘルプデスク", icon: LifeBuoy, group: "社内情報" },
+  { href: "/assets", label: "固定資産台帳", icon: Boxes, group: "社内情報" },
   { href: "/remote", label: "リモート接続", icon: MonitorUp, group: "社内情報" },
   { href: "/employees", label: "従業員・権限", icon: Users, show: can.viewEmployees, group: "管理" },
   { href: "/excel", label: "Excel連携・CSV", icon: FileSpreadsheet, show: can.excel, group: "管理" },
+  { href: "/security", label: "セキュリティ", icon: ShieldAlert, show: can.manageSecurity, group: "管理" },
+  { href: "/archive", label: "履歴アーカイブ", icon: Archive, show: can.admin, group: "管理" },
   { href: "/accounting", label: "決算書・販管費", icon: Landmark, show: can.viewAccounting, group: "経理・会計" },
   { href: "/journal", label: "仕訳帳", icon: BookText, show: can.viewAccounting, group: "経理・会計" },
   { href: "/audit", label: "監査・税務調査出力", icon: FileSearch, show: can.audit, group: "監査・統制" },
   { href: "/ipo", label: "上場準備", icon: Rocket, show: can.viewAccounting, group: "監査・統制" },
   { href: "/admin", label: "監査ログ", icon: ShieldCheck, show: can.audit, group: "監査・統制" },
 ];
+const CRUMBS: Record<string, { group?: string; label: string }> = Object.fromEntries(NAV.map((n) => [n.href.split("?")[0], { group: n.group, label: n.label }]));
+CRUMBS["/workflow"] = { label: "申請・承認" };
+CRUMBS["/reset"] = { label: "PINの再設定" };
 
 export function Shell({ children }: { children: ReactNode }) {
   return (
     <AuthProvider>
+      <PrefsApplier />
       <Gate>{children}</Gate>
     </AuthProvider>
   );
@@ -53,7 +72,7 @@ function Gate({ children }: { children: ReactNode }) {
   const { user, ready, logout, mustChange } = useAuth();
   const path = usePathname();
   const router = useRouter();
-  const signOut = () => logout().then(() => router.replace("/")); // ログアウト後は必ずログイン画面（トップ）へ
+  const signOut = (all = false) => logout(all).then(() => router.replace("/")); // ログアウト後は必ずログイン画面（トップ）へ
   useEffect(() => {
     if (!user) return;
     let t = setTimeout(() => { logout().then(() => router.replace("/")); }, IDLE_MS);
@@ -71,7 +90,7 @@ function Gate({ children }: { children: ReactNode }) {
   return (
     <StoreProvider meId={user.id} role={user.role}>
       <Frame onLogout={signOut}>{children}</Frame>
-      {mustChange && !STATIC && <PinDialog forced onClose={() => {}} onLogout={signOut} />}
+      {mustChange && !STATIC && <PinDialog forced onClose={() => {}} onLogout={() => signOut(false)} />}
     </StoreProvider>
   );
 }
@@ -104,10 +123,12 @@ function PinDialog({ forced = false, onClose, onLogout }: { forced?: boolean; on
   );
 }
 
-function Frame({ children, onLogout }: { children: ReactNode; onLogout: () => void }) {
+function Frame({ children, onLogout }: { children: ReactNode; onLogout: (all: boolean) => void }) {
   const path = usePathname();
-  const { s, meId, role, sync, me } = useStore();
+  const { s, d: dispatch, meId, role, sync, me, mails } = useStore();
   const [pinOpen, setPinOpen] = useState(false);
+  const [setOpenSettings, setSettings] = useState(false);
+  const [logoutOpen, setLogoutOpen] = useState(false);
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState(false);
 
@@ -119,12 +140,32 @@ function Frame({ children, onLogout }: { children: ReactNode; onLogout: () => vo
     return () => window.removeEventListener("keydown", h);
   }, []);
 
+  // デモ版：管理者が開いているとき、保存期間を超えた履歴を1日1回、自動でCSVへ書き出す（サーバー版はサーバーが実行）
+  const sRef = useRef(s);
+  useEffect(() => { sRef.current = s; });
+  useEffect(() => {
+    if (!STATIC || role !== "admin") return;
+    const today = ymd(new Date());
+    if (!archiveDue(sRef.current, today)) return;
+    runLocalArchive(sRef.current, today).then(({ next, recs }) => dispatch({ t: "archive-apply", next, recs })).catch(() => {});
+  }, [role, dispatch]);
+
   const pending = s.workflows.filter((w) => w.status === "承認待ち" && w.steps.find((st) => st.state === "承認待ち")?.approverId === meId).length;
   const unread = s.news.filter((n) => !(s.read[meId] ?? []).includes(n.id)).length;
+  const unreadMail = mails.filter((m) => isMailUnread(m, s.read[meId] ?? [], meId)).length;
+  const today = ymd(new Date());
+  const notices: Notice[] = [
+    { href: "/workflow", label: "承認の依頼", count: pending, tone: "warn" },
+    { href: "/inbox", label: "未読の問い合わせ", count: unreadMail },
+    { href: "/news", label: "未読のお知らせ", count: unread },
+    { href: "/reports", label: "今日の日報が未提出", count: s.attendance[meId]?.[today]?.start && s.reports[meId]?.[today]?.status !== "提出済" ? 1 : 0 },
+    { href: "/docs", label: "未確認の規程", count: s.docs.filter((x) => s.docAck[meId]?.[x.id] !== x.version).length },
+  ];
+
 
   return (
     <div className="min-h-screen lg:grid lg:grid-cols-[236px_1fr] print:block">
-      <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-2 focus:top-2 focus:z-50 focus:rounded focus:bg-white focus:p-2">本文へスキップ</a>
+      <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-2 focus:top-2 focus:z-50 focus:rounded focus:bg-surface focus:p-2">本文へスキップ</a>
       {open && <div className="fixed inset-0 z-30 bg-black/40 lg:hidden" onClick={() => setOpen(false)} />}
       <aside className={`print:hidden fixed inset-y-0 left-0 z-40 w-[236px] overflow-y-auto bg-side text-side-text transition-transform lg:sticky lg:top-0 lg:h-screen lg:translate-x-0 ${open ? "translate-x-0" : "-translate-x-full"}`} aria-label="メインメニュー">
         <div className="px-5 pb-4 pt-6">
@@ -136,13 +177,15 @@ function Frame({ children, onLogout }: { children: ReactNode; onLogout: () => vo
             const head = group && group !== arr[idx - 1]?.group ? <div key={`g-${group}`} className="mb-1 mt-4 px-3 text-[10.5px] font-semibold tracking-wide text-side-text/60">{group}</div> : null;
             const base = href.split("?")[0], hasQuery = href.includes("?");
             const active = hasQuery ? false : href === "/" ? path === "/" : path.startsWith(base);
-            const badge = href === "/workflow" ? pending : href === "/news" ? unread : 0;
+            const badge = href === "/workflow" ? pending : href === "/news" ? unread : href === "/inbox" ? unreadMail : 0;
+            const locked = pathNeedsPin(base);
             return (
               <div key={href}>{head}
               <Link href={href} onClick={() => setOpen(false)} aria-current={active ? "page" : undefined}
                 className={`mb-0.5 flex items-center gap-3 rounded-lg px-3 py-2 text-[13.5px] transition-colors ${active ? "border-l-2 border-brand bg-white/10 font-semibold text-white" : "border-l-2 border-transparent hover:bg-white/8"}`}>
                 <Icon size={17} aria-hidden />
                 <span className="flex-1">{label}</span>
+                {locked && <Lock size={12} className="opacity-60" aria-label="PINの再入力が必要" />}
                 {badge > 0 && <span className="rounded-full bg-brand px-1.5 text-[11px] font-bold text-white tabular">{badge}</span>}
               </Link></div>
             );
@@ -155,12 +198,10 @@ function Frame({ children, onLogout }: { children: ReactNode; onLogout: () => vo
           <button className="btn !h-9 !w-9 !p-0 lg:hidden" aria-label="メニューを開く" onClick={() => setOpen(true)}><Menu size={18} /></button>
           <button onClick={() => setQ(true)} className="flex h-9 min-w-0 flex-1 items-center gap-2 rounded-lg border border-line-strong bg-bg px-3 text-left text-ink-3 sm:max-w-md">
             <Search size={15} aria-hidden /><span className="flex-1 truncate">従業員・お知らせ・申請を検索</span>
-            <kbd className="hidden rounded border border-line-strong bg-white px-1.5 text-[11px] sm:block">⌘K</kbd>
+            <kbd className="hidden rounded border border-line-strong bg-surface px-1.5 text-[11px] sm:block">⌘K</kbd>
           </button>
           <div className="ml-auto flex items-center gap-3">
-            <Link href="/news" className="relative grid h-9 w-9 place-items-center rounded-lg hover:bg-surface-2" aria-label={`未読のお知らせ ${unread}件`}>
-              <Bell size={17} />{unread > 0 && <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-bad" />}
-            </Link>
+<NotifyBell items={notices} />
             <span className={`hidden items-center gap-1 text-[11.5px] md:flex ${sync === "offline" ? "text-bad" : "text-ink-3"}`} title={sync === "local" ? "この端末内に保存（デモ）" : sync === "offline" ? "サーバーに接続できません" : "サーバーと同期"}>
               {sync === "offline" ? <CloudOff size={14} aria-hidden /> : <Cloud size={14} aria-hidden />}{sync === "local" ? "端末内保存" : sync === "offline" ? "オフライン" : sync === "saving" ? "保存中…" : "同期済み"}
             </span>
@@ -169,11 +210,14 @@ function Frame({ children, onLogout }: { children: ReactNode; onLogout: () => vo
               <div className="text-[11px] text-ink-3">{me.job || ROLE_LABEL[role]}・{ROLE_LABEL[role]}</div>
             </div>
             <div className="grid h-9 w-9 place-items-center rounded-full bg-ink text-[13px] font-bold text-white" aria-hidden>{me.name[0]}</div>
-            <button className="btn !h-9 !w-9 !p-0" aria-label="PINを変更" title="PINを変更" onClick={() => setPinOpen(true)}><KeyRound size={16} /></button>
-            <button className="btn !h-9 !w-9 !p-0" aria-label="ログアウト" title="ログアウト" onClick={onLogout}><LogOut size={16} /></button>
+            <button className="btn !h-9 !w-9 !p-0" aria-label="設定" title="設定（ナイトモード・ブルーライトカット・PIN）" onClick={() => setSettings(true)}><Gear size={16} /></button>
+            <button className="btn !h-9 !w-9 !p-0" aria-label="ログアウト" title="ログアウト" onClick={() => setLogoutOpen(true)}><LogOut size={16} /></button>
           </div>
         </header>
-        <main id="main" className="mx-auto max-w-[1180px] px-4 py-6 pb-[calc(88px+env(safe-area-inset-bottom))] lg:px-8 lg:pb-6">{children}</main>
+        <main id="main" className="mx-auto max-w-[1180px] px-4 py-5 pb-[calc(88px+env(safe-area-inset-bottom))] lg:px-8 lg:pb-6">
+          <NavBar table={CRUMBS} />
+          {pathNeedsPin(path) ? <StepUpGate userId={meId} label={pinLabel(path)}>{children}</StepUpGate> : children}
+        </main>
         <footer className="print:hidden border-t border-line px-4 py-5 text-[12px] text-ink-3 lg:px-8">
           © {COMPANY.name}　社外秘（Confidential）。無断での転載・社外共有を禁じます。　{STATIC ? "※デモ環境：データはこのブラウザ内にのみ保存されます。" : "※データは社内サーバーに保存され、ログイン中の端末間で同期されます。"}
         </footer>
@@ -192,7 +236,9 @@ function Frame({ children, onLogout }: { children: ReactNode; onLogout: () => vo
         <button onClick={() => setOpen(true)} className="flex flex-col items-center gap-0.5 py-2 text-[10.5px] text-ink-3"><Ellipsis size={21} aria-hidden />メニュー</button>
       </nav>
       {q && <Palette onClose={() => setQ(false)} />}
-      {pinOpen && <PinDialog onClose={() => setPinOpen(false)} onLogout={onLogout} />}
+      {pinOpen && <PinDialog onClose={() => setPinOpen(false)} onLogout={() => onLogout(false)} />}
+      {setOpenSettings && <SettingsDialog onClose={() => setSettings(false)} onPin={() => setPinOpen(true)} />}
+      {logoutOpen && <LogoutDialog onClose={() => setLogoutOpen(false)} onLogout={(all) => { setLogoutOpen(false); onLogout(all); }} />}
     </div>
   );
 }

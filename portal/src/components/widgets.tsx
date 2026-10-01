@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, CalendarCheck2, FileSpreadsheet, FileSignature, MonitorUp, NotebookPen, Receipt, Target, Users } from "lucide-react";
+import { ArrowRight, ShieldAlert, CalendarCheck2, FileSpreadsheet, FileSignature, MonitorUp, NotebookPen, Receipt, Target, Users } from "lucide-react";
 import { eventTime, eventsOn, kpiAttainment, paidLeave } from "@/lib/biz";
 import { can } from "@/lib/perm";
 import { missingDays, monthLabel, monthSummary } from "@/lib/attendance-view";
@@ -9,7 +9,8 @@ import { fmtH, overtimeLevel, holidayName } from "@/lib/work";
 import { useStore, ymd } from "@/lib/store";
 import { Badge, Progress, yen } from "@/components/ui";
 import { TodayCard } from "@/components/TodayCard";
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import { BASE, STATIC } from "@/lib/auth";
 
 const More = ({ href, children }: { href: string; children: ReactNode }) => <Link href={href} className="flex items-center gap-1 text-[12px] text-brand-2">{children}<ArrowRight size={13} /></Link>;
 
@@ -177,24 +178,48 @@ function ExcelCard() {
   );
 }
 
-export type WidgetDef = { id: string; title: string; wide?: boolean; flat?: boolean; show: (role: Parameters<typeof can.admin>[0]) => boolean; C: () => ReactNode };
+/** col: 広い画面で置く列（main=広い列／side=狭い列）。列ごとに上から詰めて並べるので、カードの下に不要な空白ができない */
+/** 管理者向け：セキュリティの要対応（承認待ちの端末・未確認のアラート） */
+function SecurityWidget() {
+  const [sum, setSum] = useState<{ alerts: number; high: number; pending: number } | null>(STATIC ? { alerts: 2, high: 2, pending: 1 } : null);
+  useEffect(() => {
+    if (STATIC) return;
+    let alive = true;
+    const load = () => fetch(`${BASE}/api/security`, { credentials: "same-origin", cache: "no-store" }).then((r) => (r.ok ? r.json() : null)).then((j) => { if (alive && j) setSum({ alerts: (j.alerts ?? []).filter((a: { ack?: boolean }) => !a.ack).length, high: (j.alerts ?? []).filter((a: { ack?: boolean; level: string }) => !a.ack && a.level === "high").length, pending: (j.devices ?? []).filter((d: { status: string }) => d.status === "pending").length }); }).catch(() => {});
+    const t0 = setTimeout(load, 0), t = setInterval(load, 60_000);
+    return () => { alive = false; clearTimeout(t0); clearInterval(t); };
+  }, []);
+  const bad = !!sum && (sum.high > 0 || sum.pending > 0);
+  return (
+    <>
+      <div className="mb-2 flex items-center justify-between"><h2 className="flex items-center gap-2 font-bold"><ShieldAlert size={15} aria-hidden />セキュリティ{STATIC ? "（サンプル）" : ""}</h2><More href="/security">確認する</More></div>
+      {!sum ? <p className="text-[12.5px] text-ink-3">確認中…</p> : (
+        <div className="grid grid-cols-2 gap-2 text-center"><div className={`rounded-lg py-2 ${sum.alerts ? "bg-bad-soft" : "bg-surface-2"}`}><div className="tabular text-xl font-bold">{sum.alerts}</div><div className="text-[11.5px] text-ink-3">未確認のアラート</div></div><div className={`rounded-lg py-2 ${sum.pending ? "bg-warn-soft" : "bg-surface-2"}`}><div className="tabular text-xl font-bold">{sum.pending}</div><div className="text-[11.5px] text-ink-3">承認待ちの端末</div></div></div>
+      )}
+      {bad ? <p className="mt-2 text-[12.5px] text-bad">不審なアクセスの可能性があります。内容を確認してください。</p> : <p className="mt-2 text-[12.5px] text-ink-3">登録端末・許可ネットワークで保護されています。</p>}
+    </>
+  );
+}
+
+export type WidgetDef = { id: string; title: string; col: "main" | "side"; flat?: boolean; show: (role: Parameters<typeof can.admin>[0]) => boolean; C: () => ReactNode };
 export const WIDGETS: WidgetDef[] = [
-  { id: "punch", title: "打刻", show: () => true, C: TodayCard },
-  { id: "attendance", title: "今月の勤怠", wide: true, show: () => true, C: Attendance },
-  { id: "todo", title: "ToDo・承認依頼", wide: true, show: () => true, C: Todo },
-  { id: "schedule", title: "予定", show: () => true, C: Schedule },
-  { id: "quick", title: "よく使う操作", show: () => true, C: Quick },
-  { id: "report", title: "今日の日報", show: () => true, C: ReportToday },
-  { id: "leave", title: "有給休暇", show: () => true, C: LeaveMine },
-  { id: "team", title: "全社の状況", show: can.viewAllAttendance, C: Team },
-  { id: "reportsTeam", title: "日報の提出状況", show: can.viewAllReports, C: ReportsTeam },
-  { id: "leaveAlert", title: "有給5日取得（要対応）", show: can.viewAllLeave, C: LeaveAlert },
-  { id: "kpi", title: "KPI", show: (r) => r !== "employee", C: KpiSummary },
-  { id: "excel", title: "給与計算への連携", show: can.excel, C: ExcelCard },
-  { id: "news", title: "お知らせ", wide: true, flat: true, show: () => true, C: NewsList },
+  { id: "punch", title: "打刻", col: "side", show: () => true, C: TodayCard },
+  { id: "attendance", title: "今月の勤怠", col: "main", show: () => true, C: Attendance },
+  { id: "todo", title: "ToDo・承認依頼", col: "main", show: () => true, C: Todo },
+  { id: "schedule", title: "予定", col: "side", show: () => true, C: Schedule },
+  { id: "quick", title: "よく使う操作", col: "side", show: () => true, C: Quick },
+  { id: "report", title: "今日の日報", col: "side", show: () => true, C: ReportToday },
+  { id: "leave", title: "有給休暇", col: "side", show: () => true, C: LeaveMine },
+  { id: "team", title: "全社の状況", col: "main", show: can.viewAllAttendance, C: Team },
+  { id: "reportsTeam", title: "日報の提出状況", col: "side", show: can.viewAllReports, C: ReportsTeam },
+  { id: "leaveAlert", title: "有給5日取得（要対応）", col: "side", show: can.viewAllLeave, C: LeaveAlert },
+  { id: "kpi", title: "KPI", col: "main", show: (r) => r !== "employee", C: KpiSummary },
+  { id: "security", title: "セキュリティ", col: "side", show: can.manageSecurity, C: SecurityWidget },
+  { id: "excel", title: "給与計算への連携", col: "side", show: can.excel, C: ExcelCard },
+  { id: "news", title: "お知らせ", col: "main", flat: true, show: () => true, C: NewsList },
 ];
-/** 初期の表示順（一般社員／役職者で異なる）。役職者向けのウィジェットは役職者のみ */
+/** 初期の表示順（一般社員／役職者で異なる）。勤怠のすぐ下にお知らせ。役職者向けのウィジェットは役職者のみ */
 export const DEFAULT_ORDER = {
-  employee: ["punch", "attendance", "todo", "schedule", "report", "leave", "quick", "news"],
-  lead: ["punch", "attendance", "todo", "team", "kpi", "schedule", "reportsTeam", "leaveAlert", "excel", "report", "leave", "quick", "news"],
+  employee: ["punch", "attendance", "news", "todo", "schedule", "report", "leave", "quick"],
+  lead: ["punch", "attendance", "news", "todo", "team", "kpi", "security", "schedule", "reportsTeam", "leaveAlert", "excel", "report", "leave", "quick"],
 } as const;

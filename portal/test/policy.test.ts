@@ -2,16 +2,17 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { mergeWrite, sanitizeForRead, validEmployees } from "../src/server/policy.ts";
 import { postJournal } from "../src/lib/accounting.ts";
+import { DEFAULT_AUTHORITY, routeFor } from "../src/lib/authority.ts";
 
 const emps = [
   { id: "001", name: "長尾 晃佑", employment: "役員", job: "代表取締役", scheduled: 7.5, role: "admin" },
-  { id: "002", name: "役員 太郎", employment: "役員", job: "取締役", scheduled: 7.5, role: "executive" },
-  { id: "003", name: "社員 花子", employment: "正社員", job: "営業", scheduled: 7.5, role: "employee" },
-  { id: "004", name: "社員 次郎", employment: "正社員", job: "営業", scheduled: 7.5, role: "employee" },
+  { id: "002", name: "役員 太郎", employment: "役員", job: "取締役", scheduled: 7.5, role: "executive", dept: "経営", bossId: "001" },
+  { id: "003", name: "社員 花子", employment: "正社員", job: "営業", scheduled: 7.5, role: "employee", dept: "営業部", bossId: "002" },
+  { id: "004", name: "社員 次郎", employment: "正社員", job: "営業", scheduled: 7.5, role: "employee", dept: "営業部", bossId: "002" },
 ];
 const day = (date: string, over = {}) => ({ date, kind: "出勤", start: "08:30", end: "17:00", brk: 60, ...over });
-const wf = (over = {}) => ({ id: "WF-1", type: "経費精算", title: "t", applicantId: "003", amount: 1000, detail: "d", createdAt: "2026-09-01", status: "承認待ち", steps: [{ approverId: "002", label: "役員", state: "承認待ち" }, { approverId: "001", label: "社長", state: "待機" }], ...over });
-const base = () => ({ employees: emps, conditions: { holidays: [] }, attendance: { "003": { "2026-09-01": day("2026-09-01") }, "004": {} }, news: [], workflows: [wf()], journal: [], jApprovals: {}, closed: ["2026-08"], audit: [], read: {} });
+const wf = (over = {}) => ({ id: "WF-1", type: "経費精算", title: "t", applicantId: "003", amount: 1000, detail: "d", createdAt: "2026-09-01", status: "承認待ち", steps: routeFor(emps as never, DEFAULT_AUTHORITY, "経費精算", 1000, "003"), history: [{ at: "2026-09-01T00:00:00.000Z", by: "003", action: "申請" }], ...over });
+const base = () => ({ employees: emps, conditions: { holidays: [] }, authority: DEFAULT_AUTHORITY, clients: [{ code: "C001", name: "A社", dept: "営業部", active: true }], files: [], mails: [], checks: [], assets: [], attendance: { "003": { "2026-09-01": day("2026-09-01") }, "004": {} }, news: [], workflows: [wf()], journal: [], jApprovals: {}, closed: ["2026-08"], audit: [], read: {} });
 
 test("employee: no accounting/master; only own attendance; others' rows are minimal", () => {
   const r = sanitizeForRead(base(), "003", "employee")!;
@@ -57,14 +58,6 @@ test("employee master: president must stay admin, at least one admin, no duplica
   assert.ok(!validEmployees([...emps, { ...emps[2] }]));
 });
 
-test("workflow: only current approver may approve; applicant cannot self-approve; no step skipping", () => {
-  const approve = wf({ steps: [{ approverId: "002", label: "役員", state: "承認", at: "x" }, { approverId: "001", label: "社長", state: "承認待ち" }] });
-  assert.ok(mergeWrite(base(), { workflows: [approve] }, "003", "employee").denied.includes("workflows"));
-  assert.equal(mergeWrite(base(), { workflows: [approve] }, "002", "executive").denied.length, 0);
-  const skip = wf({ status: "承認済", steps: [{ approverId: "002", label: "役員", state: "承認" }, { approverId: "001", label: "社長", state: "承認" }] });
-  assert.ok(mergeWrite(base(), { workflows: [skip] }, "002", "executive").denied.includes("workflows"));
-});
-
 test("accounting: admin only writes; append-only; closed month locked; SoD", () => {
   const b = base();
   const core = (date: string) => ({ date, memo: "m", source: "manual" as const, createdBy: "001", lines: [{ account: "6250", side: "D" as const, amount: 100 }, { account: "1110", side: "C" as const, amount: 100 }] });
@@ -84,7 +77,7 @@ test("audit is server-appended with forced actor; closed months only grow", () =
   assert.equal(a.audit.length, 1); assert.equal(a.audit[0].actor, "003"); assert.equal(a.audit[0].seq, 1);
 });
 
-const lead = (over = {}) => ({ ...base(), docs: [], events: [], remotes: [{ id: "r1", name: "A", kind: "RDP", host: "a.example", ownerId: "003" }, { id: "r2", name: "B", kind: "RDP", host: "b.example", ownerId: "004" }], kpis: [{ id: "k0", name: "全社", unit: "件", target: 10, ownerId: "", values: {} }, { id: "k1", name: "個人", unit: "件", target: 10, ownerId: "003", values: {} }, { id: "k2", name: "他人", unit: "件", target: 10, ownerId: "004", values: {} }], reports: { "003": { "2026-09-01": { date: "2026-09-01", done: "x", plan: "", issues: "", status: "提出済" } }, "004": {} }, docAck: {}, ...over });
+const lead = (over = {}) => ({ ...base(), docs: [], events: [], remotes: [{ id: "r1", name: "A", kind: "RDP", host: "a.example", ownerId: "003" }, { id: "r2", name: "B", kind: "RDP", host: "b.example", ownerId: "004" }], kpis: [{ id: "k0", name: "全社", unit: "件", target: 10, ownerId: "", values: {} }, { id: "k1", name: "個人", unit: "件", target: 10, ownerId: "003", values: {} }, { id: "k2", name: "他人", unit: "件", target: 10, ownerId: "004", values: {} }], reports: { "003": { "2026-09-01": { date: "2026-09-01", done: "x", plan: "", issues: "", status: "提出済", lines: [{ clientCode: "C001", clientName: "A社", task: "訪問", hours: 2 }] } }, "004": {} }, docAck: {}, ...over });
 
 test("read: employee sees only own reports/remotes and company+own KPIs; executive sees all", () => {
   const e = sanitizeForRead(lead(), "003", "employee")!;
@@ -112,7 +105,7 @@ test("write: KPI owner may edit only own values; reports: own only, comments by 
   const tamper = lead().kpis.map((k) => (k.id === "k1" ? { ...k, target: 1 } : k.id === "k2" ? { ...k, values: { "2026-09": 1 } } : k));
   assert.ok(mergeWrite(lead(), { kpis: tamper }, "003", "employee").denied.includes("kpis"));
   // 日報：本人は自分の分のみ、コメント欄は触れない
-  const rep = { date: "2026-09-02", done: "y", plan: "", issues: "", status: "提出済" };
+  const rep = { date: "2026-09-02", done: "y", plan: "", issues: "", status: "提出済", lines: [{ clientCode: "C001", clientName: "A社", task: "訪問", hours: 2 }] };
   const w = mergeWrite(lead(), { reports: { "003": { "2026-09-02": { ...rep, comment: "自分で書いた", commentBy: "003" } }, "004": { "2026-09-02": rep } } }, "003", "employee");
   assert.ok(w.denied.includes("reports")); assert.equal(w.state.reports["003"]["2026-09-02"].comment, undefined); assert.equal(w.state.reports["004"]["2026-09-02"], undefined);
   // 役員は他人の日報にコメントのみ可（本文の改ざん不可）

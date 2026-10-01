@@ -6,15 +6,22 @@ import { ArrowDown, ArrowUp, RotateCcw, Settings2 } from "lucide-react";
 import { ROLE_LABEL } from "@/lib/data";
 import { useStore, ymd } from "@/lib/store";
 import { Badge } from "@/components/ui";
+import { useMedia } from "@/lib/useMedia";
 import { DEFAULT_ORDER, WIDGETS } from "@/components/widgets";
 
 type Prefs = { order: string[]; hidden: string[] };
+
+function Card({ w }: { w: (typeof WIDGETS)[number] }) {
+  const C = w.C;
+  return w.id === "punch" ? <C /> : <section aria-label={w.title} className={`card min-w-0 ${w.flat ? "" : "p-4"}`}><C /></section>;
+}
 
 export default function Home() {
   const { s, meId, role, me } = useStore();
   const now = new Date();
   const hour = now.getHours();
-  const key = `hlink-widgets-${meId}`;
+  const key = `hlink-widgets2-${meId}`;
+  const wide = useMedia("(min-width: 1024px)");
   const defaults = role === "employee" ? DEFAULT_ORDER.employee : DEFAULT_ORDER.lead;
   const [prefs, setPrefs] = useState<Prefs>(() => {
     try { const p = JSON.parse(localStorage.getItem(key) ?? "null") as Prefs | null; if (p && Array.isArray(p.order) && Array.isArray(p.hidden)) return p; } catch {}
@@ -63,13 +70,12 @@ export default function Home() {
         </section>
       )}
 
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
-        {shown.map((w) => {
-          const C = w.C;
-          return w.id === "punch" ? <C key={w.id} /> : <section key={w.id} aria-label={w.title} className={`card min-w-0 ${w.flat ? "" : "p-4"} ${w.wide ? "lg:col-span-2" : ""}`}><C /></section>;
-        })}
-        {shown.length === 0 && <p className="text-ink-3 lg:col-span-3">表示するウィジェットがありません。右上の「ウィジェットの設定」から選んでください。</p>}
-      </div>
+      {shown.length === 0 ? <p className="text-ink-3">表示するウィジェットがありません。右上の「ウィジェットの設定」から選んでください。</p> : wide ? (
+        <div className="grid grid-cols-3 items-start gap-5">
+          <div className="col-span-2 min-w-0 space-y-5">{shown.filter((w) => w.col === "main").map((w) => <Card key={w.id} w={w} />)}</div>
+          <div className="min-w-0 space-y-5">{shown.filter((w) => w.col === "side").map((w) => <Card key={w.id} w={w} />)}</div>
+        </div>
+      ) : <div className="space-y-5">{shown.map((w) => <Card key={w.id} w={w} />)}</div>}
       <p className="text-[11.5px] text-ink-3">{ymd(now)}</p>
     </div>
   );

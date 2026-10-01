@@ -1,6 +1,6 @@
 // 業務機能（文書管理・カレンダー・日報・KPI・リモート接続・名簿/組織図・有給）の型と純粋関数。
-import type { Employee } from "./data";
-import type { DayInput } from "./work";
+import type { Employee } from "./data.ts";
+import type { DayInput } from "./work.ts";
 
 // ---------- 文書管理（社内規程など） ----------
 export const DOC_CATEGORIES = ["就業規則", "賃金規程", "服務・コンプライアンス", "情報セキュリティ", "経理・経費", "テレワーク", "安全衛生", "マニュアル", "その他"] as const;
@@ -12,7 +12,10 @@ export const EVENT_CATEGORIES = ["全社", "会議", "研修", "締め日・期�
 export type CalEvent = { id: string; title: string; date: string; endDate?: string; start?: string; end?: string; category: string; note?: string; by: string };
 
 // ---------- 業務日報 ----------
-export type Report = { date: string; done: string; plan: string; issues: string; hours?: number; status: "下書き" | "提出済"; at?: string; comment?: string; commentBy?: string };
+/** 日報の明細：関与先コードを入れると、登録済みの関与先名・事業部が自動で入る */
+export type ReportLine = { clientCode: string; clientName: string; task: string; hours: number };
+export type Report = { date: string; done: string; plan: string; issues: string; hours?: number; lines?: ReportLine[]; status: "下書き" | "提出済"; at?: string; comment?: string; commentBy?: string };
+export const REPORT_REQUIRED = "業務内容・時間・関与先コード（明細1行以上）";
 export type Reports = Record<string, Record<string, Report>>; // 従業員番号 → 日付 → 日報
 
 // ---------- KPI ----------

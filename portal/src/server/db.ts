@@ -15,10 +15,18 @@ export type UserRec = {
   fails: number;
   lockedUntil: number;
   mustChange: boolean;
+  retired?: boolean; // 退職者：セッション失効・端末無効化済み
 };
 export type ResetTicket = { id: string; exp: number; by: "email" | "admin"; used?: boolean };
 export type ResetRequest = { rid: string; id: string; note: string; at: string; handled?: boolean };
-export type Db = { users: Record<string, UserRec>; state: unknown | null; resets?: Record<string, ResetTicket>; resetRequests?: ResetRequest[] };
+export type FileMeta = { owner: string; name: string; size: number; mime: string; at: number };
+export type Device = { id: string; empId: string; label: string; tokenHash: string; status: "approved" | "pending" | "revoked"; createdAt: string; lastSeen: string; lastIp: string; ua: string; approvedBy?: string };
+export type SecAlert = { id: string; at: string; type: string; level: "high" | "mid" | "low"; empId: string; ip: string; detail: string; ack?: boolean; ackBy?: string };
+export type SecSettings = { mode: "enforce" | "monitor" | "off"; nets: string[] };
+export type Db = {
+  users: Record<string, UserRec>; state: unknown | null; resets?: Record<string, ResetTicket>; resetRequests?: ResetRequest[];
+  files?: Record<string, FileMeta>; devices?: Device[]; alerts?: SecAlert[]; sec?: SecSettings; revoked?: Record<string, number>;
+};
 
 const DIR = process.env.PORTAL_DATA_DIR ?? path.join(process.cwd(), "data");
 const FILE = path.join(DIR, "db.json");

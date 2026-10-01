@@ -1,11 +1,12 @@
 import { sessionUser } from "@/server/session";
 import { subscribe } from "@/server/bus";
+import { roleOfServer } from "@/server/db";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(req: Request) {
   const uid = sessionUser(req);
-  if (!uid) return new Response("unauthorized", { status: 401 });
+  if (!uid || !roleOfServer(uid)) return new Response("unauthorized", { status: 401 }); // 退職者は即遮断
   const enc = new TextEncoder();
   let off = () => {}, beat: ReturnType<typeof setInterval>;
   const stream = new ReadableStream({

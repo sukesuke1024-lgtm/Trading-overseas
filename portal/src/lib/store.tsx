@@ -1,14 +1,16 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
-import { PRESIDENT_ID, defaultRole, type Employee, type News, type Role, type WfStep, type WfType, type Workflow } from "./data";
+import { PRESIDENT_ID, defaultRole, type Employee, type News, type Role, type WfEvent, type WfStep, type WfType, type Workflow } from "./data";
 import { BASE, STATIC } from "./auth";
 import { append, type Chained } from "./chain";
 import { can } from "./perm";
 import { seedState } from "./seed";
-import { acct, checkEntry, isInvoiceNo, isPosted, postJournal, reversal, type Approvals, type Journal, type JournalCore, type TaxKind } from "./accounting";
+import { checkEntry, isPosted, postJournal, reversal, workflowJournal, type Approvals, type Journal, type JournalCore, type TaxKind } from "./accounting";
 import { holidaySet, workdaysBetween, type Conditions, type DayInput } from "./work";
 import type { CalEvent, Doc, Kpi, Remote, Report, Reports } from "./biz";
+import { canSeeFile, canSeeMail, maskMail, viewerOf, type Asset, type Benefit, type Client, type CreditCheck, type ExtLink, type FileRec, type Mail, type Retention } from "./ops";
+import { routeFor, type AuthorityRule } from "./authority";
 
 export type AuditBody = { at: string; actor: string; action: string };
 export type Audit = AuditBody & Chained;
@@ -32,6 +34,17 @@ export type State = {
   reports: Reports; // 業務日報
   kpis: Kpi[];
   remotes: Remote[]; // リモート接続先
+  files: FileRec[]; // アップロードされたファイルの台帳（本体は別保管）
+  filesDel: string[]; // 削除の依頼（サーバーへ送る未送信分。省略されたものを削除とはみなさない）
+  clients: Client[]; // 関与先マスタ
+  checks: CreditCheck[]; // 与信・反社確認の記録
+  extLinks: ExtLink[]; // 外部調査サービス・公的サイトへのリンク
+  mails: Mail[]; // 問い合わせ・ヘルプデスク
+  assets: Asset[]; // 固定資産台帳
+  authority: AuthorityRule[]; // 職務権限規程（承認ルート）
+  benefits: Benefit[]; // 福利厚生の案内
+  retention: Retention; // 履歴の保存期間（月）
+  archiveMeta: { at: string; auditUpTo: string };
 };
 
 const KEY = "hlink-portal-v1";
@@ -57,7 +70,7 @@ type Action =
   | { t: "news-del"; id: string }
   | { t: "wf-new"; w: Workflow }
   | { t: "wf-act"; id: string; approverId: string; act: "承認" | "差戻し" | "却下"; comment: string }
-  | { t: "wf-cancel"; id: string; by: string }
+  | { t: "wf-cancel"; id: string; by: string; reason: string }
   | { t: "att-set"; emp: string; date: string; day: DayInput | null; by: string; log?: string }
   | { t: "emp-import"; list: Omit<Employee, "role">[]; by: string }
   | { t: "emp-update"; id: string; patch: Partial<Employee>; by: string }
@@ -80,6 +93,24 @@ type Action =
   | { t: "kpi-value"; id: string; month: string; value: number | null }
   | { t: "remote-save"; remote: Remote; by: string }
   | { t: "remote-del"; id: string; by: string }
+  | { t: "file-add"; rec: FileRec }
+  | { t: "file-del"; id: string; by: string }
+  | { t: "client-save"; client: Client; by: string }
+  | { t: "client-del"; code: string; by: string }
+  | { t: "check-add"; check: CreditCheck }
+  | { t: "ext-save"; link: ExtLink; by: string }
+  | { t: "ext-del"; id: string; by: string }
+  | { t: "mail-new"; mail: Mail }
+  | { t: "mail-reply"; id: string; by: string; body: string }
+  | { t: "mail-status"; id: string; status: Mail["status"]; by: string }
+  | { t: "asset-save"; asset: Asset; by: string }
+  | { t: "asset-del"; id: string; by: string }
+  | { t: "authority-set"; rules: AuthorityRule[]; by: string }
+  | { t: "benefit-save"; benefit: Benefit; by: string }
+  | { t: "benefit-del"; id: string; by: string }
+  | { t: "retention-set"; retention: Retention; by: string }
+  | { t: "archive-apply"; next: State; recs: FileRec[] }
+  | { t: "wf-edit"; id: string; by: string; patch: Pick<Workflow, "title" | "detail"> & Partial<Pick<Workflow, "amount" | "category" | "taxKind" | "invoiceNo">>; reason: string; route: WfStep[] }
   | { t: "reset" };
 
 const nowIso = () => new Date().toISOString();
@@ -92,17 +123,6 @@ function logged(s: State, actor: string, action: string, patch: Partial<State> =
 
 export const EXPENSE_ACCOUNTS = ["6210", "6230", "6240", "6250", "6220", "6270", "6140", "6330"];
 
-function workflowJournal(w: Workflow, job?: string): Omit<JournalCore, "id"> | null {
-  if ((w.type !== "経費精算" && w.type !== "出張申請") || !w.amount) return null;
-  const code = w.category && acct(w.category) ? w.category : "6210";
-  const taxable = (w.taxKind ?? "課税10%") === "課税10%" && !!w.invoiceNo && isInvoiceNo(w.invoiceNo); // 適格請求書がなければ仕入税額控除しない
-  const tax = taxable ? Math.round((w.amount * 10) / 110) : 0;
-  return {
-    date: ymd(new Date()), memo: `${w.type}：${w.title}`, evidenceNo: w.id, invoiceNo: w.invoiceNo, source: "workflow", createdBy: "system",
-    lines: [{ account: code, side: "D", amount: w.amount - tax, tax: taxable ? "課税10%" : "対象外", dept: job }, ...(tax ? [{ account: "1510", side: "D" as const, amount: tax }] : []), { account: "2120", side: "C", amount: w.amount }],
-  };
-}
-
 function reducer(s: State, a: Action): State {
   switch (a.t) {
     case "load": return a.s;
@@ -111,23 +131,30 @@ function reducer(s: State, a: Action): State {
     case "read": return (s.read[a.emp] ?? []).includes(a.id) ? s : { ...s, read: { ...s.read, [a.emp]: [...(s.read[a.emp] ?? []), a.id] } };
     case "news": return logged(s, a.n.author, `お知らせ投稿: ${a.n.title}`, { news: [a.n, ...s.news] });
     case "news-del": return logged(s, "管理者", `お知らせ削除: ${a.id}`, { news: s.news.filter((n) => n.id !== a.id) });
-    case "wf-new": return logged(s, a.w.applicantId, `申請: ${a.w.id}`, { workflows: [a.w, ...s.workflows] });
+    case "wf-new": return logged(s, a.w.applicantId, `申請: ${a.w.id}`, { workflows: [{ ...a.w, history: [{ at: nowIso(), by: a.w.applicantId, action: "申請" }] }, ...s.workflows] });
     case "wf-cancel":
-      return logged(s, a.by, `取下げ: ${a.id}`, { workflows: s.workflows.map((w) => (w.id === a.id && w.applicantId === a.by && w.status === "承認待ち" ? { ...w, status: "取下げ" } : w)) });
+      return logged(s, a.by, `取下げ: ${a.id}（${a.reason}）`, { workflows: s.workflows.map((w) => (w.id === a.id && w.applicantId === a.by && w.status === "承認待ち" ? { ...w, status: "取下げ", history: [...(w.history ?? []), { at: nowIso(), by: a.by, action: "取下げ", reason: a.reason }] } : w)) });
+    case "wf-edit": {
+      // 差戻し後の修正再申請。変更理由が必須。承認ルートは職務権限規程で再計算し、最初から承認をやり直す
+      const w0 = s.workflows.find((w) => w.id === a.id);
+      if (!w0 || w0.status !== "差戻し" || w0.applicantId !== a.by || !a.reason.trim()) return s;
+      const ev: WfEvent = { at: nowIso(), by: a.by, action: "修正再申請", reason: a.reason };
+      return logged(s, a.by, `修正再申請: ${a.id}（${a.reason}）`, { workflows: s.workflows.map((w) => (w.id === a.id ? { ...w, ...a.patch, status: "承認待ち", steps: a.route, history: [...(w.history ?? []), ev] } : w)) });
+    }
     case "wf-act": {
       let auto: Omit<JournalCore, "id"> | null = null;
       const workflows = s.workflows.map((w) => {
         if (w.id !== a.id || w.status !== "承認待ち") return w;
         const idx = w.steps.findIndex((st) => st.state === "承認待ち");
         if (idx < 0 || w.steps[idx].approverId !== a.approverId) return w; // 現在の承認者以外は操作不可
-        const steps: WfStep[] = w.steps.map((st, i) => (i === idx ? { ...st, state: a.act, at: ymd(new Date()), comment: a.comment } : st));
+        const steps: WfStep[] = w.steps.map((st, i) => (i === idx ? { ...st, state: a.act, at: nowIso(), comment: a.comment } : st));
         let status: Workflow["status"] = w.status;
         if (a.act === "承認") {
           if (idx + 1 < steps.length) steps[idx + 1] = { ...steps[idx + 1], state: "承認待ち" };
           else status = "承認済";
         } else status = a.act === "差戻し" ? "差戻し" : "却下";
-        const nw = { ...w, steps, status };
-        if (status === "承認済") auto = workflowJournal(nw, s.employees.find((e) => e.id === w.applicantId)?.job);
+        const nw = { ...w, steps, status, history: [...(w.history ?? []), { at: nowIso(), by: a.approverId, action: a.act, ...(a.comment.trim() ? { reason: a.comment.trim() } : {}) } as WfEvent] };
+        if (status === "承認済") auto = STATIC ? workflowJournal(nw, s.employees.find((e) => e.id === w.applicantId)?.job, ymd(new Date())) : null; // サーバー版ではサーバーが仕訳を自動作成する
         return nw;
       });
       let journal = s.journal, note = "";
@@ -209,6 +236,23 @@ function reducer(s: State, a: Action): State {
       const exists = s.remotes.some((x) => x.id === a.remote.id);
       return logged(s, a.by, `リモート接続先${exists ? "更新" : "登録"}: ${a.remote.name}`, { remotes: exists ? s.remotes.map((x) => (x.id === a.remote.id ? a.remote : x)) : [...s.remotes, a.remote] });
     }
+    case "file-add": return logged(s, a.rec.uploadedBy, `ファイル登録: ${a.rec.name}（${a.rec.kind}・${a.rec.scope}${a.rec.dept ? `・${a.rec.dept}` : ""}）`, { files: [a.rec, ...s.files] });
+    case "file-del": return logged(s, a.by, `ファイル削除: ${s.files.find((f) => f.id === a.id)?.name ?? a.id}`, { files: s.files.filter((f) => f.id !== a.id), filesDel: STATIC ? s.filesDel : [...s.filesDel, a.id] });
+    case "client-save": { const ex = s.clients.some((c) => c.code === a.client.code); return logged(s, a.by, `関与先${ex ? "更新" : "登録"}: ${a.client.code} ${a.client.name}`, { clients: ex ? s.clients.map((c) => (c.code === a.client.code ? a.client : c)) : [...s.clients, a.client] }); }
+    case "client-del": return logged(s, a.by, `関与先削除: ${a.code}`, { clients: s.clients.filter((c) => c.code !== a.code) });
+    case "check-add": return logged(s, a.check.checkedBy, `${a.check.kind}確認: ${a.check.clientCode} → ${a.check.result}`, { checks: [a.check, ...s.checks] });
+    case "ext-save": { const ex = s.extLinks.some((l) => l.id === a.link.id); return logged(s, a.by, `外部リンク${ex ? "更新" : "登録"}: ${a.link.name}`, { extLinks: ex ? s.extLinks.map((l) => (l.id === a.link.id ? a.link : l)) : [...s.extLinks, a.link] }); }
+    case "ext-del": return logged(s, a.by, `外部リンク削除: ${a.id}`, { extLinks: s.extLinks.filter((l) => l.id !== a.id) });
+    case "mail-new": return { ...s, mails: [a.mail, ...s.mails] };
+    case "mail-reply": return { ...s, mails: s.mails.map((m) => (m.id === a.id ? { ...m, thread: [...m.thread, { by: a.by, at: nowIso(), body: a.body }], status: m.status === "未対応" && m.from !== a.by ? "対応中" : m.status } : m)) };
+    case "mail-status": return logged(s, a.by, `問い合わせ状態: ${a.id} → ${a.status}`, { mails: s.mails.map((m) => (m.id === a.id ? { ...m, status: a.status } : m)) });
+    case "asset-save": { const ex = s.assets.some((x) => x.id === a.asset.id); return logged(s, a.by, `固定資産${ex ? "更新" : "登録"}: ${a.asset.id} ${a.asset.name}`, { assets: ex ? s.assets.map((x) => (x.id === a.asset.id ? a.asset : x)) : [...s.assets, a.asset] }); }
+    case "asset-del": return logged(s, a.by, `固定資産削除: ${a.id}`, { assets: s.assets.filter((x) => x.id !== a.id) });
+    case "authority-set": return logged(s, a.by, "職務権限規程（承認ルート）を更新", { authority: a.rules });
+    case "benefit-save": { const ex = s.benefits.some((x) => x.id === a.benefit.id); return logged(s, a.by, `福利厚生${ex ? "更新" : "登録"}: ${a.benefit.title}`, { benefits: ex ? s.benefits.map((x) => (x.id === a.benefit.id ? a.benefit : x)) : [a.benefit, ...s.benefits] }); }
+    case "benefit-del": return logged(s, a.by, `福利厚生削除: ${a.id}`, { benefits: s.benefits.filter((x) => x.id !== a.id) });
+    case "retention-set": return logged(s, a.by, "履歴の保存期間を更新", { retention: a.retention });
+    case "archive-apply": return a.recs.length ? logged({ ...a.next, files: [...a.recs, ...a.next.files] }, "system", `履歴アーカイブ: ${a.recs.map((r) => r.name).join("、")}`) : a.next; // 対象がない日は記録しない
     case "remote-del": return logged(s, a.by, `リモート接続先削除: ${s.remotes.find((x) => x.id === a.id)?.name ?? a.id}`, { remotes: s.remotes.filter((x) => x.id !== a.id) });
   }
 }
@@ -226,6 +270,9 @@ type Ctx = {
   sync: "local" | "synced" | "saving" | "offline";
   posted: (j: Journal) => boolean;
   holidays: Set<string>;
+  /** 自分が閲覧できるファイル・メッセージ（サーバー版は届く時点で絞り込み済み。デモ版は端末内の全データから、同じ規則で絞り込む） */
+  files: FileRec[];
+  mails: Mail[];
 };
 const C = createContext<Ctx | null>(null);
 const FALLBACK: Employee = { id: "?", name: "?", employment: "", job: "", scheduled: 7.5, role: "employee" };
@@ -256,6 +303,13 @@ export function StoreProvider({ meId, role, children }: { meId: string; role: Ro
     if (!can.manageKpis(role)) o.kpis = st.kpis.filter((k) => k.ownerId === meId);
     if (!can.viewAllReports(role)) o.reports = { [meId]: st.reports[meId] ?? {} };
     o.docAck = { [meId]: st.docAck[meId] ?? {} };
+    // 書き込める分だけ送る（サーバーでも検証する）
+    if (!can.manageClients(role)) delete o.clients;
+    if (!can.manageAssets(role)) delete o.assets;
+    if (!can.manageAuthority(role)) delete o.authority;
+    if (!can.manageBenefits(role)) delete o.benefits;
+    if (!can.manageExtLinks(role)) delete o.extLinks;
+    if (!can.manageAuthority(role)) { delete o.retention; delete o.archiveMeta; }
     return o;
   }, [role, meId]);
   const fromServer = useCallback((raw: Partial<State>): State => ({ ...seedState(false), ...raw, audit: raw.audit ?? [], auditOutbox: [] }), []);
@@ -336,25 +390,18 @@ export function StoreProvider({ meId, role, children }: { meId: string; role: Ro
 
   const emp = useCallback((id: string) => s.employees.find((e) => e.id === id), [s.employees]);
   const nameOf = useCallback((id: string) => s.employees.find((e) => e.id === id)?.name ?? id, [s.employees]);
-  const nextWfId = useCallback(() => `WF-${new Date().getFullYear()}-${String(s.workflows.length + 1).padStart(4, "0")}`, [s.workflows.length]);
+  const nextWfId = useCallback(() => { const y = new Date().getFullYear(); const n = Math.max(0, ...s.workflows.filter((w) => w.id.startsWith(`WF-${y}-`)).map((w) => Number(w.id.split("-")[2]) || 0)) + 1; return `WF-${y}-${String(n).padStart(4, "0")}`; }, [s.workflows]);
 
-  // 承認ルート：社長（代表取締役）→（稟議100万円以上は）もう1名の役員/管理者。申請者本人は承認者にならない（他に承認者がいない社長のみ自己決裁）
-  const approvalRoute = useCallback((type: WfType, amount = 0, applicantId: string): WfStep[] => {
-    const approvers = s.employees.filter((e) => (e.role === "admin" || e.role === "executive") && e.id !== applicantId);
-    const president = approvers.find((e) => e.id === PRESIDENT_ID) ?? approvers[0];
-    if (!president) return [{ approverId: applicantId, label: "代表者（自己決裁）", state: "承認待ち" }];
-    const steps: WfStep[] = [{ approverId: president.id, label: president.id === PRESIDENT_ID ? "代表取締役" : "承認者", state: "承認待ち" }];
-    if (type === "稟議" && amount >= 1_000_000) {
-      const second = approvers.find((e) => e.id !== president.id);
-      if (second) steps.push({ approverId: second.id, label: "役員（100万円以上）", state: "待機" });
-    }
-    return steps;
-  }, [s.employees]);
+  // 承認ルート：職務権限規程（金額・種別ごとの承認者）から自動で決める
+  const approvalRoute = useCallback((type: WfType, amount = 0, applicantId: string): WfStep[] => routeFor(s.employees, s.authority, type, amount, applicantId), [s.employees, s.authority]);
 
   const posted = useCallback((j: Journal) => isPosted(j, s.jApprovals), [s.jApprovals]);
   const holidays = useMemo(() => holidaySet(s.conditions), [s.conditions]);
   const me = useMemo(() => s.employees.find((e) => e.id === meId) ?? { ...FALLBACK, id: meId, name: meId, role }, [s.employees, meId, role]);
-  const v = useMemo(() => ({ s, d, meId, role, me, emp, nameOf, nextWfId, approvalRoute, sync, posted, holidays }), [s, meId, role, me, emp, nameOf, nextWfId, approvalRoute, sync, posted, holidays]);
+  const viewer = useMemo(() => viewerOf(me), [me]);
+  const files = useMemo(() => s.files.filter((f) => canSeeFile(f, viewer, f.wfId ? s.workflows.find((w) => w.id === f.wfId) : undefined)), [s.files, s.workflows, viewer]);
+  const mails = useMemo(() => s.mails.filter((m) => canSeeMail(m, viewer)).map((m) => maskMail(m, meId)), [s.mails, viewer, meId]);
+  const v = useMemo(() => ({ s, d, meId, role, me, emp, nameOf, nextWfId, approvalRoute, sync, posted, holidays, files, mails }), [s, meId, role, me, emp, nameOf, nextWfId, approvalRoute, sync, posted, holidays, files, mails]);
   if (!ready || !ready2) return <div className="grid min-h-screen place-items-center text-ink-3">読み込み中…</div>;
   return <C.Provider value={v}>{children}</C.Provider>;
 }
