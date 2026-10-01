@@ -72,7 +72,7 @@ jobs:
       - name: Checkout previous portal version
         uses: actions/checkout@v4
         with:
-          ref: 682fa3e
+          ref: 682fa3e69b416494cc84ce5cd1199f5dedeaf7da
           path: legacy
       - name: Build previous portal version
         working-directory: legacy/portal
