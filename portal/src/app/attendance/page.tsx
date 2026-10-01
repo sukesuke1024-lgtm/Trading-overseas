@@ -1,135 +1,209 @@
 "use client";
 
-import { useState } from "react";
-import { AlertTriangle, ChevronLeft, ChevronRight, Pencil, X } from "lucide-react";
-import { HOLIDAYS_2026, calcDay, dayKind, fmtHM, leaveBalance, lastGrantDate, overtimeLevel, summarize, STD_END, STD_START } from "@/lib/attendance-calc";
-import { LEAVE_SEED, empById } from "@/lib/data";
-import { leaveDatesOf, useStore, ymd, type Punch } from "@/lib/store";
+import { Fragment, useState } from "react";
+import { AlertTriangle, ChevronLeft, ChevronRight, Eraser, Lock, Wand2 } from "lucide-react";
+import { ROLE_LABEL } from "@/lib/data";
+import { can } from "@/lib/perm";
+import { missingDays, monthLabel, monthSummary, shiftMonth } from "@/lib/attendance-view";
+import { KINDS, autoKind, calcDay, daysOf, fmtH, holidayName, isHoliday, overtimeLevel, toMin, type DayInput, type Kind } from "@/lib/work";
+import { useStore, ymd } from "@/lib/store";
 import { Badge, PageHeader, Progress } from "@/components/ui";
-import { PLACES, PunchCard } from "@/components/PunchCard";
+import { TodayCard } from "@/components/TodayCard";
 
 const DOW = "日月火水木金土";
+const TABS = ["日別入力", "全員の月次集計"] as const;
 
 export default function Attendance() {
-  const { s, d, meId } = useStore();
-  const me = empById(meId)!;
-  const today = new Date();
-  const [off, setOff] = useState(0);
-  const [edit, setEdit] = useState<string | null>(null);
-  const base = new Date(today.getFullYear(), today.getMonth() + off, 1);
-  const days = Array.from({ length: new Date(base.getFullYear(), base.getMonth() + 1, 0).getDate() }, (_, i) => ymd(new Date(base.getFullYear(), base.getMonth(), i + 1)));
-  const todayS = ymd(today);
-  const punches = s.punches[meId] ?? {};
-
-  const leave = leaveDatesOf(s.workflows, meId);
-  const pending = leaveDatesOf(s.workflows, meId, ["承認待ち"]);
-  const sum = summarize(days, punches, leave, todayS);
-  const lv = overtimeLevel(sum.overtime, sum.legalHoliday);
-  const otH = sum.overtime / 60;
-
-  // 有給：現在の付与期間（直近付与日〜次回付与日）
-  const { last, next } = lastGrantDate(me.joined, todayS);
-  const inPeriod = (dt: string) => dt >= ymd(last) && dt < ymd(next);
-  const taken = [...leave].filter((x) => inPeriod(x) && x <= todayS).length;
-  const planned = [...leave].filter((x) => inPeriod(x) && x > todayS).length;
-  const bal = leaveBalance(me.joined, todayS, LEAVE_SEED.usedBefore + taken + planned, LEAVE_SEED.carryOver);
+  const { s, meId, role, emp, me } = useStore();
+  const today = ymd(new Date());
+  const [month, setMonth] = useState(today.slice(0, 7));
+  const [target, setTarget] = useState(meId);
+  const [tab, setTab] = useState<(typeof TABS)[number]>("日別入力");
+  const viewer = can.viewAllAttendance(role), canEditOthers = can.editAttendanceOfOthers(role);
+  const empId = viewer ? target : meId;
+  const who = emp(empId) ?? me;
+  const editable = empId === meId || canEditOthers;
+  const sum = monthSummary(s.attendance, empId, month, who.scheduled, s.conditions);
+  const lv = overtimeLevel(sum.overtime45, sum.total100);
+  const miss = missingDays(s.attendance, empId, month, s.conditions, today);
   const tone = lv.level === "danger" ? "bad" : lv.level === "warn" || lv.level === "notice" ? "warn" : "brand";
 
   return (
     <div>
-      <PageHeader title="勤怠" sub="打刻から休憩・時間外・深夜・有給を自動計算します（所定 9:00〜18:00／休憩1時間／日曜＝法定休日）。" />
-      <div className="mb-5 grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <PunchCard />
-        <section className="card p-4 lg:col-span-2" aria-label="時間外労働">
-          <div className="mb-1 flex items-center justify-between"><span className="font-bold">時間外労働（36協定管理）</span><span className="tabular text-[13px]"><b>{otH.toFixed(1)}h</b> / 上限45h</span></div>
-          <div className="relative"><Progress value={(otH / 45) * 100} tone={tone} /></div>
-          <div className="mt-1 flex justify-between text-[11.5px] text-ink-3"><span>0</span><span>36h（注意）</span><span>45h</span></div>
-          {lv.level !== "ok" && <p className={`mt-2 flex items-start gap-1.5 text-[12.5px] ${lv.level === "danger" ? "text-bad" : "text-warn"}`}><AlertTriangle size={14} className="mt-0.5 shrink-0" aria-hidden />{lv.message}</p>}
-          <p className="mt-2 text-[12.5px] text-ink-2">月末までの見込み：<b className="tabular">{fmtHM(sum.projectedOvertime)}</b>{sum.projectedOvertime / 60 >= 45 && <span className="ml-2 font-semibold text-warn">上限超過の見込み</span>}</p>
-          <p className="mt-1 text-[11.5px] text-ink-3">特別条項：年6回まで月100時間未満（休日労働含む）・年720時間以内。月80時間超は産業医面談の対象。</p>
-        </section>
-      </div>
+      <PageHeader title="勤怠" sub={`始業・終業・休憩を入力すると、所定内・残業・深夜・休日労働が自動で計算され、Excel（勤怠ブック→賃金計算ブック）に反映できます。`}
+        actions={<div className="flex items-center gap-1"><button className="btn !h-9 !w-9 !p-0" aria-label="前月" onClick={() => setMonth(shiftMonth(month, -1))}><ChevronLeft size={16} /></button><span className="tabular min-w-28 text-center font-bold">{monthLabel(month)}</span><button className="btn !h-9 !w-9 !p-0" aria-label="翌月" onClick={() => setMonth(shiftMonth(month, 1))}><ChevronRight size={16} /></button></div>} />
 
-      <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-8">
-        {[["出勤日数", `${sum.days}日`], ["総実働", fmtHM(sum.work)], ["所定内", fmtHM(sum.scheduled)], ["時間外", fmtHM(sum.overtime)], ["深夜", fmtHM(sum.night)], ["法定休日", fmtHM(sum.legalHoliday)], ["遅刻/早退", `${sum.lateCount}/${sum.earlyCount}`], ["有休（月）", `${sum.leaveDays}日`]].map(([l, v]) => (
-          <div key={l} className="card px-3 py-2.5"><div className="text-[11.5px] text-ink-3">{l}</div><div className="tabular text-lg font-bold">{v}</div></div>
-        ))}
-      </div>
-
-      <section className="card mb-5 p-4" aria-label="年次有給休暇">
-        <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2"><h2 className="font-bold">年次有給休暇</h2><span className="text-[12px] text-ink-3">入社 {me.joined}・次回付与日 {bal.nextGrantDate}</span></div>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
-          {[["今期付与", `${bal.granted}日`], ["繰越", `${bal.carry}日`], ["取得済", `${LEAVE_SEED.usedBefore + taken}日`], ["取得予定", `${planned}日`], ["残日数", `${bal.remaining}日`]].map(([l, v], i) => (
-            <div key={l} className={`rounded-lg px-3 py-2 ${i === 4 ? "bg-brand-soft" : "bg-surface-2"}`}><div className="text-[11.5px] text-ink-3">{l}</div><div className="tabular text-xl font-bold">{v}</div></div>
-          ))}
+      {viewer && (
+        <div className="mb-4 flex flex-wrap items-center gap-2 border-b border-line" role="tablist">
+          {TABS.map((t) => <button key={t} role="tab" aria-selected={tab === t} onClick={() => setTab(t)} className={`-mb-px border-b-2 px-4 py-2 text-[13.5px] font-semibold ${tab === t ? "border-brand text-ink" : "border-transparent text-ink-3"}`}>{t}</button>)}
         </div>
-        <div className="mt-3 space-y-1 text-[12.5px]">
-          {bal.granted >= 10 && <p className={bal.mustTake > 0 ? "text-warn" : "text-good"}>年5日の取得義務：{bal.mustTake > 0 ? `あと${bal.mustTake}日の取得が必要です（付与日から1年以内）。` : "達成済みです。"}</p>}
-          {bal.expiring > 0 && <p className="text-warn">繰越分のうち {bal.expiring}日 は、次回付与日（{bal.nextGrantDate}）に時効（付与から2年）で失効します。</p>}
-          {pending.size > 0 && <p className="text-ink-3">承認待ちの休暇：{pending.size}日（承認後に反映）</p>}
-        </div>
-      </section>
+      )}
 
-      <div className="mb-2 flex items-center justify-between">
-        <h2 className="font-bold">{base.getFullYear()}年{base.getMonth() + 1}月の勤務実績</h2>
-        <div className="flex gap-1"><button className="btn !h-8 !w-8 !p-0" aria-label="前月" onClick={() => setOff(off - 1)}><ChevronLeft size={16} /></button><button className="btn !h-8 !px-2 text-[12px]" onClick={() => setOff(0)}>今月</button><button className="btn !h-8 !w-8 !p-0" aria-label="翌月" onClick={() => setOff(off + 1)}><ChevronRight size={16} /></button></div>
+      {viewer && tab === "全員の月次集計" ? (
+        <AllSummary month={month} onOpen={(id) => { setTarget(id); setTab("日別入力"); }} />
+      ) : (
+        <>
+          <div className="mb-5 grid grid-cols-1 gap-4 lg:grid-cols-3">
+            {empId === meId && month === today.slice(0, 7) ? <TodayCard /> : (
+              <section className="card p-4"><h2 className="font-bold">{who.name}さんの勤怠</h2><p className="mt-1 text-[13px] text-ink-2">{who.job}・{who.employment}・{ROLE_LABEL[who.role]}<br />所定労働時間 {fmtH(who.scheduled)}/日</p>
+                {!editable && <p className="mt-3 flex items-center gap-1.5 rounded-lg bg-surface-2 px-3 py-2 text-[12.5px]"><Lock size={14} aria-hidden />閲覧のみ（役員は他の人の勤怠を修正できません）</p>}
+                {editable && empId !== meId && <p className="mt-3 rounded-lg bg-warn-soft px-3 py-2 text-[12.5px] text-warn">管理者として他の人の勤怠を修正しています。修正は監査ログに記録されます。</p>}
+              </section>
+            )}
+            <section className="card p-4 lg:col-span-2" aria-label="時間外労働（36協定）">
+              {viewer && (
+                <label className="mb-3 flex items-center gap-2 text-[13px]">対象者
+                  <select className="input !h-9 !w-auto" value={empId} onChange={(e) => setTarget(e.target.value)}>{s.employees.map((e) => <option key={e.id} value={e.id}>{e.id} {e.name}</option>)}</select>
+                </label>
+              )}
+              <div className="mb-1 flex items-center justify-between"><span className="font-bold">時間外労働（36協定管理）</span><span className="tabular text-[13px]"><b>{sum.overtime45.toFixed(1)}h</b> / 上限45h</span></div>
+              <Progress value={(sum.overtime45 / 45) * 100} tone={tone} />
+              <div className="mt-1 flex justify-between text-[11.5px] text-ink-3"><span>0</span><span>36h（注意）</span><span>45h</span></div>
+              {lv.level !== "ok" && <p className={`mt-2 flex items-start gap-1.5 text-[12.5px] ${lv.level === "danger" ? "text-bad" : "text-warn"}`}><AlertTriangle size={14} className="mt-0.5 shrink-0" aria-hidden />{lv.message}</p>}
+              <p className="mt-2 text-[11.5px] text-ink-3">時間外＝法定外残業＋法定外休日労働（土・祝）。月100時間未満の判定には法定休日（日）の労働も含みます（現在 {sum.total100.toFixed(1)}h）。</p>
+              {miss.length > 0 && <p className="mt-2 text-[12.5px] text-warn">未入力の所定労働日が {miss.length} 日あります（{miss.slice(0, 4).map((d) => d.slice(5).replace("-", "/")).join("・")}{miss.length > 4 ? " ほか" : ""}）。休みの日は「休み」を選んでください。</p>}
+            </section>
+          </div>
+
+          <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-8">
+            {[["出勤日数", `${sum.workDays + sum.holidayWorkDays}日`], ["所定内", fmtH(sum.scheduled)], ["法定内残業", fmtH(sum.legalIn)], ["法定外残業", fmtH(sum.legalOut)], ["深夜", fmtH(sum.night)], ["休日労働", fmtH(sum.legalHoliday + sum.nonLegalHoliday)], ["有給", `${sum.paidDays}日`], ["欠勤", `${sum.absentDays}日`]].map(([l, v]) => (
+              <div key={l} className="card px-3 py-2.5"><div className="text-[11.5px] text-ink-3">{l}</div><div className="tabular text-lg font-bold">{v}</div></div>
+            ))}
+          </div>
+          {sum.nightExcelDiff !== 0 && <p className="mb-3 rounded-lg bg-warn-soft px-3 py-2 text-[12.5px] text-warn">深夜時間が、Excel（勤怠ブック）の計算式では {sum.nightExcelDiff > 0 ? "+" : ""}{sum.nightExcelDiff}h 異なります（日をまたぐ勤務の二重計上）。「Excel連携」で式の修正を選べます。</p>}
+
+          <DayTable month={month} empId={empId} editable={editable} />
+        </>
+      )}
+    </div>
+  );
+}
+
+type Draft = { kind: Kind | ""; start: string; end: string; brk: string; remote: boolean; note: string };
+const toDraft = (d?: DayInput): Draft => ({ kind: d?.kind ?? "", start: d?.start ?? "", end: d?.end ?? "", brk: d?.brk != null ? String(d.brk) : "", remote: !!d?.remote, note: d?.note ?? "" });
+
+function DayTable({ month, empId, editable }: { month: string; empId: string; editable: boolean }) {
+  const { s, d, meId, holidays, emp, nameOf } = useStore();
+  const today = ymd(new Date());
+  const who = emp(empId);
+  const stored = s.attendance[empId] ?? {};
+
+  const save = (date: string, day: DayInput | null, note: string) => {
+    const corr = empId !== meId || date < today; // 他人の分・過去日の入力は修正として監査ログに残す
+    d({ t: "att-set", emp: empId, date, day, by: meId, log: corr ? `勤怠${day ? "修正" : "削除"}: ${nameOf(empId)} ${date}${note ? `（${note}）` : ""}` : undefined });
+  };
+  const fillStandard = () => {
+    let n = 0;
+    for (const date of daysOf(month)) {
+      if (date > today || isHoliday(date, holidays) || stored[date]) continue;
+      d({ t: "att-set", emp: empId, date, day: { date, kind: "出勤", start: s.conditions.start, end: s.conditions.end, brk: s.conditions.breakMin }, by: meId });
+      n++;
+    }
+    if (n) d({ t: "export-log", by: meId, what: `標準勤務を一括入力: ${nameOf(empId)} ${month}（${n}日）` });
+  };
+
+  return (
+    <div className="card">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-4 py-3">
+        <h2 className="font-bold">日別入力</h2>
+        {editable && <button className="btn !h-8" onClick={fillStandard} title="今日までの所定労働日のうち、未入力の日を 8:30〜17:00（休憩60分）で埋めます"><Wand2 size={14} />未入力の平日を標準勤務で入力</button>}
       </div>
-      <div className="card overflow-x-auto">
-        <table className="w-full min-w-[640px] text-[13px]">
-          <thead><tr><th className="th">日付</th><th className="th">出勤</th><th className="th">退勤</th><th className="th text-right">休憩</th><th className="th text-right">実働</th><th className="th text-right">時間外</th><th className="th text-right">深夜</th><th className="th">備考</th><th className="th w-10"><span className="sr-only">修正</span></th></tr></thead>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[980px] text-[13px]">
+          <thead><tr><th className="th">日付</th><th className="th">区分</th><th className="th">始業</th><th className="th">終業</th><th className="th">休憩(分)</th><th className="th">リモート</th><th className="th text-right">実労働</th><th className="th text-right">所定内</th><th className="th text-right">法定内</th><th className="th text-right">法定外</th><th className="th text-right">深夜</th><th className="th text-right">休日</th><th className="th">備考</th><th className="th w-8"><span className="sr-only">操作</span></th></tr></thead>
           <tbody>
-            {days.map((k) => {
-              const dt = new Date(`${k}T00:00:00`), w = dt.getDay(), kind = dayKind(k);
-              const p = punches[k], c = calcDay(k, p), isLeave = leave.has(k), isToday = k === todayS, future = k > todayS;
+            {daysOf(month).map((date) => {
+              const hol = isHoliday(date, holidays), name = holidayName(date, s.conditions), wd = new Date(`${date}T00:00:00`).getDay();
               return (
-                <tr key={k} className={`${kind !== "workday" ? "bg-bg text-ink-3" : ""} ${isToday ? "!bg-brand-soft" : ""}`}>
-                  <td className="td tabular whitespace-nowrap">{dt.getMonth() + 1}/{dt.getDate()}（{DOW[w]}）</td>
-                  <td className="td tabular">{isLeave ? "" : p?.in ?? ""}</td>
-                  <td className="td tabular">{isLeave ? "" : p?.out ?? (p?.in && !isToday ? <span className="text-bad">未打刻</span> : "")}</td>
-                  <td className="td tabular text-right">{c.breakMin ? `${c.breakMin}分` : ""}</td>
-                  <td className="td tabular text-right">{c.work ? fmtHM(c.work) : ""}</td>
-                  <td className="td tabular text-right">{c.overtime ? <span className={c.overtime > 120 ? "font-semibold text-warn" : ""}>{fmtHM(c.overtime)}</span> : ""}</td>
-                  <td className="td tabular text-right">{c.night ? fmtHM(c.night) : ""}</td>
-                  <td className="td whitespace-nowrap">
-                    <div className="flex flex-wrap gap-1">
-                      {isLeave && <Badge tone="good">年休</Badge>}
-                      {kind === "legal-off" && <span>法定休日{c.legalHoliday ? <Badge tone="warn">休日労働</Badge> : ""}</span>}
-                      {kind === "prescribed-off" && <span>{HOLIDAYS_2026.has(k) ? "祝日" : "所定休日"}</span>}
-                      {c.late && <Badge tone="warn">遅刻</Badge>}{c.early && <Badge tone="warn">早退</Badge>}
-                      {p?.place && p.place !== "オフィス" && <Badge tone="brand">{p.place}</Badge>}
-                      {p?.edited && <Badge>修正済</Badge>}
-                    </div>
-                  </td>
-                  <td className="td">{!future && !isLeave && <button className="text-ink-3 hover:text-brand" aria-label={`${k} を修正`} onClick={() => setEdit(k)}><Pencil size={14} /></button>}</td>
-                </tr>
+                <Fragment key={date}>
+                  <DayRow date={date} stored={stored[date]} hol={hol} label={`${Number(date.slice(5, 7))}/${Number(date.slice(8))}（${DOW[wd]}）${name ? ` ${name}` : ""}`} isToday={date === today}
+                    scheduled={who?.scheduled ?? 7.5} editable={editable} onSave={save} />
+                </Fragment>
               );
             })}
           </tbody>
         </table>
       </div>
-      <p className="mt-2 text-[11.5px] text-ink-3">休憩は法定最低（6時間超45分／8時間超60分）を自動控除。時間外は所定8時間超。所定休日（土・祝）の労働は全て時間外、日曜は法定休日労働として集計。深夜は22:00〜5:00。始業{STD_START}／終業{STD_END}。</p>
-      {edit && <EditDialog date={edit} punch={punches[edit]} onClose={() => setEdit(null)} onSave={(p, reason) => { d({ t: "punch", emp: meId, date: edit, p: { ...p, edited: true }, log: `打刻修正 ${edit}：${reason}` }); setEdit(null); }} />}
+      <p className="px-4 py-2 text-[11.5px] text-ink-3">入力はすぐ保存されます。日をまたぐ勤務は終業を「25:00」のように入力します。休日（土日・休日マスタ）に勤務すると自動で「休日出勤」になります。法定外＝8時間超、法定内＝所定7.5時間超〜8時間、休日労働は日曜が法定休日（35%）、土曜・祝日が法定外休日（25%）。</p>
     </div>
   );
 }
 
-function EditDialog({ date, punch, onClose, onSave }: { date: string; punch?: Punch; onClose: () => void; onSave: (p: Punch, reason: string) => void }) {
-  const [f, setF] = useState({ in: punch?.in ?? "", out: punch?.out ?? "", brk: punch?.break?.toString() ?? "", place: punch?.place ?? PLACES[0], reason: "" });
-  const c = calcDay(date, { in: f.in, out: f.out, break: f.brk ? Number(f.brk) : undefined });
+function DayRow({ date, stored, hol, label, isToday, scheduled, editable, onSave }: { date: string; stored?: DayInput; hol: boolean; label: string; isToday: boolean; scheduled: number; editable: boolean; onSave: (date: string, day: DayInput | null, note: string) => void }) {
+  const { s, holidays } = useStore();
+  const sj = JSON.stringify(stored ?? null);
+  const [prev, setPrev] = useState(sj);
+  const [dr, setDr] = useState<Draft>(() => toDraft(stored));
+  if (prev !== sj) { setPrev(sj); setDr(toDraft(stored)); } // 外部（他端末・打刻）の更新を取り込む
+
+  const bad = (v: string) => v !== "" && toMin(v) == null;
+  const errs = { start: bad(dr.start), end: bad(dr.end), brk: dr.brk !== "" && !(Number(dr.brk) >= 0 && Number(dr.brk) <= 600) };
+  const live: DayInput | null = dr.kind || dr.start || dr.end ? { date, kind: (dr.kind || autoKind(date, holidays)) as Kind, start: dr.start || undefined, end: dr.end || undefined, brk: dr.brk === "" ? undefined : Number(dr.brk), remote: dr.remote || undefined, note: dr.note || undefined } : null;
+  const calc = live ? calcDay(live, scheduled, holidays, s.conditions) : null;
+
+  const commit = (next: Draft, note = "") => {
+    setDr(next);
+    if (errs.start || errs.end || errs.brk || bad(next.start) || bad(next.end)) return; // 不正な値は保存しない
+    const nonWork = next.kind === "有給休暇" || next.kind === "欠勤" || next.kind === "休み";
+    const times = !nonWork && (next.start || next.end);
+    if (!next.kind && !times) { onSave(date, null, note); return; }
+    const kind = (nonWork ? next.kind : autoKind(date, holidays, (next.kind || undefined) as Kind | undefined)) as Kind;
+    onSave(date, { date, kind, start: nonWork ? undefined : next.start || undefined, end: nonWork ? undefined : next.end || undefined, brk: nonWork || next.brk === "" ? undefined : Number(next.brk), remote: next.remote || undefined, note: next.note || undefined }, note);
+  };
+  const std = () => commit({ ...dr, kind: autoKind(date, holidays), start: s.conditions.start, end: s.conditions.end, brk: String(s.conditions.breakMin) }, "標準勤務");
+  const dis = !editable;
+  const cell = "input !h-8 !px-1.5 tabular";
+
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4" onClick={onClose} role="dialog" aria-modal="true" aria-label="打刻修正">
-      <form className="card w-full max-w-md space-y-3 p-5" onClick={(e) => e.stopPropagation()} onSubmit={(e) => { e.preventDefault(); onSave({ in: f.in || undefined, out: f.out || undefined, break: f.brk ? Number(f.brk) : undefined, place: f.place }, f.reason); }}>
-        <div className="flex items-center justify-between"><h2 className="text-lg font-bold">打刻の修正（{date}）</h2><button type="button" onClick={onClose} aria-label="閉じる"><X size={16} /></button></div>
-        <div className="grid grid-cols-3 gap-3">
-          <div><label className="label" htmlFor="ei">出勤</label><input id="ei" type="time" className="input tabular" value={f.in} onChange={(e) => setF({ ...f, in: e.target.value })} /></div>
-          <div><label className="label" htmlFor="eo">退勤</label><input id="eo" type="time" className="input tabular" value={f.out} onChange={(e) => setF({ ...f, out: e.target.value })} /></div>
-          <div><label className="label" htmlFor="eb">休憩（分）</label><input id="eb" type="number" min={0} max={240} placeholder="自動" className="input tabular" value={f.brk} onChange={(e) => setF({ ...f, brk: e.target.value })} /></div>
-        </div>
-        <div><label className="label" htmlFor="ep">勤務場所</label><select id="ep" className="input" value={f.place} onChange={(e) => setF({ ...f, place: e.target.value })}>{PLACES.map((x) => <option key={x}>{x}</option>)}</select></div>
-        <div><label className="label" htmlFor="er">修正理由（必須・監査ログに記録）</label><input id="er" required className="input" value={f.reason} onChange={(e) => setF({ ...f, reason: e.target.value })} placeholder="例：打刻忘れ（客先直行）" /></div>
-        {f.in && f.out && <p className="rounded-lg bg-bg p-2 text-[12.5px] text-ink-2">自動計算：実働 <b className="tabular">{fmtHM(c.work)}</b>（休憩 {c.breakMin}分）／時間外 <b className="tabular">{fmtHM(c.overtime)}</b>／深夜 <b className="tabular">{fmtHM(c.night)}</b>{f.brk && Number(f.brk) < c.breakMin && "（休憩は法定最低に補正）"}</p>}
-        <div className="flex justify-end gap-2"><button type="button" className="btn" onClick={onClose}>キャンセル</button><button className="btn btn-primary">保存</button></div>
-      </form>
+    <tr className={`${hol ? "bg-bg text-ink-2" : ""} ${isToday ? "!bg-brand-soft" : ""}`}>
+      <td className="td whitespace-nowrap">{label}</td>
+      <td className="td"><select aria-label={`${date} 区分`} disabled={dis} className={`${cell} !w-28`} value={dr.kind} onChange={(e) => commit({ ...dr, kind: e.target.value as Kind | "" })}><option value="">（未入力）</option>{KINDS.map((k) => <option key={k}>{k}</option>)}</select></td>
+      <td className="td"><input aria-label={`${date} 始業`} disabled={dis} className={`${cell} !w-[4.6rem] ${errs.start ? "!border-bad" : ""}`} placeholder="8:30" value={dr.start} onChange={(e) => setDr({ ...dr, start: e.target.value })} onBlur={() => commit(dr)} /></td>
+      <td className="td"><input aria-label={`${date} 終業`} disabled={dis} className={`${cell} !w-[4.6rem] ${errs.end ? "!border-bad" : ""}`} placeholder="17:00" value={dr.end} onChange={(e) => setDr({ ...dr, end: e.target.value })} onBlur={() => commit(dr)} /></td>
+      <td className="td"><input aria-label={`${date} 休憩`} disabled={dis} type="number" min={0} max={600} className={`${cell} !w-16 ${errs.brk ? "!border-bad" : ""}`} placeholder={String(s.conditions.breakMin)} value={dr.brk} onChange={(e) => setDr({ ...dr, brk: e.target.value })} onBlur={() => commit(dr)} /></td>
+      <td className="td text-center"><input aria-label={`${date} リモート`} disabled={dis} type="checkbox" className="h-4 w-4" checked={dr.remote} onChange={(e) => commit({ ...dr, remote: e.target.checked })} /></td>
+      <td className="td tabular text-right">{calc?.worked ? fmtH(calc.worked) : ""}</td>
+      <td className="td tabular text-right">{calc?.scheduled ? fmtH(calc.scheduled) : ""}</td>
+      <td className="td tabular text-right">{calc?.legalIn ? fmtH(calc.legalIn) : ""}</td>
+      <td className="td tabular text-right">{calc?.legalOut ? <b className="text-warn">{fmtH(calc.legalOut)}</b> : ""}</td>
+      <td className="td tabular text-right">{calc?.night ? fmtH(calc.night) : ""}</td>
+      <td className="td tabular text-right">{calc?.holidayWork ? fmtH(calc.holidayWork) : ""}</td>
+      <td className="td"><div className="flex items-center gap-1.5">
+        <input aria-label={`${date} 備考`} disabled={dis} className={`${cell} !w-32 !text-[12px]`} value={dr.note} onChange={(e) => setDr({ ...dr, note: e.target.value })} onBlur={() => commit(dr)} />
+        {calc?.outsideCore && <Badge tone="warn">コア外</Badge>}{calc?.invalid && <Badge tone="bad">{calc.invalid}</Badge>}
+      </div></td>
+      <td className="td"><div className="flex gap-1">
+        {editable && <button className="text-ink-3 hover:text-ink" title="標準勤務（8:30〜17:00）を入力" aria-label={`${date} 標準勤務を入力`} onClick={std}><Wand2 size={14} /></button>}
+        {editable && live && <button className="text-ink-3 hover:text-bad" title="この日の入力を消す" aria-label={`${date} を消す`} onClick={() => commit({ kind: "", start: "", end: "", brk: "", remote: false, note: "" }, "削除")}><Eraser size={14} /></button>}
+      </div></td>
+    </tr>
+  );
+}
+
+function AllSummary({ month, onOpen }: { month: string; onOpen: (id: string) => void }) {
+  const { s } = useStore();
+  const today = ymd(new Date());
+  const rows = s.employees.map((e) => ({ e, sum: monthSummary(s.attendance, e.id, month, e.scheduled, s.conditions), miss: missingDays(s.attendance, e.id, month, s.conditions, today).length }));
+  return (
+    <div className="card overflow-x-auto">
+      <table className="w-full min-w-[900px] text-[13px]">
+        <thead><tr><th className="th">従業員</th><th className="th text-right">出勤</th><th className="th text-right">有給</th><th className="th text-right">欠勤</th><th className="th text-right">所定内</th><th className="th text-right">法定内残業</th><th className="th text-right">法定外残業</th><th className="th text-right">深夜</th><th className="th text-right">休日労働</th><th className="th text-right">未入力日</th><th className="th">36協定</th></tr></thead>
+        <tbody>
+          {rows.map(({ e, sum, miss }) => {
+            const lv = overtimeLevel(sum.overtime45, sum.total100);
+            return (
+              <tr key={e.id} className="cursor-pointer hover:bg-bg" onClick={() => onOpen(e.id)}>
+                <td className="td"><div className="font-medium">{e.name}</div><div className="text-[11.5px] text-ink-3">{e.id}・{e.job}</div></td>
+                <td className="td tabular text-right">{sum.workDays + sum.holidayWorkDays}</td><td className="td tabular text-right">{sum.paidDays}</td><td className="td tabular text-right">{sum.absentDays}</td>
+                <td className="td tabular text-right">{fmtH(sum.scheduled)}</td><td className="td tabular text-right">{fmtH(sum.legalIn)}</td><td className="td tabular text-right">{fmtH(sum.legalOut)}</td><td className="td tabular text-right">{fmtH(sum.night)}</td><td className="td tabular text-right">{fmtH(sum.legalHoliday + sum.nonLegalHoliday)}</td>
+                <td className="td tabular text-right">{miss > 0 ? <span className="text-warn">{miss}</span> : 0}</td>
+                <td className="td">{lv.level === "ok" ? <Badge tone="good">OK</Badge> : <Badge tone={lv.level === "notice" ? "warn" : "bad"}>{sum.overtime45.toFixed(1)}h</Badge>}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+      <p className="px-4 py-2 text-[11.5px] text-ink-3">行を押すと、その人の日別入力を開きます（管理者は修正可・役員は閲覧のみ）。</p>
     </div>
   );
 }

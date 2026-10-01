@@ -3,11 +3,11 @@
 import { useMemo } from "react";
 import { CheckCircle2, Circle } from "lucide-react";
 import { balanceSheet, fyStartOf, incomeStatement, isPosted, monthsOfFy, trialBalance } from "@/lib/accounting";
-import { summarize, overtimeLevel } from "@/lib/attendance-calc";
+import { monthSummary } from "@/lib/attendance-view";
+import { overtimeLevel } from "@/lib/work";
 import { verifyChain } from "@/lib/chain";
-import { COURSES, DOCS, EMPLOYEES } from "@/lib/data";
 import { can } from "@/lib/perm";
-import { leaveDatesOf, useStore, ymd } from "@/lib/store";
+import { useStore, ymd } from "@/lib/store";
 import { Badge, PageHeader, Progress } from "@/components/ui";
 import { PrintButton, PrintHeader, amt } from "@/components/report";
 
@@ -20,16 +20,14 @@ export default function Ipo() {
 
   const auto = useMemo(() => {
     const tb = trialBalance(s.journal, s.jApprovals, fy, today), pl = incomeStatement(tb), bs = balanceSheet(s.journal, s.jApprovals, fy, today);
-    const days = Array.from({ length: 31 }, (_, i) => `${today.slice(0, 7)}-${String(i + 1).padStart(2, "0")}`);
-    const over45 = EMPLOYEES.filter((e) => overtimeLevel(summarize(days, s.punches[e.id] ?? {}, leaveDatesOf(s.workflows, e.id), today).overtime).level === "warn" || overtimeLevel(summarize(days, s.punches[e.id] ?? {}, leaveDatesOf(s.workflows, e.id), today).overtime).level === "danger").length;
+    const over45 = s.employees.filter((e) => ["warn", "danger"].includes(overtimeLevel(monthSummary(s.attendance, e.id, today.slice(0, 7), e.scheduled, s.conditions).overtime45).level)).length;
     const closedRatio = months.length > 1 ? s.closed.length / (months.length - 1) : 1;
-    const avgTraining = Object.values(s.progress).length ? Object.values(s.progress).reduce((a, p) => a + COURSES.filter((c) => c.required).reduce((x, c) => x + (p[c.id] ?? 0), 0) / COURSES.filter((c) => c.required).length, 0) / Object.values(s.progress).length : 0;
     const A: Record<string, boolean> = {
       sod: true, immut: verifyChain(s.journal).ok, auditlog: verifyChain(s.audit).ok, rbac: true, mfa: true,
-      closing: closedRatio >= 1, balanced: bs.balanced, pendingJ: s.journal.every((j) => isPosted(j, s.jApprovals)), payLink: Object.values(s.payroll).some((p) => p.status === "確定"),
-      ot: over45 === 0, rules: DOCS.filter((x) => x.kind === "規程").length >= 5, training: avgTraining >= 90,
+      closing: closedRatio >= 1, balanced: bs.balanced, pendingJ: s.journal.every((j) => isPosted(j, s.jApprovals)),
+      ot: over45 === 0,
     };
-    return { A, pl, bs, over45, closedRatio, avgTraining };
+    return { A, pl, bs, over45, closedRatio };
   }, [s, fy, today, months.length]);
 
   const groups: { title: string; items: Item[] }[] = [
@@ -46,7 +44,6 @@ export default function Ipo() {
       { id: "closing", label: `月次締めの完了（当月以外）${(auto.closedRatio * 100).toFixed(0)}%`, auto: true },
       { id: "balanced", label: "貸借一致・試算表一致", auto: true },
       { id: "pendingJ", label: "承認待ち仕訳の滞留なし", auto: true },
-      { id: "payLink", label: "給与確定→仕訳の自動連動", auto: true },
       { id: "fast", label: "月次決算の早期化（目標：翌営業日5日以内）" },
       { id: "budget", label: "予算・見通し・実績の管理（月次予実）" },
       { id: "conso", label: "連結決算体制（子会社・関連会社の管理）" },
@@ -54,9 +51,8 @@ export default function Ipo() {
       { id: "xbrl", label: "決算短信・有価証券報告書の作成体制（XBRL）" },
     ] },
     { title: "労務・コンプライアンス", items: [
+      { id: "rules", label: "社内規程（就業規則・賃金規程・文書管理 等）の整備" },
       { id: "ot", label: `36協定の上限（月45時間）超過者ゼロ（現在${auto.over45}名）`, auto: true },
-      { id: "rules", label: "社内規程の整備（規程5本以上）", auto: true },
-      { id: "training", label: `必須コンプライアンス研修の修了率90%以上（現在${auto.avgTraining.toFixed(0)}%）`, auto: true },
       { id: "antisocial", label: "反社会的勢力の排除体制（取引先・株主の調査）" },
       { id: "related", label: "関連当事者取引の管理・承認手続" },
       { id: "insider", label: "インサイダー取引管理・適時開示体制" },

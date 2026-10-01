@@ -14,7 +14,7 @@ export function PageHeader({ title, sub, actions }: { title: string; sub?: strin
 
 const TONES = {
   gray: "bg-surface-2 text-ink-2",
-  brand: "bg-brand-soft text-brand",
+  brand: "bg-surface-2 text-ink",
   good: "bg-good-soft text-good",
   warn: "bg-warn-soft text-warn",
   bad: "bg-bad-soft text-bad",
@@ -39,12 +39,10 @@ export function Progress({ value, tone = "brand" }: { value: number; tone?: "bra
 
 export const yen = (n: number) => `¥${n.toLocaleString("ja-JP")}`;
 
-/** アプリアイコンと同じマーク（ロゴ） */
-export function AppMark({ size = 32 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 32 32" role="img" aria-label="ミライHD">
-      <rect width="32" height="32" rx="7" fill="#0b3d6e" />
-      <path d="M8 23V9l8 9 8-9v14" fill="none" stroke="#fff" strokeWidth="2.6" strokeLinejoin="round" strokeLinecap="round" />
-    </svg>
-  );
+/** H-LINK のロゴ。variant: circle（丸型）／horizontal（横）／vertical（縦）。dark=true は暗い背景用（白抜き） */
+export function Logo({ variant = "circle", dark = false, height = 32, className = "" }: { variant?: "circle" | "horizontal" | "vertical"; dark?: boolean; height?: number; className?: string }) {
+  const base = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
+  const file = variant === "circle" ? "logo-circle.png" : `logo-${variant}${dark ? "-light" : ""}.png`;
+  // eslint-disable-next-line @next/next/no-img-element
+  return <img src={`${base}/brand/${file}`} alt="H-LINK" height={height} style={{ height, width: "auto" }} className={className} />;
 }

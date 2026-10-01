@@ -1,7 +1,7 @@
 "use client";
 
 import { Printer } from "lucide-react";
-import { COMPANY, empById } from "@/lib/data";
+import { COMPANY } from "@/lib/data";
 import { useStore } from "@/lib/store";
 
 export type Unit = 1 | 1000 | 1_000_000;
@@ -31,10 +31,10 @@ export function PrintButton({ what }: { what: string }) {
 
 /** 印刷時のみ表示する帳票ヘッダー（会社名・帳票名・期間・出力日時・出力者・機密区分） */
 export function PrintHeader({ title, period }: { title: string; period?: string }) {
-  const { meId } = useStore();
+  const { meId, nameOf } = useStore();
   return (
     <div className="mb-4 hidden border-b border-black pb-2 print:block">
-      <div className="flex items-end justify-between"><div><div className="text-[11px]">{COMPANY.name}</div><div className="text-[20px] font-bold">{title}</div></div><div className="text-right text-[10px]">{period && <div>{period}</div>}<div>出力日時：{new Date().toLocaleString("ja-JP")}</div><div>出力者：{empById(meId)?.name}（{meId}）</div><div className="font-bold">社外秘（Confidential）</div></div></div>
+      <div className="flex items-end justify-between"><div><div className="text-[11px]">{COMPANY.name}</div><div className="text-[20px] font-bold">{title}</div></div><div className="text-right text-[10px]">{period && <div>{period}</div>}<div>出力日時：{new Date().toLocaleString("ja-JP")}</div><div>出力者：{nameOf(meId)}（{meId}）</div><div className="font-bold">社外秘（Confidential）</div></div></div>
     </div>
   );
 }

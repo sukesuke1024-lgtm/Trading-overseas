@@ -71,7 +71,6 @@ export default function Accounting() {
                 <li className="flex justify-between">貸借対照表の貸借一致{bs.balanced ? <Badge tone="good">OK</Badge> : <Badge tone="bad">不一致</Badge>}</li>
                 <li className="flex justify-between">承認待ちの仕訳{pending === 0 ? <Badge tone="good">なし</Badge> : <Badge tone="warn">{pending}件</Badge>}</li>
                 <li className="flex justify-between">試算表の貸借合計一致{tb.reduce((a, r) => a + r.debit, 0) === tb.reduce((a, r) => a + r.credit, 0) ? <Badge tone="good">OK</Badge> : <Badge tone="bad">不一致</Badge>}</li>
-                <li className="flex justify-between">未承認の給与確定<Badge tone={Object.values(s.payroll).some((p) => p.status === "計算済") ? "warn" : "good"}>{Object.values(s.payroll).filter((p) => p.status === "計算済").length}件</Badge></li>
               </ul>
             </div>
           </div>

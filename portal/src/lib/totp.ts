@@ -50,5 +50,5 @@ export async function verifyTotp(secret: string, code: string, t = Date.now()) {
   return ok;
 }
 
-export const otpauthUri = (account: string, secret: string, issuer = "Mirai Portal") =>
+export const otpauthUri = (account: string, secret: string, issuer = "H-LINK") =>
   `otpauth://totp/${encodeURIComponent(issuer)}:${encodeURIComponent(account)}?secret=${secret}&issuer=${encodeURIComponent(issuer)}&algorithm=SHA1&digits=6&period=30`;

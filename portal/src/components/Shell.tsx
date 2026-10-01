@@ -4,33 +4,29 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
-  Home, Megaphone, FileCheck2, Clock, Users, Library, DoorOpen, LifeBuoy, GraduationCap,
-  Search, Bell, Menu, X, ShieldCheck, CornerDownLeft, LogOut, Ellipsis, Cloud, CloudOff, Landmark, BookText, Wallet, FileSearch, Rocket,
+  Home, Megaphone, FileCheck2, Clock, Users, Search, Bell, Menu, X, ShieldCheck, CornerDownLeft, LogOut, Ellipsis, Cloud, CloudOff,
+  Landmark, BookText, FileSearch, Rocket, FileSpreadsheet,
 } from "lucide-react";
-import { COMPANY, DOCS, EMPLOYEES, FAQ, ROLE_LABEL, empById } from "@/lib/data";
+import { COMPANY, ROLE_LABEL } from "@/lib/data";
 import { BASE, STATIC, AuthProvider, useAuth } from "@/lib/auth";
 import { can, type RoleName } from "@/lib/perm";
 import { StoreProvider, useStore } from "@/lib/store";
 import { LoginScreen } from "./Login";
-import { AppMark } from "./ui";
+import { Logo } from "./ui";
 
 type NavItem = { href: string; label: string; icon: typeof Home; show?: (r: RoleName) => boolean; group?: string };
 const NAV: NavItem[] = [
   { href: "/", label: "ホーム", icon: Home },
-  { href: "/news", label: "お知らせ", icon: Megaphone },
-  { href: "/workflow", label: "ワークフロー", icon: FileCheck2 },
   { href: "/attendance", label: "勤怠", icon: Clock },
-  { href: "/directory", label: "社員名簿・組織図", icon: Users },
-  { href: "/documents", label: "文書ライブラリ", icon: Library },
-  { href: "/rooms", label: "会議室予約", icon: DoorOpen },
-  { href: "/helpdesk", label: "ヘルプデスク", icon: LifeBuoy },
-  { href: "/training", label: "研修・eラーニング", icon: GraduationCap },
-  { href: "/payroll", label: "給与", icon: Wallet },
+  { href: "/workflow", label: "申請・承認", icon: FileCheck2 },
+  { href: "/news", label: "お知らせ", icon: Megaphone },
+  { href: "/employees", label: "従業員・権限", icon: Users, show: can.viewEmployees, group: "管理" },
+  { href: "/excel", label: "Excel連携・CSV", icon: FileSpreadsheet, show: can.excel, group: "管理" },
   { href: "/accounting", label: "決算書・販管費", icon: Landmark, show: can.viewAccounting, group: "経理・会計" },
   { href: "/journal", label: "仕訳帳", icon: BookText, show: can.viewAccounting, group: "経理・会計" },
   { href: "/audit", label: "監査・税務調査出力", icon: FileSearch, show: can.audit, group: "監査・統制" },
   { href: "/ipo", label: "上場準備", icon: Rocket, show: can.viewAccounting, group: "監査・統制" },
-  { href: "/admin", label: "監査ログ・管理", icon: ShieldCheck, show: can.audit, group: "監査・統制" },
+  { href: "/admin", label: "監査ログ", icon: ShieldCheck, show: can.audit, group: "監査・統制" },
 ];
 
 export function Shell({ children }: { children: ReactNode }) {
@@ -86,11 +82,10 @@ function ForcePassword() {
 
 function Frame({ children }: { children: ReactNode }) {
   const path = usePathname();
-  const { s, meId, role, sync } = useStore();
+  const { s, meId, role, sync, me } = useStore();
   const { logout } = useAuth();
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState(false);
-  const me = empById(meId)!;
 
   useEffect(() => {
     const h = (e: KeyboardEvent) => {
@@ -108,9 +103,9 @@ function Frame({ children }: { children: ReactNode }) {
       <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-2 focus:top-2 focus:z-50 focus:rounded focus:bg-white focus:p-2">本文へスキップ</a>
       {open && <div className="fixed inset-0 z-30 bg-black/40 lg:hidden" onClick={() => setOpen(false)} />}
       <aside className={`print:hidden fixed inset-y-0 left-0 z-40 w-[236px] overflow-y-auto bg-side text-side-text transition-transform lg:sticky lg:top-0 lg:h-screen lg:translate-x-0 ${open ? "translate-x-0" : "-translate-x-full"}`} aria-label="メインメニュー">
-        <div className="px-5 pb-4 pt-5">
-          <div className="flex items-center gap-2 text-[15px] font-bold text-white"><AppMark size={24} />{COMPANY.short} ポータル</div>
-          <div className="mt-0.5 text-[11px] text-side-text/70">{COMPANY.name}<br />{COMPANY.market}上場（{COMPANY.code}）</div>
+        <div className="px-5 pb-4 pt-6">
+          <Logo variant="horizontal" dark height={46} />
+          <div className="mt-2 text-[11px] text-side-text/70">社内ポータル</div>
         </div>
         <nav className="px-2 pb-6">
           {NAV.filter((n) => !n.show || n.show(role)).map(({ href, label, icon: Icon, group }, idx, arr) => {
@@ -120,10 +115,10 @@ function Frame({ children }: { children: ReactNode }) {
             return (
               <div key={href}>{head}
               <Link href={href} onClick={() => setOpen(false)} aria-current={active ? "page" : undefined}
-                className={`mb-0.5 flex items-center gap-3 rounded-lg px-3 py-2 text-[13.5px] transition-colors ${active ? "bg-white/12 font-semibold text-white" : "hover:bg-white/8"}`}>
+                className={`mb-0.5 flex items-center gap-3 rounded-lg px-3 py-2 text-[13.5px] transition-colors ${active ? "border-l-2 border-brand bg-white/10 font-semibold text-white" : "border-l-2 border-transparent hover:bg-white/8"}`}>
                 <Icon size={17} aria-hidden />
                 <span className="flex-1">{label}</span>
-                {badge > 0 && <span className="rounded-full bg-brand-2 px-1.5 text-[11px] font-bold text-white tabular">{badge}</span>}
+                {badge > 0 && <span className="rounded-full bg-brand px-1.5 text-[11px] font-bold text-white tabular">{badge}</span>}
               </Link></div>
             );
           })}
@@ -134,7 +129,7 @@ function Frame({ children }: { children: ReactNode }) {
         <header className="print:hidden sticky top-0 z-20 flex h-14 items-center gap-3 border-b border-line bg-surface/95 px-4 backdrop-blur lg:px-8">
           <button className="btn !h-9 !w-9 !p-0 lg:hidden" aria-label="メニューを開く" onClick={() => setOpen(true)}><Menu size={18} /></button>
           <button onClick={() => setQ(true)} className="flex h-9 min-w-0 flex-1 items-center gap-2 rounded-lg border border-line-strong bg-bg px-3 text-left text-ink-3 sm:max-w-md">
-            <Search size={15} aria-hidden /><span className="flex-1 truncate">社員・文書・お知らせ・FAQを検索</span>
+            <Search size={15} aria-hidden /><span className="flex-1 truncate">従業員・お知らせ・申請を検索</span>
             <kbd className="hidden rounded border border-line-strong bg-white px-1.5 text-[11px] sm:block">⌘K</kbd>
           </button>
           <div className="ml-auto flex items-center gap-3">
@@ -146,9 +141,9 @@ function Frame({ children }: { children: ReactNode }) {
             </span>
             <div className="hidden text-right leading-tight sm:block">
               <div className="text-[13px] font-semibold">{me.name}</div>
-              <div className="text-[11px] text-ink-3">{me.dept}・{me.title}・{ROLE_LABEL[role]}</div>
+              <div className="text-[11px] text-ink-3">{me.job || ROLE_LABEL[role]}・{ROLE_LABEL[role]}</div>
             </div>
-            <div className="grid h-9 w-9 place-items-center rounded-full bg-brand text-[13px] font-bold text-white" aria-hidden>{me.name[0]}</div>
+            <div className="grid h-9 w-9 place-items-center rounded-full bg-ink text-[13px] font-bold text-white" aria-hidden>{me.name[0]}</div>
             <button className="btn !h-9 !w-9 !p-0" aria-label="ログアウト" title="ログアウト" onClick={() => logout()}><LogOut size={16} /></button>
           </div>
         </header>
@@ -162,7 +157,7 @@ function Frame({ children }: { children: ReactNode }) {
           const I = Icon as typeof Home; const h = href as string;
           const active = h === "/" ? path === "/" : path.startsWith(h);
           return (
-            <Link key={h} href={h} aria-current={active ? "page" : undefined} className={`relative flex flex-col items-center gap-0.5 py-2 text-[10.5px] ${active ? "font-bold text-brand" : "text-ink-3"}`}>
+            <Link key={h} href={h} aria-current={active ? "page" : undefined} className={`relative flex flex-col items-center gap-0.5 py-2 text-[10.5px] ${active ? "font-bold text-brand-2" : "text-ink-3"}`}>
               <I size={21} aria-hidden />{label as string}
               {(badge as number) > 0 && <span className="absolute right-[26%] top-1 rounded-full bg-bad px-1 text-[9px] font-bold text-white tabular">{badge as number}</span>}
             </Link>
@@ -181,17 +176,16 @@ function Palette({ onClose }: { onClose: () => void }) {
   const [text, setText] = useState("");
   const [i, setI] = useState(0);
   const ref = useRef<HTMLInputElement>(null);
-  const { s } = useStore();
+  const { s, role } = useStore();
   const router = useRouter();
   const all = useMemo<Hit[]>(() => [
-    ...EMPLOYEES.map((e) => ({ kind: "社員", title: e.name, sub: `${e.dept} ${e.title}・内線${e.ext}`, href: `/directory?q=${encodeURIComponent(e.name)}` })),
-    ...DOCS.map((x) => ({ kind: "文書", title: x.title, sub: `${x.kind}・${x.owner}`, href: `/documents?q=${encodeURIComponent(x.title)}` })),
+    ...(can.viewEmployees(role) ? s.employees.map((e) => ({ kind: "従業員", title: e.name, sub: `${e.id}・${e.job}・${ROLE_LABEL[e.role]}`, href: `/employees?q=${encodeURIComponent(e.name)}` })) : []),
     ...s.news.map((n) => ({ kind: "お知らせ", title: n.title, sub: `${n.category}・${n.date}`, href: `/news?id=${n.id}` })),
-    ...FAQ.map((f) => ({ kind: "FAQ", title: f.q, sub: f.cat, href: `/helpdesk?q=${encodeURIComponent(f.q.slice(0, 8))}` })),
-  ], [s.news]);
+    ...s.workflows.map((w) => ({ kind: "申請", title: w.title, sub: `${w.type}・${w.status}`, href: `/workflow?id=${w.id}` })),
+  ], [s.employees, s.news, s.workflows, role]);
   const hits = useMemo(() => {
     const t = text.trim().toLowerCase();
-    if (!t) return all.filter((h) => h.kind === "文書").slice(0, 6);
+    if (!t) return all.slice(0, 6);
     return all.filter((h) => `${h.title} ${h.sub}`.toLowerCase().includes(t)).slice(0, 12);
   }, [text, all]);
   useEffect(() => { ref.current?.focus(); }, []);
@@ -202,7 +196,7 @@ function Palette({ onClose }: { onClose: () => void }) {
       <div className="card mx-auto w-full max-w-xl overflow-hidden shadow-xl" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center gap-2 border-b border-line px-3">
           <Search size={16} className="text-ink-3" />
-          <input ref={ref} value={text} onChange={(e) => { setText(e.target.value); setI(0); }} placeholder="キーワードを入力（例：出張、山田、セキュリティ）"
+          <input ref={ref} value={text} onChange={(e) => { setText(e.target.value); setI(0); }} placeholder="キーワードを入力（例：経費、長尾、勤怠）"
             className="h-12 flex-1 bg-transparent outline-none"
             onKeyDown={(e) => {
               if (e.key === "Escape") onClose();
@@ -216,8 +210,8 @@ function Palette({ onClose }: { onClose: () => void }) {
           {hits.length === 0 && <li className="px-3 py-8 text-center text-ink-3">該当する結果がありません</li>}
           {hits.map((h, idx) => (
             <li key={h.kind + h.title}>
-              <button onClick={() => go(h)} onMouseEnter={() => setI(idx)} className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left ${idx === i ? "bg-brand-soft" : ""}`}>
-                <span className="w-16 shrink-0 text-[11px] font-semibold text-brand">{h.kind}</span>
+              <button onClick={() => go(h)} onMouseEnter={() => setI(idx)} className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left ${idx === i ? "bg-surface-2" : ""}`}>
+                <span className="w-16 shrink-0 text-[11px] font-semibold text-brand-2">{h.kind}</span>
                 <span className="min-w-0 flex-1"><span className="block truncate font-medium">{h.title}</span><span className="block truncate text-[12px] text-ink-3">{h.sub}</span></span>
                 {idx === i && <CornerDownLeft size={14} className="text-ink-3" />}
               </button>

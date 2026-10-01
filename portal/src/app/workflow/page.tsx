@@ -3,9 +3,9 @@
 import { useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, Check, CircleDot, Plus, RotateCcw, X, Circle } from "lucide-react";
-import { workdaysBetween } from "@/lib/attendance-calc";
+import { workdaysBetween } from "@/lib/work";
 import { TAX_KINDS, acct, isInvoiceNo } from "@/lib/accounting";
-import { WF_TYPES, empById, type WfStatus, type WfType, type Workflow } from "@/lib/data";
+import { WF_TYPES, type WfStatus, type WfType, type Workflow } from "@/lib/data";
 import { EXPENSE_ACCOUNTS, useStore, ymd } from "@/lib/store";
 import { Badge, Empty, PageHeader, yen } from "@/components/ui";
 
@@ -13,7 +13,7 @@ const TONE: Record<WfStatus, "warn" | "good" | "bad" | "gray"> = { 承認待ち:
 type Tab = "todo" | "mine" | "all";
 
 export default function WorkflowPage() {
-  const { s, meId, role } = useStore();
+  const { s, meId, role, nameOf } = useStore();
   const sp = useSearchParams();
   const router = useRouter();
   const id = sp.get("id");
@@ -47,7 +47,7 @@ export default function WorkflowPage() {
             {rows.map((w) => (
               <tr key={w.id} className="cursor-pointer hover:bg-bg" onClick={() => router.push(`/workflow?id=${w.id}`)}>
                 <td className="td tabular text-ink-3">{w.id}</td><td className="td">{w.type}</td>
-                <td className="td font-medium">{w.title}</td><td className="td">{empById(w.applicantId)?.name}</td>
+                <td className="td font-medium">{w.title}</td><td className="td">{nameOf(w.applicantId)}</td>
                 <td className="td tabular text-right">{w.amount ? yen(w.amount) : "—"}</td>
                 <td className="td"><Badge tone={TONE[w.status]}>{w.status}</Badge></td>
               </tr>
@@ -61,7 +61,7 @@ export default function WorkflowPage() {
 }
 
 function NewForm({ initial }: { initial: WfType }) {
-  const { d, meId, nextWfId, approvalRoute } = useStore();
+  const { d, meId, nextWfId, approvalRoute, nameOf, holidays } = useStore();
   const router = useRouter();
   const [f, setF] = useState({ type: initial, title: "", amount: "", detail: "", from: ymd(new Date()), to: ymd(new Date()), category: "6210", taxKind: "課税10%", invoiceNo: "" });
   const amt = Number(f.amount) || 0;
@@ -69,7 +69,7 @@ function NewForm({ initial }: { initial: WfType }) {
   const isLeave = f.type === "休暇申請";
   const isExpense = f.type === "経費精算" || f.type === "出張申請";
   const invErr = isExpense && f.invoiceNo && !isInvoiceNo(f.invoiceNo) ? "登録番号は「T」＋13桁の数字です" : "";
-  const days = workdaysBetween(f.from, f.to); // 土日祝を除いた日数を自動計算
+  const days = workdaysBetween(f.from, f.to, holidays); // 土日祝を除いた日数を自動計算
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     if (invErr) return;
@@ -107,7 +107,7 @@ function NewForm({ initial }: { initial: WfType }) {
         <div>
           <div className="label">承認ルート（自動設定）</div>
           <ol className="flex flex-wrap items-center gap-2 text-[12.5px]">
-            {route.map((r, i) => <li key={i} className="flex items-center gap-2"><span className="rounded-md bg-surface-2 px-2 py-1">{r.label}：{empById(r.approverId)?.name}</span>{i < route.length - 1 && <span className="text-ink-3">→</span>}</li>)}
+            {route.map((r, i) => <li key={i} className="flex items-center gap-2"><span className="rounded-md bg-surface-2 px-2 py-1">{r.label}：{nameOf(r.approverId)}</span>{i < route.length - 1 && <span className="text-ink-3">→</span>}</li>)}
           </ol>
           {f.type === "稟議" && amt >= 1000000 && <p className="mt-2 text-[12px] text-warn">100万円以上のため、決裁権限表により経営企画部の承認が追加されました。</p>}
         </div>
@@ -118,7 +118,7 @@ function NewForm({ initial }: { initial: WfType }) {
 }
 
 function Detail({ w, onBack }: { w: Workflow; onBack: () => void }) {
-  const { d, meId } = useStore();
+  const { d, meId, nameOf, emp } = useStore();
   const [comment, setComment] = useState("");
   const active = w.steps.find((x) => x.state === "承認待ち");
   const canAct = w.status === "承認待ち" && active?.approverId === meId;
@@ -135,7 +135,7 @@ function Detail({ w, onBack }: { w: Workflow; onBack: () => void }) {
         <div className="mb-1 flex items-center gap-2"><Badge tone={TONE[w.status]}>{w.status}</Badge><span className="tabular text-[12px] text-ink-3">{w.id}・{w.type}</span></div>
         <h1 className="mb-4 text-xl font-bold">{w.title}</h1>
         <dl className="grid gap-3 text-[13.5px] sm:grid-cols-3">
-          <div><dt className="text-[12px] text-ink-3">申請者</dt><dd>{empById(w.applicantId)?.name}（{empById(w.applicantId)?.dept}）</dd></div>
+          <div><dt className="text-[12px] text-ink-3">申請者</dt><dd>{nameOf(w.applicantId)}（{emp(w.applicantId)?.job}）</dd></div>
           <div><dt className="text-[12px] text-ink-3">申請日</dt><dd className="tabular">{w.createdAt}</dd></div>
           <div><dt className="text-[12px] text-ink-3">金額</dt><dd className="tabular">{w.amount ? yen(w.amount) : "—"}</dd></div>
         </dl>
@@ -149,7 +149,7 @@ function Detail({ w, onBack }: { w: Workflow; onBack: () => void }) {
             return (
               <li key={i} className="flex gap-3">
                 <Icon size={18} className={`mt-0.5 shrink-0 ${c}`} aria-hidden />
-                <div><div className="font-medium">{st.label}：{empById(st.approverId)?.name}<span className={`ml-2 text-[12px] ${c}`}>{st.state}</span>{st.at && <span className="tabular ml-2 text-[12px] text-ink-3">{st.at}</span>}</div>{st.comment && <div className="text-[13px] text-ink-2">「{st.comment}」</div>}</div>
+                <div><div className="font-medium">{st.label}：{nameOf(st.approverId)}<span className={`ml-2 text-[12px] ${c}`}>{st.state}</span>{st.at && <span className="tabular ml-2 text-[12px] text-ink-3">{st.at}</span>}</div>{st.comment && <div className="text-[13px] text-ink-2">「{st.comment}」</div>}</div>
               </li>
             );
           })}
@@ -163,7 +163,7 @@ function Detail({ w, onBack }: { w: Workflow; onBack: () => void }) {
           </div>
         )}
         {mine && w.status === "承認待ち" && <div className="mt-6 border-t border-line pt-4"><button className="btn btn-danger" onClick={() => confirm("この申請を取り下げますか？") && d({ t: "wf-cancel", id: w.id, by: meId })}>申請を取り下げる</button></div>}
-        {!canAct && w.status === "承認待ち" && !mine && <p className="mt-4 text-[12px] text-ink-3">この案件の現在の承認者は {empById(active?.approverId ?? "")?.name} です。</p>}
+        {!canAct && w.status === "承認待ち" && !mine && <p className="mt-4 text-[12px] text-ink-3">この案件の現在の承認者は {nameOf(active?.approverId ?? "")} です。</p>}
       </div>
     </div>
   );

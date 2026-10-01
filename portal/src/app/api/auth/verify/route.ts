@@ -1,8 +1,7 @@
-import { getTotp, loadDb, saveDb } from "@/server/db";
+import { getTotp, loadDb, roleOfServer, saveDb } from "@/server/db";
 import { SESSION_SEC, json, sameOrigin, setCookie, sign, verify } from "@/server/session";
 import { clientIp, logAuth, rateLimited } from "@/server/authlog";
 import { verifyTotp } from "@/lib/totp";
-import { roleOf } from "@/lib/data";
 
 export const dynamic = "force-dynamic";
 const MAX_FAILS = 5, LOCK_MS = 15 * 60 * 1000;
@@ -30,5 +29,5 @@ export async function POST(req: Request) {
   u.lastStep = step; u.totpEnrolled = true; u.fails = 0;
   saveDb();
   logAuth({ actor: id, event: "login_ok", ip });
-  return json({ id, role: roleOf(id), mustChange: u.mustChange }, 200, { "set-cookie": setCookie(req, sign(id, "session", SESSION_SEC), SESSION_SEC) });
+  return json({ id, role: roleOfServer(id) ?? "employee", mustChange: u.mustChange }, 200, { "set-cookie": setCookie(req, sign(id, "session", SESSION_SEC), SESSION_SEC) });
 }

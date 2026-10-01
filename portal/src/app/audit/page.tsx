@@ -6,8 +6,8 @@ import { fyStartOf, trialBalance } from "@/lib/accounting";
 import { BASE, STATIC } from "@/lib/auth";
 import { verifyChain, type Verify } from "@/lib/chain";
 import { buildPackage, download } from "@/lib/csv";
-import { COMPANY, empById } from "@/lib/data";
-import { attendanceCsv, auditCsv, journalCsv, ledgerCsv, payrollCsv, trialBalanceCsv, workflowCsv } from "@/lib/exports";
+import { COMPANY } from "@/lib/data";
+import { attendanceCsv, auditCsv, journalCsv, ledgerCsv, trialBalanceCsv, workflowCsv } from "@/lib/exports";
 import { can } from "@/lib/perm";
 import { sha256 } from "@/lib/sha256";
 import { useStore, ymd } from "@/lib/store";
@@ -15,7 +15,7 @@ import { PageHeader } from "@/components/ui";
 import { PrintButton, PrintHeader } from "@/components/report";
 
 export default function AuditPage() {
-  const { s, d, meId, role } = useStore();
+  const { s, d, meId, role, nameOf, emp } = useStore();
   const today = ymd(new Date());
   const [from, setFrom] = useState(fyStartOf(today));
   const [to, setTo] = useState(today);
@@ -31,22 +31,22 @@ export default function AuditPage() {
 
   const files = useMemo(() => {
     const tb = trialBalance(s.journal, s.jApprovals, fyStartOf(to), to);
+    const rows = Object.entries(s.attendance).flatMap(([empId, days]) => Object.values(days).filter((x) => x.date >= from && x.date <= to).map((day) => ({ empId, day })));
     return [
       { name: "01_仕訳帳.csv", desc: "全仕訳（借貸・税区分・部門・証憑・登録番号・起票/承認者・ハッシュ）", content: journalCsv(s.journal, s.jApprovals, from, to) },
       { name: "02_総勘定元帳.csv", desc: "科目別の日付順・残高推移", content: ledgerCsv(s.journal, s.jApprovals, from, to) },
       { name: "03_試算表.csv", desc: "期首・借方・貸方・期末", content: trialBalanceCsv(tb) },
-      { name: "04_給与台帳.csv", desc: "月別・社員別の支給／控除（賃金台帳）", content: payrollCsv(Object.values(s.payroll)) },
-      { name: "05_出勤簿.csv", desc: "打刻・休憩・実働・時間外・深夜・休日労働", content: attendanceCsv(s.punches, from, to) },
-      { name: "06_承認履歴.csv", desc: "ワークフローの承認段階・処理者・コメント", content: workflowCsv(s.workflows) },
-      { name: "07_監査ログ.csv", desc: "操作履歴（ハッシュチェーン）", content: auditCsv(s.audit) },
+      { name: "04_出勤簿.csv", desc: "日別の始業・終業・休憩・実働・時間外・深夜・休日労働（賃金台帳の根拠）", content: attendanceCsv(rows, nameOf, (id) => emp(id)?.scheduled ?? 7.5, s.conditions) },
+      { name: "05_承認履歴.csv", desc: "ワークフローの承認段階・処理者・コメント", content: workflowCsv(s.workflows, nameOf) },
+      { name: "06_監査ログ.csv", desc: "操作履歴（ハッシュチェーン）", content: auditCsv(s.audit) },
     ].map((f) => ({ ...f, hash: sha256(f.content), rows: f.content.split("\r\n").length - 2 }));
-  }, [s, from, to]);
+  }, [s, from, to, nameOf, emp]);
 
   if (!can.audit(role)) return <div className="card p-8 text-center text-ink-2">この画面は監査・経理・管理者のみ閲覧できます。</div>;
   const jc = verifyChain(s.journal), ac = verifyChain(s.audit);
   const stamp = () => new Date().toLocaleString("ja-JP");
   const pkg = () => {
-    const bytes = buildPackage(files.map((f) => ({ name: f.name, content: f.content })), { by: `${empById(meId)?.name}(${meId})`, at: stamp(), company: COMPANY.name });
+    const bytes = buildPackage(files.map((f) => ({ name: f.name, content: f.content })), { by: `${nameOf(meId)}(${meId})`, at: stamp(), company: COMPANY.name });
     download(`監査提出パッケージ_${today}.zip`, bytes, "application/zip");
     d({ t: "export-log", by: meId, what: `提出パッケージZIP（${from}〜${to}）` });
   };

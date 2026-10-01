@@ -3,28 +3,26 @@
 import { can, type RoleName } from "../lib/perm.ts";
 import { append, verifyChain } from "../lib/chain.ts";
 import { checkEntry } from "../lib/accounting.ts";
+import { KINDS, toMin } from "../lib/work.ts";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type S = Record<string, any>;
-
-const base_payroll = (s: S) => !!s.payroll;
-function ownConfirmedPayroll(p: S, uid: string): S {
-  const o: S = {};
-  for (const [m, run] of Object.entries(p as S)) if (run.status === "確定") o[m] = { ...run, rows: run.rows.filter((r: S) => r.id === uid) };
-  return o;
-}
-const PRIVATE = ["journal", "jApprovals", "payroll", "closed", "ipo"] as const;
+const PRIVATE = ["journal", "jApprovals", "closed", "ipo"] as const;
+const PRESIDENT_ID = "001";
 
 /** 読み出し：権限のない項目は返さない（DevTools・APIで直接見られないようにする） */
 export function sanitizeForRead(state: S | null, uid: string, role: RoleName): S | null {
   if (!state) return state;
   const out: S = { ...state };
-  if (!can.viewAccounting(role)) { for (const k of PRIVATE) delete out[k]; }
-  else if (!can.viewPayroll(role)) delete out.payroll;
-  if (!can.viewPayroll(role) && base_payroll(state)) out.payroll = ownConfirmedPayroll(state.payroll, uid); // 一般社員には自分の確定済み明細だけ返す
-  const seeAll = can.viewPayroll(role);
-  if (!seeAll && out.punches) out.punches = { [uid]: out.punches[uid] ?? {} };
+  if (!can.viewAccounting(role)) for (const k of PRIVATE) delete out[k];
+  if (!can.viewAllAttendance(role) && out.attendance) out.attendance = { [uid]: out.attendance[uid] ?? {} };
+  if (!can.viewEmployees(role) && out.employees) {
+    // 従業員には、表示に必要な最小限（番号・氏名・職種・権限）と自分自身の情報だけ返す
+    out.employees = out.employees.map((e: S) => (e.id === uid ? e : { id: e.id, name: e.name, job: e.job, employment: e.employment, scheduled: e.scheduled, role: e.role }));
+  }
+  if (!can.viewAllWorkflows(role) && out.workflows) out.workflows = out.workflows.filter((w: S) => w.applicantId === uid || w.steps?.some((s: S) => s.approverId === uid));
   if (!can.audit(role) && out.audit) out.audit = out.audit.filter((a: S) => a.actor === uid).slice(-50);
+  if (!can.viewAllAttendance(role) && out.read) out.read = { [uid]: out.read[uid] ?? [] };
   return out;
 }
 
@@ -43,35 +41,56 @@ function validWf(o: S, n: S, uid: string): boolean {
   return n.status === st.state && (idx + 1 >= o.steps.length || same(idx + 1));
 }
 
-/** 書き込み：サーバーの現状（cur）に、許可された変更だけを取り込む。拒否した項目は deniedFields に列挙 */
+const DATE = /^\d{4}-\d{2}-\d{2}$/;
+/** 勤怠1日分の形式検証。不正なものは取り込まない */
+export function validDay(date: string, d: S): boolean {
+  if (!DATE.test(date) || d?.date !== date || !KINDS.includes(d.kind)) return false;
+  for (const k of ["start", "end"]) if (d[k] != null && d[k] !== "" && toMin(d[k]) == null) return false;
+  if (d.brk != null && !(Number.isInteger(d.brk) && d.brk >= 0 && d.brk <= 600)) return false;
+  if (d.note != null && (typeof d.note !== "string" || d.note.length > 200)) return false;
+  return true;
+}
+
+/** 従業員マスタの検証：番号の重複・社長の削除/降格・管理者ゼロを許さない */
+export function validEmployees(list: S[]): boolean {
+  if (!Array.isArray(list) || list.length > 500) return false;
+  const ids = new Set<string>();
+  for (const e of list) {
+    if (typeof e?.id !== "string" || !/^[A-Za-z0-9]{1,12}$/.test(e.id) || ids.has(e.id) || typeof e.name !== "string" || !e.name.trim() || !["employee", "executive", "admin"].includes(e.role)) return false;
+    ids.add(e.id);
+  }
+  const pres = list.find((e) => e.id === PRESIDENT_ID);
+  return !!pres && pres.role === "admin" && list.some((e) => e.role === "admin");
+}
+
+/** 書き込み：サーバーの現状（cur）に、許可された変更だけを取り込む。拒否した項目は denied に列挙 */
 export function mergeWrite(cur: S | null, inc: S, uid: string, role: RoleName): { state: S; denied: string[] } {
   const base: S = cur ?? {};
   const out: S = { ...base };
   const denied: string[] = [];
   const deny = (k: string) => { if (!denied.includes(k)) denied.push(k); };
+  const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
 
-  // お知らせ・上場準備：管理者のみ
-  if (inc.news !== undefined) { if (can.admin(role)) out.news = inc.news; else if (JSON.stringify(inc.news) !== JSON.stringify(base.news)) deny("news"); }
+  // 従業員マスタ・勤怠の条件設定・お知らせ：管理者のみ
+  if (inc.employees !== undefined && !same(inc.employees, base.employees)) { if (can.manageEmployees(role) && validEmployees(inc.employees)) out.employees = inc.employees; else deny("employees"); }
+  if (inc.conditions !== undefined && !same(inc.conditions, base.conditions)) { if (can.manageEmployees(role)) out.conditions = inc.conditions; else deny("conditions"); }
+  if (inc.news !== undefined && !same(inc.news, base.news)) { if (can.admin(role)) out.news = inc.news; else deny("news"); }
 
-  // 勤怠：本人分のみ
-  if (inc.punches) {
-    out.punches = { ...(base.punches ?? {}) };
-    for (const [emp, days] of Object.entries(inc.punches as S)) {
-      if (emp === uid) out.punches[emp] = days;
-      else if (JSON.stringify(days) !== JSON.stringify(base.punches?.[emp])) deny("punches");
+  // 勤怠：本人分は本人が、他人分は管理者のみ（役員は閲覧のみ）。形式が不正な日は取り込まない
+  if (inc.attendance) {
+    out.attendance = { ...(base.attendance ?? {}) };
+    const known = new Set<string>((out.employees ?? base.employees ?? []).map((e: S) => e.id));
+    for (const [emp, days] of Object.entries(inc.attendance as S)) {
+      if (same(days, base.attendance?.[emp])) continue;
+      const allowed = emp === uid || can.editAttendanceOfOthers(role);
+      const ok = allowed && known.has(emp) && days && Object.entries(days as S).every(([date, d]) => validDay(date, d));
+      if (ok) out.attendance[emp] = days; else deny("attendance");
     }
   }
-  // 既読・研修進捗：本人分のみ
-  for (const k of ["read", "progress"]) if (inc[k]) {
-    out[k] = { ...(base[k] ?? {}) };
-    for (const [emp, v] of Object.entries(inc[k] as S)) { if (emp === uid) out[k][emp] = v; else if (JSON.stringify(v) !== JSON.stringify(base[k]?.[emp])) deny(k); }
-  }
-  // 会議室予約・問い合わせ：自分の分のみ増減、他人の分は変更不可
-  if (inc.bookings) out.bookings = [...(base.bookings ?? []).filter((b: S) => b.by !== uid), ...inc.bookings.filter((b: S) => b.by === uid)];
-  if (inc.tickets) {
-    const mine = inc.tickets.filter((t: S) => !(base.tickets ?? []).some((x: S) => x.id === t.id) && t.by === uid);
-    const existing = (base.tickets ?? []).map((t: S) => (can.admin(role) ? inc.tickets.find((x: S) => x.id === t.id) ?? t : t));
-    out.tickets = [...mine, ...existing];
+  // 既読：本人分のみ
+  if (inc.read) {
+    out.read = { ...(base.read ?? {}) };
+    for (const [emp, v] of Object.entries(inc.read as S)) { if (emp === uid) out.read[emp] = v; else if (!same(v, base.read?.[emp])) deny("read"); }
   }
   // ワークフロー：新規は本人名義のみ／既存は「取下げ」「現在の承認者の承認・差戻し・却下」のみ
   if (inc.workflows) {
@@ -80,7 +99,7 @@ export function mergeWrite(cur: S | null, inc: S, uid: string, role: RoleName): 
     for (const w of inc.workflows as S[]) {
       const o = byId.get(w.id);
       if (!o) { if (w.applicantId === uid && w.status === "承認待ち" && w.steps?.[0]?.state === "承認待ち" && w.steps.slice(1).every((s: S) => s.state === "待機")) next.push(w); else deny("workflows"); }
-      else if (JSON.stringify(o) === JSON.stringify(w)) next.push(o);
+      else if (same(o, w)) next.push(o);
       else if (validWf(o, w, uid)) next.push(w);
       else { next.push(o); deny("workflows"); }
     }
@@ -88,16 +107,16 @@ export function mergeWrite(cur: S | null, inc: S, uid: string, role: RoleName): 
     out.workflows = next.sort((a, b) => (b.id > a.id ? 1 : -1));
   }
 
-  // 会計・給与：経理担当/管理者のみ。仕訳は追記のみ・貸借一致・締め済み月への計上不可
+  // 経理：閲覧は役員・管理者、編集は管理者のみ。仕訳は追記のみ・貸借一致・締め済み月への計上不可
   const w = can.writeAccounting(role);
-  for (const k of PRIVATE) if (inc[k] !== undefined && JSON.stringify(inc[k]) !== JSON.stringify(base[k]) && !w) deny(k);
+  for (const k of PRIVATE) if (inc[k] !== undefined && !same(inc[k], base[k]) && !w) deny(k);
   if (w) {
     if (inc.journal) {
       const cur = (base.journal ?? []) as S[], nj = inc.journal as S[], closed: string[] = base.closed ?? [];
       const prefixOk = cur.every((e, i) => nj[i]?.hash === e.hash);
       const added = nj.slice(cur.length);
-      const okSrc = (e: S) => ["reversal", "payroll", "workflow", "manual"].includes(e.source) || (cur.length === 0 && ["seed", "opening"].includes(e.source)); // 初回のみ期首・デモデータの投入を許可
-      const okAdded = added.every((e) => !checkEntry(e as never) && (cur.length === 0 || !closed.includes(String(e.date).slice(0, 7))) && okSrc(e));
+      const okSrc = (e: S) => ["reversal", "workflow", "manual"].includes(e.source);
+      const okAdded = added.every((e) => !checkEntry(e as never) && !closed.includes(String(e.date).slice(0, 7)) && okSrc(e));
       if (prefixOk && okAdded && verifyChain(nj as never).ok) out.journal = nj; else deny("journal");
     }
     if (inc.jApprovals) {
@@ -110,11 +129,6 @@ export function mergeWrite(cur: S | null, inc: S, uid: string, role: RoleName): 
       out.jApprovals = merged;
     }
     if (inc.closed) out.closed = Array.from(new Set([...(base.closed ?? []), ...inc.closed])).sort(); // 締めの追加のみ（再オープン不可）
-    if (inc.payroll) {
-      const merged: S = { ...(base.payroll ?? {}) };
-      for (const [m, run] of Object.entries(inc.payroll as S)) { if (merged[m]?.status === "確定") continue; merged[m] = run; } // 確定済みは不変
-      out.payroll = merged;
-    }
     if (inc.ipo && can.admin(role)) out.ipo = inc.ipo;
   }
 

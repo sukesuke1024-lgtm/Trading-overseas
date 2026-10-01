@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
-import { EMPLOYEES } from "@/lib/data";
+import type { Employee, Role } from "@/lib/data";
 import { seedState } from "@/lib/seed";
 
 export type UserRec = {
@@ -22,7 +22,7 @@ const DIR = process.env.PORTAL_DATA_DIR ?? path.join(process.cwd(), "data");
 const FILE = path.join(DIR, "db.json");
 let cache: Db | null = null;
 
-export const INITIAL_PASSWORD = process.env.PORTAL_INITIAL_PASSWORD ?? "Mirai-2026!";
+export const INITIAL_PASSWORD = process.env.PORTAL_INITIAL_PASSWORD ?? "Hlink-2026!"; // 初回ログイン時に必ず変更を求める
 
 export function hashPassword(pw: string, salt = crypto.randomBytes(16).toString("hex")) {
   return { salt, hash: crypto.scryptSync(pw, salt, 64).toString("hex") };
@@ -38,17 +38,31 @@ export function loadDb(): Db {
   fs.mkdirSync(DIR, { recursive: true });
   let db: Db = { users: {}, state: null };
   try { db = JSON.parse(fs.readFileSync(FILE, "utf8")); } catch {}
-  for (const e of EMPLOYEES) {
-    if (!db.users[e.id]) db.users[e.id] = { ...hashPassword(INITIAL_PASSWORD), totpEnrolled: false, sv: 0, lastStep: 0, fails: 0, lockedUntil: 0, mustChange: true };
-  }
   cache = db;
-  if (!db.state) db.state = seedState(true); // 初回起動：サーバーが正の初期データを持つ（クライアントの申告に依存しない）
+  if (!db.state) db.state = seedState(false); // 初回起動：社長のみ。サーバーが正の初期データを持つ（クライアントの申告に依存しない）
+  ensureUsers();
   for (const u of Object.values(db.users)) { // 旧データの移行
     if (u.sv === undefined) u.sv = 0;
     if (u.totpSecret) { u.totpEnc = encrypt(u.totpSecret); delete u.totpSecret; }
   }
   saveDb();
   return db;
+}
+
+/** 従業員マスタ（state.employees）の全員にログインアカウントを用意する（初期パスワードは初回に変更必須、二要素認証は初回に登録） */
+export function ensureUsers() {
+  const db = cache!;
+  for (const e of employees()) {
+    if (!db.users[e.id]) db.users[e.id] = { ...hashPassword(INITIAL_PASSWORD), totpEnrolled: false, sv: 0, lastStep: 0, fails: 0, lockedUntil: 0, mustChange: true };
+  }
+}
+export function employees(): Employee[] { return ((loadDb().state as { employees?: Employee[] } | null)?.employees ?? []) as Employee[]; }
+export function employeeById(id: string): Employee | undefined { return employees().find((e) => e.id === id); }
+/** 権限は従業員マスタ（サーバー上の正）から決める。未登録・退職者はログイン不可（null） */
+export function roleOfServer(id: string): Role | null {
+  const e = employeeById(id);
+  if (!e || (e.left && e.left <= new Date().toISOString().slice(0, 10))) return null;
+  return e.role;
 }
 
 export function saveDb() {
@@ -72,7 +86,7 @@ export function sessionSecret() {
 }
 
 // ---- TOTP秘密鍵の保存時暗号化（鍵はセッション秘密から導出）----
-const totpKey = () => crypto.scryptSync(sessionSecret(), "mirai-totp-at-rest", 32);
+const totpKey = () => crypto.scryptSync(sessionSecret(), "hlink-totp-at-rest", 32);
 export function encrypt(plain: string) {
   const iv = crypto.randomBytes(12), c = crypto.createCipheriv("aes-256-gcm", totpKey(), iv);
   const enc = Buffer.concat([c.update(plain, "utf8"), c.final()]);

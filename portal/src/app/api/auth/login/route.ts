@@ -1,8 +1,7 @@
-import { INITIAL_PASSWORD, checkPassword, encrypt, loadDb, saveDb } from "@/server/db";
+import { INITIAL_PASSWORD, checkPassword, employeeById, encrypt, loadDb, roleOfServer, saveDb } from "@/server/db";
 import { TICKET_SEC, json, sameOrigin, sign } from "@/server/session";
 import { clientIp, logAuth, rateLimited } from "@/server/authlog";
 import { newSecret, otpauthUri } from "@/lib/totp";
-import { EMPLOYEES } from "@/lib/data";
 
 export const dynamic = "force-dynamic";
 const MAX_FAILS = 5, LOCK_MS = 15 * 60 * 1000;
@@ -18,6 +17,7 @@ export async function POST(req: Request) {
   const bad = () => json({ error: "社員番号またはパスワードが正しくありません。" }, 401);
   if (!u || typeof password !== "string") { checkPassword(password ?? "", { salt: "00", hash: "00" } as never); logAuth({ actor: uid || "-", event: "login_fail", ip, detail: "unknown user or bad input" }); return bad(); }
   if (u.lockedUntil > Date.now()) { logAuth({ actor: uid, event: "login_blocked_locked", ip }); return json({ error: `アカウントがロックされています。${Math.ceil((u.lockedUntil - Date.now()) / 60000)}分後に再試行してください。` }, 423); }
+  if (!roleOfServer(uid)) { logAuth({ actor: uid, event: "login_fail", ip, detail: "not an active employee" }); checkPassword(password, u); return bad(); }
   if (!checkPassword(password, u)) {
     u.fails += 1;
     if (u.fails >= MAX_FAILS) { u.lockedUntil = Date.now() + LOCK_MS; u.fails = 0; logAuth({ actor: uid, event: "account_locked", ip }); }
@@ -26,12 +26,12 @@ export async function POST(req: Request) {
     return bad();
   }
   u.fails = 0;
-  const emp = EMPLOYEES.find((e) => e.id === uid);
+  const emp = employeeById(uid);
   let enroll: { secret: string; otpauth: string } | undefined;
   if (!u.totpEnrolled) {
     const secret = newSecret(); // 未登録の間は毎回再発行（登録完了前の秘密は使い回さない）
     u.totpEnc = encrypt(secret);
-    enroll = { secret, otpauth: otpauthUri(`${emp?.email ?? uid}`, secret) };
+    enroll = { secret, otpauth: otpauthUri(emp?.name ?? uid, secret) };
   }
   saveDb();
   logAuth({ actor: uid, event: "password_ok", ip, detail: enroll ? "mfa_enroll" : "mfa_verify" });
