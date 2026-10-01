@@ -2,25 +2,33 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { ArrowDown, ArrowUp, RotateCcw, Settings2 } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronDown, ChevronRight, RotateCcw, Settings2 } from "lucide-react";
 import { ROLE_LABEL } from "@/lib/data";
 import { useStore, ymd } from "@/lib/store";
 import { Badge } from "@/components/ui";
 import { useMedia } from "@/lib/useMedia";
 import { DEFAULT_ORDER, WIDGETS } from "@/components/widgets";
 
-type Prefs = { order: string[]; hidden: string[] };
+type Prefs = { order: string[]; hidden: string[]; folded?: string[] };
 
-function Card({ w }: { w: (typeof WIDGETS)[number] }) {
+function Card({ w, folded, onFold }: { w: (typeof WIDGETS)[number]; folded: boolean; onFold: () => void }) {
   const C = w.C;
-  return w.id === "punch" ? <C /> : <section aria-label={w.title} className={`card min-w-0 ${w.flat ? "" : "p-4"}`}><C /></section>;
+  if (w.id === "punch") return <C />;
+  // 右上の▾／▸でカードを折りたたむ（見出しだけ残る）
+  const Tog = folded ? ChevronRight : ChevronDown;
+  return (
+    <section aria-label={w.title} className={`card relative min-w-0 ${folded ? "px-4 py-2.5" : w.flat ? "" : "p-4"}`}>
+      <button type="button" aria-expanded={!folded} aria-label={`${w.title}を${folded ? "開く" : "折りたたむ"}`} onClick={onFold} className={`absolute z-10 grid h-7 w-7 place-items-center rounded-md text-ink-3 hover:bg-surface-2 ${folded ? "right-2 top-1.5" : "right-2 top-2"}`}><Tog size={16} /></button>
+      {folded ? <h2 className="pr-8 font-bold">{w.title}</h2> : <div className={w.flat ? "" : "pr-7"}><C /></div>}
+    </section>
+  );
 }
 
 export default function Home() {
   const { s, meId, role, me } = useStore();
   const now = new Date();
   const hour = now.getHours();
-  const key = `hlink-widgets2-${meId}`;
+  const key = `hlink-widgets3-${meId}`;
   const wide = useMedia("(min-width: 1024px)");
   const defaults = role === "employee" ? DEFAULT_ORDER.employee : DEFAULT_ORDER.lead;
   const [prefs, setPrefs] = useState<Prefs>(() => {
@@ -38,6 +46,8 @@ export default function Home() {
     return [...base, ...defaults.filter((id) => ids.has(id) && !base.includes(id)), ...usable.map((w) => w.id).filter((id) => !base.includes(id) && !defaults.includes(id as never))];
   }, [prefs.order, usable, defaults]);
   const move = (id: string, d: number) => { const i = order.indexOf(id), j = i + d; if (j < 0 || j >= order.length) return; const o = [...order]; [o[i], o[j]] = [o[j], o[i]]; save({ ...prefs, order: o }); };
+  const fold = (id: string) => { const cur = prefs.folded ?? []; save({ ...prefs, order, folded: cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id] }); };
+  const isFolded = (id: string) => (prefs.folded ?? []).includes(id);
   const toggle = (id: string) => save({ ...prefs, order, hidden: prefs.hidden.includes(id) ? prefs.hidden.filter((x) => x !== id) : [...prefs.hidden, id] });
 
   const important = s.news.filter((n) => n.important && !(s.read[meId] ?? []).includes(n.id));
@@ -72,10 +82,10 @@ export default function Home() {
 
       {shown.length === 0 ? <p className="text-ink-3">表示するウィジェットがありません。右上の「ウィジェットの設定」から選んでください。</p> : wide ? (
         <div className="grid grid-cols-3 items-start gap-5">
-          <div className="col-span-2 min-w-0 space-y-5">{shown.filter((w) => w.col === "main").map((w) => <Card key={w.id} w={w} />)}</div>
-          <div className="min-w-0 space-y-5">{shown.filter((w) => w.col === "side").map((w) => <Card key={w.id} w={w} />)}</div>
+          <div className="col-span-2 min-w-0 space-y-5">{shown.filter((w) => w.col === "main").map((w) => <Card key={w.id} w={w} folded={isFolded(w.id)} onFold={() => fold(w.id)} />)}</div>
+          <div className="min-w-0 space-y-5">{shown.filter((w) => w.col === "side").map((w) => <Card key={w.id} w={w} folded={isFolded(w.id)} onFold={() => fold(w.id)} />)}</div>
         </div>
-      ) : <div className="space-y-5">{shown.map((w) => <Card key={w.id} w={w} />)}</div>}
+      ) : <div className="space-y-5">{shown.map((w) => <Card key={w.id} w={w} folded={isFolded(w.id)} onFold={() => fold(w.id)} />)}</div>}
       <p className="text-[11.5px] text-ink-3">{ymd(now)}</p>
     </div>
   );

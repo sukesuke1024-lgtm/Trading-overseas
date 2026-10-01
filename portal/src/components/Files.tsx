@@ -1,7 +1,8 @@
 "use client";
 
-import { useRef, useState } from "react";
-import { Download, FileText, Trash2, Upload } from "lucide-react";
+import { useState } from "react";
+import { Download, FileText, Trash2 } from "lucide-react";
+import { DropZone } from "@/components/DropZone";
 import { fetchFile, saveBlob, uploadFile } from "@/lib/files";
 import { fmtBytes, type FileRec } from "@/lib/ops";
 import { useStore } from "@/lib/store";
@@ -68,26 +69,24 @@ export function FileTable({ files, empty, showTarget = false }: { files: FileRec
   );
 }
 
-/** ファイル選択→アップロード→台帳登録。meta は登録する台帳の項目（kind・scope など） */
-export function UploadButton({ meta, label = "ファイルを選んでアップロード", disabled, onDone }: { meta: Omit<FileRec, "id" | "name" | "size" | "mime" | "uploadedBy" | "at">; label?: string; disabled?: boolean; onDone?: (rec: FileRec) => void }) {
+/** ファイル選択→アップロード→台帳登録。meta は登録する台帳の項目（kind・scope など）。ドラッグ＆ドロップの枠で受け付ける */
+export function UploadButton({ meta, label = "ファイルをアップロード", disabled, onDone, compact }: { meta: Omit<FileRec, "id" | "name" | "size" | "mime" | "uploadedBy" | "at">; label?: string; disabled?: boolean; onDone?: (rec: FileRec) => void; compact?: boolean }) {
   const { d, meId } = useStore();
-  const ref = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false), [err, setErr] = useState("");
-  const pick = async (file?: File) => {
-    if (!file) return;
+  const pick = async (files: File[]) => {
     setBusy(true); setErr("");
-    const r = await uploadFile(file);
+    for (const file of files) {
+      const r = await uploadFile(file);
+      if ("error" in r) { setErr(`${file.name}：${r.error}`); continue; }
+      const rec: FileRec = { ...meta, id: r.id, name: r.name, size: r.size, mime: r.mime, uploadedBy: meId, at: new Date().toISOString() };
+      d({ t: "file-add", rec });
+      onDone?.(rec);
+    }
     setBusy(false);
-    if (ref.current) ref.current.value = "";
-    if ("error" in r) { setErr(r.error); return; }
-    const rec: FileRec = { ...meta, id: r.id, name: r.name, size: r.size, mime: r.mime, uploadedBy: meId, at: new Date().toISOString() };
-    d({ t: "file-add", rec });
-    onDone?.(rec);
   };
   return (
     <div>
-      <input ref={ref} type="file" className="sr-only" id={`up-${meta.kind}-${meta.scope}`} disabled={disabled || busy} onChange={(e) => pick(e.target.files?.[0])} />
-      <label htmlFor={`up-${meta.kind}-${meta.scope}`} className={`btn btn-primary cursor-pointer ${disabled || busy ? "pointer-events-none opacity-50" : ""}`}><Upload size={15} />{busy ? "アップロード中…" : label}</label>
+      <DropZone multiple onFiles={pick} busy={busy} disabled={disabled} label={label} compact={compact} />
       {err && <p role="alert" className="mt-1 text-[12px] text-bad">{err}</p>}
     </div>
   );

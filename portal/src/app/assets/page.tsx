@@ -1,5 +1,6 @@
 "use client";
 
+import { NumInput } from "@/components/NumInput";
 import { useMemo, useState } from "react";
 import { Download, Pencil, Plus, Trash2 } from "lucide-react";
 import { ASSET_CATEGORIES, ASSET_STATUS, DEFAULT_LIFE, bookValue, deptOf, nextAssetId, type Asset } from "@/lib/ops";
@@ -71,7 +72,7 @@ function AssetForm({ init, onClose }: { init: Asset | null; onClose: () => void 
           <div><label className="label" htmlFor="ase">シリアル番号 / IMEI</label><input id="ase" maxLength={100} className="input tabular" value={f.serial} onChange={(e) => upd({ serial: e.target.value })} /></div>
           <div><label className="label" htmlFor="ami">管理ID（MACアドレス・PC名など）</label><input id="ami" maxLength={100} className="input tabular" value={f.mgmtId} onChange={(e) => upd({ mgmtId: e.target.value })} /></div>
           <div><label className="label" htmlFor="ap">取得日</label><input id="ap" type="date" required className="input" value={f.purchaseDate} onChange={(e) => upd({ purchaseDate: e.target.value })} /></div>
-          <div><label className="label" htmlFor="aco">取得価額（円）</label><input id="aco" type="number" min={0} required className="input tabular" value={f.cost} onChange={(e) => upd({ cost: e.target.value })} /></div>
+          <div><label className="label" htmlFor="aco">取得価額（円）</label><NumInput id="aco" required className="input" value={f.cost} onChange={(v) => upd({ cost: v })} /></div>
           <div><label className="label" htmlFor="al">耐用年数（年）</label><input id="al" type="number" min={1} max={60} required className="input tabular" value={f.life} onChange={(e) => upd({ life: e.target.value })} /></div>
           {f.status === "廃棄・売却" && <div><label className="label" htmlFor="ad">廃棄・売却日</label><input id="ad" type="date" className="input" value={f.disposedAt} onChange={(e) => upd({ disposedAt: e.target.value })} /></div>}
           <div><label className="label" htmlFor="aa">使用者</label><select id="aa" className="input" value={f.assigneeId} onChange={(e) => upd({ assigneeId: e.target.value })}><option value="">（共用・保管）</option>{s.employees.filter((e) => !e.left).map((e) => <option key={e.id} value={e.id}>{e.id} {e.name}</option>)}</select></div>

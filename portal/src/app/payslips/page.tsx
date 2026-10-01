@@ -2,11 +2,12 @@
 
 import { useRef, useState } from "react";
 import { FileUp, ShieldCheck } from "lucide-react";
+import { DropZone } from "@/components/DropZone";
 import { uploadFile } from "@/lib/files";
 import { PAY_KINDS, deptOf, parsePayName, type FileKind, type FileRec } from "@/lib/ops";
 import { can } from "@/lib/perm";
 import { useStore } from "@/lib/store";
-import { Badge, PageHeader } from "@/components/ui";
+import { Badge, Fold, PageHeader } from "@/components/ui";
 import { FileDownload, FileTable } from "@/components/Files";
 
 export default function PayslipsPage() {
@@ -41,7 +42,7 @@ function Admin() {
   const ref = useRef<HTMLInputElement>(null);
   const all = vfiles.filter((f) => PAY_KINDS.includes(f.kind));
 
-  const pick = (files: FileList | null) => {
+  const pick = (files: File[] | FileList | null) => {
     const ok: Item[] = [], ng: string[] = [];
     for (const file of Array.from(files ?? [])) { const p = parsePayName(file.name); if (p && emp(p.empId)) ok.push({ file, ...p }); else ng.push(file.name); }
     setItems(ok); setBad(ng); setMsg("");
@@ -63,8 +64,8 @@ function Admin() {
       <h2 className="mb-2 text-lg font-bold">管理者：明細の登録</h2>
       <div className="grid gap-4 lg:grid-cols-2">
         <div className="card p-4"><h3 className="mb-2 font-bold">一括登録（ファイル名で振り分け）</h3>
-          <p className="mb-2 text-[12.5px] text-ink-2">ファイル名を「<code>従業員番号_種別_期間.pdf</code>」にして複数まとめて選びます。例：<code>001_給与明細_2026-09.pdf</code>／<code>001_賞与明細_2026-12.pdf</code>／<code>001_源泉徴収票_2026.pdf</code></p>
-          <input ref={ref} type="file" multiple accept=".pdf,.csv,.xlsx,.xls,.png,.jpg,.jpeg" className="mb-2 block text-[13px]" onChange={(e) => pick(e.target.files)} />
+          <Fold className="mb-2" title="ファイル名のつけ方"><p>ファイル名を「<code>従業員番号_種別_期間.pdf</code>」にして複数まとめて選びます。例：<code>001_給与明細_2026-09.pdf</code>／<code>001_賞与明細_2026-12.pdf</code>／<code>001_源泉徴収票_2026.pdf</code></p></Fold>
+          <div className="mb-2"><DropZone multiple compact accept=".pdf,.csv,.xlsx,.xls,.png,.jpg,.jpeg" label="ここに明細ファイルをまとめてドラッグ＆ドロップ" hint="PDF・CSV・XLSX・PNG・JPG／ファイル名で振り分け" onFiles={(fs) => pick(fs)} /></div>
           {items.length > 0 && <ul className="mb-2 max-h-48 space-y-0.5 overflow-y-auto rounded-lg bg-surface-2 p-2 text-[12.5px]">{items.map((it, i) => <li key={i}>{nameOf(it.empId)}（{it.empId}）・{it.kind}・{it.period}　<span className="text-ink-3">{it.file.name}</span></li>)}</ul>}
           {bad.length > 0 && <p role="alert" className="mb-2 text-[12.5px] text-bad">読み取れないファイル名（番号が未登録・形式が違う）：{bad.join("、")}</p>}
           <button className="btn btn-primary" disabled={busy || items.length === 0} onClick={() => send(items)}><FileUp size={15} />{busy ? "登録中…" : `${items.length}件を登録`}</button>
@@ -75,7 +76,7 @@ function Admin() {
             <div><label className="label" htmlFor="pe">従業員</label><select id="pe" className="input" value={manual.empId} onChange={(e) => setManual({ ...manual, empId: e.target.value })}>{s.employees.map((e) => <option key={e.id} value={e.id}>{e.id} {e.name}</option>)}</select></div>
             <div><label className="label" htmlFor="pk">種別</label><select id="pk" className="input" value={manual.kind} onChange={(e) => setManual({ ...manual, kind: e.target.value as FileKind, period: e.target.value === "源泉徴収票" ? manual.period.slice(0, 4) : manual.period.length === 4 ? `${manual.period}-01` : manual.period })}>{PAY_KINDS.map((k) => <option key={k}>{k}</option>)}</select></div>
             <div><label className="label" htmlFor="pp">対象期間（{manual.kind === "源泉徴収票" ? "年 例 2026" : "年月 例 2026-09"}）</label><input id="pp" className="input tabular" value={manual.period} onChange={(e) => setManual({ ...manual, period: e.target.value })} /></div>
-            <div><label className="label" htmlFor="pf">ファイル</label><input id="pf" type="file" className="block text-[13px]" onChange={(e) => setManual({ ...manual, file: e.target.files?.[0] ?? null })} /></div>
+            <div><div className="label">ファイル</div><DropZone compact label={manual.file ? `選択中：${manual.file.name}` : "ここにファイルをドラッグ＆ドロップ"} onFiles={(fs) => setManual({ ...manual, file: fs[0] ?? null })} /></div>
           </div>
           <button className="btn btn-primary mt-3" disabled={busy || !manual.file || !/^\d{4}(-\d{2})?$/.test(manual.period) || (manual.kind !== "源泉徴収票" && manual.period.length !== 7)} onClick={() => manual.file && send([{ file: manual.file, empId: manual.empId, kind: manual.kind, period: manual.period }])}>登録</button>
         </div>

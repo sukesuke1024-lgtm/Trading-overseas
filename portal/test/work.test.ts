@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { DEFAULT_CONDITIONS as C, calcDay, summarize, holidaySet, isHoliday, toMin, fmtH, overtimeLevel, autoKind, daysOf } from "../src/lib/work.ts";
+import { normalizeTime, DEFAULT_CONDITIONS as C, calcDay, summarize, holidaySet, isHoliday, toMin, fmtH, overtimeLevel, autoKind, daysOf } from "../src/lib/work.ts";
 
 const hs = holidaySet(C);
 const day = (date: string, start: string, end: string, brk = 60, kind: "出勤" | "休日出勤" = "出勤") => ({ date, kind, start, end, brk });
@@ -65,4 +65,11 @@ test("36 agreement levels and auto kind", () => {
   assert.equal(overtimeLevel(30).level, "ok"); assert.equal(overtimeLevel(40).level, "notice"); assert.equal(overtimeLevel(46).level, "warn");
   assert.equal(overtimeLevel(81).level, "danger"); assert.equal(overtimeLevel(70, 101).level, "danger");
   assert.equal(autoKind("2026-10-04", hs), "休日出勤"); assert.equal(autoKind("2026-10-13", hs), "出勤"); assert.equal(autoKind("2026-10-13", hs, "有給休暇"), "有給休暇");
+});
+
+test("normalizeTime: 830→8:30, 1700→17:00, 25:00 and full-width input", () => {
+  const cases: [string, string][] = [["830", "8:30"], ["0830", "8:30"], ["1700", "17:00"], ["930", "9:30"], ["9", "9:00"], ["17", "17:00"], ["2500", "25:00"], ["８３０", "8:30"], ["17：30", "17:30"], ["8:5", "8:05"], ["08:30", "8:30"], ["", ""], ["abc", "abc"], ["12345", "12345"]];
+  for (const [a, b] of cases) assert.equal(normalizeTime(a), b, a);
+  assert.equal(toMin(normalizeTime("875")), null); // 8:75 は不正のまま
+  assert.equal(toMin(normalizeTime("2459")), 24 * 60 + 59);
 });

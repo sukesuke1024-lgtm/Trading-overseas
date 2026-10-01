@@ -52,6 +52,19 @@ export function toMin(t?: string | null): number | null {
   const h = Number(m[1]);
   return h <= 47 ? h * 60 + Number(m[2]) : null;
 }
+/** 入力のゆれを「H:MM」にそろえる。830→8:30、1700→17:00、9→9:00、２５００→25:00、17：30→17:30。読み取れなければそのまま返す */
+export function normalizeTime(raw: string): string {
+  const s = raw.trim().replace(/[０-９]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xfee0)).replace(/[：.．]/g, ":");
+  let m = /^(\d{1,2}):(\d{1,2})$/.exec(s);
+  if (m) return `${Number(m[1])}:${m[2].padStart(2, "0")}`;
+  m = /^(\d{1,2})$/.exec(s);
+  if (m) return `${Number(m[1])}:00`;
+  m = /^(\d)(\d{2})$/.exec(s);
+  if (m) return `${m[1]}:${m[2]}`;
+  m = /^(\d{2})(\d{2})$/.exec(s);
+  if (m) return `${Number(m[1])}:${m[2]}`;
+  return raw.trim();
+}
 export const fromMin = (m: number) => `${pad2(Math.floor(m / 60))}:${pad2(m % 60)}`;
 const r2 = (x: number) => Math.round((x + 1e-9) * 100) / 100; // Excel の ROUND(x,2)（0以上）
 export const fmtH = (h: number) => `${Math.floor(h + 1e-9)}:${pad2(Math.round((h - Math.floor(h + 1e-9)) * 60) % 60)}`; // 7.5 → 7:30

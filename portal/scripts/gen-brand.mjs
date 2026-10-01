@@ -40,20 +40,27 @@ async function trimmed(img, pad = 0.04) {
   return sharp(t.data).extend({ top: p, bottom: p, left: p, right: p, background: { r: 0, g: 0, b: 0, alpha: 0 } }).png();
 }
 
-// ---- 円形ロゴ：外側の白を円形マスクで透明にする（内側の白いHは残す）----
-const circ = await raw(src("circle.webp"));
-let minX = circ.w, maxX = 0, minY = circ.h, maxY = 0;
-for (let y = 0; y < circ.h; y++) for (let x = 0; x < circ.w; x++) {
-  const i = (y * circ.w + x) * 4;
-  if (circ.data[i] < 60 && circ.data[i + 1] < 60 && circ.data[i + 2] < 60) { if (x < minX) minX = x; if (x > maxX) maxX = x; if (y < minY) minY = y; if (y > maxY) maxY = y; }
+// ---- 円形ロゴ：受領した黒丸（ナイトモード・アプリアイコン）と赤丸（ライトモード）----
+const circle = await sharp(src("circle-black.png")).resize(1024, 1024).png().toBuffer();
+await sharp(circle).resize(512, 512).png().toFile(path.join(brand, "logo-circle-black.png"));
+await sharp(src("circle-red.png")).resize(512, 512).png().toFile(path.join(brand, "logo-circle-red.png"));
+await sharp(circle).resize(512, 512).png().toFile(path.join(brand, "logo-circle.png")); // 旧名の互換
+
+// ---- ナイトモード用の縦・横ロゴ：黒い背景を透明にする（明るさをそのまま不透明度に。縁の黒はにじまない）----
+async function blackToAlpha(file) {
+  const { data, info } = await sharp(file).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+  const o = Buffer.from(data);
+  for (let i = 0; i < o.length; i += 4) {
+    const a = Math.max(o[i], o[i + 1], o[i + 2]);
+    if (a < 6) { o[i] = o[i + 1] = o[i + 2] = o[i + 3] = 0; continue; }
+    o[i] = Math.min(255, Math.round((o[i] * 255) / a)); o[i + 1] = Math.min(255, Math.round((o[i + 1] * 255) / a)); o[i + 2] = Math.min(255, Math.round((o[i + 2] * 255) / a)); o[i + 3] = a;
+  }
+  return { data: o, w: info.width, h: info.height };
 }
-const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2, rad = (maxX - minX + 1) / 2 - 1.5;
-for (let y = 0; y < circ.h; y++) for (let x = 0; x < circ.w; x++) {
-  const d = Math.hypot(x - cx, y - cy);
-  circ.data[(y * circ.w + x) * 4 + 3] = d <= rad ? 255 : d <= rad + 1 ? Math.round(255 * (rad + 1 - d)) : 0;
+for (const [name, f] of [["vertical", "vertical-night.webp"], ["horizontal", "horizontal-night.png"]]) {
+  const img = await blackToAlpha(src(f));
+  await (await trimmed(img)).resize({ width: 1200, height: 1200, fit: "inside", withoutEnlargement: true }).toFile(path.join(brand, `logo-${name}-night.png`));
 }
-const circle = await png(circ).extract({ left: Math.round(cx - rad - 1), top: Math.round(cy - rad - 1), width: Math.round(rad * 2 + 3), height: Math.round(rad * 2 + 3) }).resize(1024, 1024).png().toBuffer();
-await sharp(circle).resize(512, 512).png().toFile(path.join(brand, "logo-circle.png"));
 
 // ---- 透明背景版 / 暗い背景用（白抜き）版 ----
 const files = { vertical: "vertical.png", mark: "mark.png", mono: "mono.png", horizontal: "horizontal.png" };
