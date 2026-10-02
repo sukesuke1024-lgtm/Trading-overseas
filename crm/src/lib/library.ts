@@ -2,6 +2,7 @@
 // 資料ライブラリ：マイソク（販売図面）・商品カタログ・チラシ・規格書などの実ファイル（PDF・画像・Office）を、この端末のブラウザ内（IndexedDB）に保存する。
 // 本番ではクラウドのストレージ（Supabase Storage）に置き換える（関数のシグネチャはそのまま）。
 import { useEffect, useState } from "react";
+import { SERVER } from "./mode";
 
 export type DocKind = "マイソク" | "商品カタログ" | "チラシ" | "規格書" | "見積・PI" | "契約書" | "その他";
 export const DOC_KINDS: DocKind[] = ["マイソク", "商品カタログ", "チラシ", "規格書", "見積・PI", "契約書", "その他"];
@@ -30,11 +31,13 @@ const listeners = new Set<() => void>();
 const emit = () => listeners.forEach((l) => l());
 
 export async function listDocs(): Promise<DocMeta[]> {
+  if (SERVER) { const r = await fetch("/api/files", { cache: "no-store" }); if (!r.ok) throw new Error("資料の一覧を取得できませんでした"); return ((await r.json()) as { files: DocMeta[] }).files; }
   const rows = await tx<Row[]>("readonly", (s) => s.getAll() as IDBRequest<Row[]>);
   return rows.map((r) => ({ id: r.id, name: r.name, type: r.type, size: r.size, kind: r.kind, productId: r.productId, note: r.note, addedAt: r.addedAt, addedBy: r.addedBy })).sort((a, b) => b.addedAt.localeCompare(a.addedAt));
 }
 export async function addDoc(file: File, meta: { kind: DocKind; productId?: string; note?: string; addedBy: string }): Promise<DocMeta> {
   if (file.size > MAX_FILE_BYTES) throw new Error(`${file.name}：ファイルが大きすぎます（上限 ${Math.round(MAX_FILE_BYTES / 1048576)}MB）`);
+  if (SERVER) { const f = new FormData(); f.set("file", file); f.set("kind", meta.kind); f.set("productId", meta.productId ?? ""); f.set("note", meta.note ?? ""); const r = await fetch("/api/files", { method: "POST", body: f }); const j = (await r.json().catch(() => ({}))) as { file?: DocMeta; error?: string }; if (!r.ok || !j.file) throw new Error(j.error ?? "アップロードできませんでした"); emit(); return j.file; }
   const row: Row = { id: `f${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`, name: file.name, type: file.type || guessType(file.name), size: file.size, kind: meta.kind, productId: meta.productId ?? "", note: meta.note ?? "", addedAt: new Date().toISOString(), addedBy: meta.addedBy, blob: file };
   await tx("readwrite", (s) => s.put(row));
   emit();
@@ -42,13 +45,14 @@ export async function addDoc(file: File, meta: { kind: DocKind; productId?: stri
   return m;
 }
 export async function updateDoc(id: string, patch: Partial<Pick<DocMeta, "name" | "kind" | "productId" | "note">>) {
+  if (SERVER) { await fetch(`/api/files/${id}`, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify(patch) }); emit(); return; }
   const row = await tx<Row | undefined>("readonly", (s) => s.get(id) as IDBRequest<Row | undefined>);
   if (!row) return;
   await tx("readwrite", (s) => s.put({ ...row, ...patch }));
   emit();
 }
-export async function deleteDoc(id: string) { await tx("readwrite", (s) => s.delete(id)); emit(); }
-export async function getBlob(id: string): Promise<Blob | null> { const r = await tx<Row | undefined>("readonly", (s) => s.get(id) as IDBRequest<Row | undefined>); return r?.blob ?? null; }
+export async function deleteDoc(id: string) { if (SERVER) { await fetch(`/api/files/${id}`, { method: "DELETE" }); emit(); return; } await tx("readwrite", (s) => s.delete(id)); emit(); }
+export async function getBlob(id: string): Promise<Blob | null> { if (SERVER) { const r = await fetch(`/api/files/${id}`); return r.ok ? r.blob() : null; } const r = await tx<Row | undefined>("readonly", (s) => s.get(id) as IDBRequest<Row | undefined>); return r?.blob ?? null; }
 export async function toBase64(blob: Blob): Promise<string> {
   const buf = new Uint8Array(await blob.arrayBuffer());
   let bin = ""; for (let i = 0; i < buf.length; i += 0x8000) bin += String.fromCharCode(...buf.subarray(i, i + 0x8000));
@@ -72,6 +76,7 @@ export function useDocs() {
 
 /** 資料を新しいタブで開く（PDF・画像はそのまま表示） */
 export async function openDoc(id: string) {
+  if (SERVER) { window.open(`/api/files/${id}`, "_blank", "noopener"); return; }
   const b = await getBlob(id); if (!b) return;
   const url = URL.createObjectURL(b); window.open(url, "_blank", "noopener"); setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }

@@ -3,3 +3,5 @@
 /out/
 *.tsbuildinfo
 next-env.d.ts
+/data/
+/.api-hold/

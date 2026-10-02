@@ -1,11 +1,11 @@
-import type { Activity, ActivityType, Contact, Currency, Data, Deal, DealLine, FxForward, Journal, Notice, Organization, Sale, StageId, Task } from "./types";
-import { addDays, isoAt, todayStr } from "./dates";
-import { stageOf } from "./constants";
-import { PRODUCT_SEED } from "./products";
-import { PORTAL_DEMO_ROSTER, toUser } from "./roster";
-import { FALLBACK_RATES } from "./fx";
-import { linesTotal, nextSaleNo, paymentJournal, salesJournal, saleAmounts } from "./journal";
-import { DEFAULT_POLICY, EMPTY_INPUT, evaluate, rankOf, validUntil, type CreditInput } from "./credit";
+import type { Activity, ActivityType, Contact, Currency, Data, Deal, DealLine, FxForward, Journal, Notice, Organization, Sale, StageId, Task } from "./types.ts";
+import { addDays, isoAt, todayStr } from "./dates.ts";
+import { stageOf } from "./constants.ts";
+import { PRODUCT_SEED } from "./products.ts";
+import { PORTAL_DEMO_ROSTER, toUser } from "./roster.ts";
+import { FALLBACK_RATES } from "./fx.ts";
+import { linesTotal, nextSaleNo, paymentJournal, salesJournal, saleAmounts } from "./journal.ts";
+import { DEFAULT_POLICY, EMPTY_INPUT, evaluate, rankOf, validUntil, type CreditInput } from "./credit.ts";
 
 export const DATA_VERSION = 3;
 
@@ -221,4 +221,9 @@ export function makeSeed(): Data {
   ];
 
   return { version: DATA_VERSION, teams, users, organizations, contacts, deals, activities, tasks, audit: [], products: PRODUCT_SEED, sales, journals, forwards, notices, mailLogs: [], creditReviews, creditPolicy: DEFAULT_POLICY };
+}
+
+/** サーバー運用の初期データ：従業員名簿・与信方針だけを持つ空の状態（顧客・案件などは実データを入力する）。名簿は「設定 → 従業員名簿」でポータルの書き出しを取り込む */
+export function makeEmptySeed(): Data {
+  return { version: DATA_VERSION, teams: [{ id: "t1", name: "H-LINK 海外営業" }], users: PORTAL_DEMO_ROSTER.map((e) => toUser(e)), organizations: [], contacts: [], deals: [], activities: [], tasks: [], audit: [], products: [], sales: [], journals: [], forwards: [], notices: [], mailLogs: [], creditReviews: [], creditPolicy: DEFAULT_POLICY };
 }

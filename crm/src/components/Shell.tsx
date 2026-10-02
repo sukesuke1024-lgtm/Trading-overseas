@@ -6,7 +6,8 @@ import {
   Activity as ActivityIcon, BarChart3, Building2, CheckSquare, ChevronsUpDown, Contact as ContactIcon, ExternalLink, Handshake, KanbanSquare, LogOut,
   Menu, Moon, Plus, Search, Settings, Sun, X, BookOpen, Plane, Calculator, GitBranch, Landmark, LifeBuoy, Mail, Megaphone, Network, Package, Paperclip, Radar, Receipt, ScanSearch, ShieldCheck,
 } from "lucide-react";
-import { getSnapshot, initStore, logout, openQuickLog, switchUser, toggleTheme, useMe, useStore } from "@/lib/store";
+import { SERVER } from "@/lib/mode";
+import { clearNotice, getSnapshot, initStore, logout, openQuickLog, switchUser, toggleTheme, useMe, useStore } from "@/lib/store";
 import { Avatar, ROLE_LABEL } from "./ui";
 import { LoginScreen } from "./LoginScreen";
 import { QuickLog } from "./QuickLog";
@@ -75,8 +76,8 @@ export function Shell({ children }: { children: ReactNode }) {
 
   const overdue = useMemo(() => (s.data && me ? dashboardStats(s.data, me.role === "sales" ? me.id : null).overdue.length : 0), [s.data, me]);
 
-  if (!s.data) return <div className="grid min-h-screen place-items-center text-sm text-ink-3"><span className="anim-fade">読み込み中…</span></div>;
-  if (!me) return <LoginScreen />;
+  if (SERVER ? !s.ready : !s.data) return <div className="grid min-h-screen place-items-center text-sm text-ink-3"><span className="anim-fade">読み込み中…</span></div>;
+  if (!me || (SERVER && s.mustChange)) return <LoginScreen />;
 
   const active = (href: string) => (href === "/" ? path === "/" : path.startsWith(href.replace(/\/$/, "")));
   const groups = ["ホーム", "営業", "与信・リスク", "営業ツール", "情報", "管理"];
@@ -120,6 +121,8 @@ export function Shell({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-screen">
+      {SERVER && s.syncError && <div role="status" className="fixed inset-x-0 top-0 z-[90] bg-warn px-3 py-1.5 text-center text-xs font-semibold text-white no-print">{s.syncError}</div>}
+      {SERVER && s.notice && <div role="status" className="fixed inset-x-0 top-0 z-[89] flex items-center justify-center gap-3 bg-ink px-3 py-1.5 text-xs text-white no-print">{s.notice}<button className="underline" onClick={clearNotice}>閉じる</button></div>}
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-[232px] lg:block no-print">{sidebar}</aside>
       {mobileNav && (
         <div className="fixed inset-0 z-40 lg:hidden no-print">
@@ -155,8 +158,8 @@ function UserMenu() {
     <div className="relative border-t border-white/10 p-2.5">
       {open && (
         <div className="anim-rise absolute bottom-[58px] left-2.5 right-2.5 rounded-xl bg-[#1b1e26] p-1.5 shadow-[var(--shadow-pop)]">
-          <div className="px-2.5 pb-1 pt-1.5 text-[10.5px] text-[var(--side-ink-2)]">ユーザー切替（デモ：権限の違いを確認）</div>
-          {s.data!.users.map((u) => (
+          {!SERVER && <div className="px-2.5 pb-1 pt-1.5 text-[10.5px] text-[var(--side-ink-2)]">ユーザー切替（デモ：権限の違いを確認）</div>}
+          {!SERVER && s.data!.users.map((u) => (
             <button key={u.id} onClick={() => { switchUser(u.id); setOpen(false); }} className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-[12.5px] hover:bg-white/10 ${u.id === me.id ? "text-white" : ""}`}>
               <Avatar user={u} size={20} /><span className="flex-1 truncate">{u.name}</span><span className="text-[10.5px] text-[var(--side-ink-2)]">{ROLE_LABEL[u.role]}</span>
             </button>

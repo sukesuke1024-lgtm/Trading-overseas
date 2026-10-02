@@ -26,9 +26,8 @@ jobs:
       - id: pages
         uses: actions/configure-pages@v5
       - run: npm ci
-      - run: npx next build
+      - run: npm run build:static
         env:
-          STATIC: '1'
           NEXT_PUBLIC_BASE_PATH: ${{ vars.CNAME && '' || steps.pages.outputs.base_path }}
           NEXT_PUBLIC_PORTAL_URL: ${{ vars.PORTAL_URL }}
       - run: touch out/.nojekyll && if [ -n "${{ vars.CNAME }}" ]; then echo "${{ vars.CNAME }}" > out/CNAME; fi

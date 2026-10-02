@@ -1,12 +1,16 @@
 "use client";
 import { useState } from "react";
 import { ArrowLeft, ShieldCheck } from "lucide-react";
-import { asset } from "@/lib/asset";
 import { clearNotice, demoCode, loadSecurity, login, useNotice, useStore } from "@/lib/store";
 import { Avatar, ROLE_LABEL } from "./ui";
+import { SERVER } from "@/lib/mode";
+import { ServerLogin } from "./ServerLogin";
+import { LoginFrame } from "./LoginFrame";
 
 /** モック認証画面。本番では Supabase Auth（Email+パスワード／パスワード再設定／ログイン試行制御）に置き換える。 */
-export function LoginScreen() {
+export function LoginScreen() { return SERVER ? <ServerLogin /> : <DemoLogin />; }
+
+function DemoLogin() {
   const s = useStore();
   const [mode, setMode] = useState<"login" | "reset" | "sent" | "code">("login");
   const [pending, setPending] = useState("");
@@ -26,25 +30,8 @@ export function LoginScreen() {
   };
 
   return (
-    <div className="grid min-h-screen lg:grid-cols-[1.1fr_1fr]">
-      <div className="relative hidden overflow-hidden bg-[#0d0d10] p-12 text-white lg:flex lg:flex-col lg:justify-between">
-        <div className="absolute inset-0 opacity-60" style={{ background: "radial-gradient(900px 500px at 15% 10%, #4a1118 0%, transparent 60%), radial-gradient(700px 500px at 90% 95%, #2a2a31 0%, transparent 55%)" }} />
-        <svg className="absolute inset-0 h-full w-full opacity-[.07]" aria-hidden><defs><pattern id="g" width="36" height="36" patternUnits="userSpaceOnUse"><path d="M36 0H0V36" fill="none" stroke="#fff" strokeWidth="1" /></pattern></defs><rect width="100%" height="100%" fill="url(#g)" /></svg>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <div className="relative"><img src={asset("/brand/logo-horizontal-night.png")} alt="H-LINK" className="h-16 w-auto" /></div>
-        <div className="relative max-w-md">
-          <p className="mb-3 text-xs font-semibold tracking-[.18em] text-white/55">H-LINK  SALES OPERATING SYSTEM</p>
-          <h1 className="text-[34px] font-bold leading-[1.25] tracking-tight">次に誰へ、何をするか。<br />迷わない営業へ。</h1>
-          <p className="mt-4 text-[14px] leading-relaxed text-white/70">つなぐ、越える、食の可能性をひらく。顧客 × 案件 × 活動 × Next Action を一つに、海外バイヤーとの商談を期限と担当者つきで前に進めます。</p>
-        </div>
-        <p className="relative text-xs text-white/45">© H-LINK — 社内専用システム</p>
-      </div>
-
-      <div className="grid place-items-center px-5 py-10">
-        <div className="anim-rise w-full max-w-[400px]">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={asset("/brand/logo-horizontal.png")} alt="H-LINK" className="mb-8 h-10 w-auto lg:hidden" />
-          {notice && mode === "login" && <p role="status" className="mb-4 rounded-lg bg-warn-soft px-3 py-2 text-[12.5px] text-warn">{notice}</p>}
+    <LoginFrame>
+      {notice && mode === "login" && <p role="status" className="mb-4 rounded-lg bg-warn-soft px-3 py-2 text-[12.5px] text-warn">{notice}</p>}
           {mode === "code" && (
             <form onSubmit={(e) => { e.preventDefault(); if (code === demoCode(pending)) login(pending); else setErr("確認コードが違います。"); }}>
               <button type="button" onClick={() => setMode("login")} className="mb-4 inline-flex items-center gap-1 text-xs text-ink-2 hover:text-ink"><ArrowLeft size={13} />ログインへ戻る</button>
@@ -97,8 +84,6 @@ export function LoginScreen() {
               <button className="btn mt-5 !h-10 w-full" onClick={() => setMode("login")}>ログインへ戻る</button>
             </div>
           )}
-        </div>
-      </div>
-    </div>
+    </LoginFrame>
   );
 }

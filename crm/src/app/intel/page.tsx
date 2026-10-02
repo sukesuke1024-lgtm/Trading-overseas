@@ -2,13 +2,13 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { AlertTriangle, CheckCircle2, ExternalLink, RefreshCw, XCircle } from "lucide-react";
-import { asset } from "@/lib/asset";
+import { dataUrl } from "@/lib/asset";
 import { useNow } from "@/lib/useNow";
 import { PageHeader } from "@/components/ui";
 
 interface Status { generatedAt: string | null; runs: { fx?: { ok: boolean; at?: string; lastOk?: string; error?: string }; sanctions?: { ok: boolean; at?: string; count?: number; lastOk?: string; error?: string }; feeds?: { id: string; name: string; ok: boolean; count?: number; at?: string; error?: string; url?: string; site?: string; verified?: boolean }[] } }
 interface Item { title: string; link: string; date: string | null; summary: string; source: string; sourceName: string; category: string }
-const j = async <T,>(f: string): Promise<T> => (await fetch(`${asset(`/data/${f}`)}?t=${Math.floor(Date.now() / 300000)}`, { cache: "no-store" })).json();
+const j = async <T,>(f: string): Promise<T> => (await fetch(`${dataUrl(f)}?t=${Math.floor(Date.now() / 300000)}`, { cache: "no-store" })).json();
 const agoAt = (iso: string | null | undefined, now: number) => { if (!iso) return "—"; const m = Math.round((now - Date.parse(iso)) / 60000); return m < 1 ? "たった今" : m < 60 ? `${m}分前` : m < 1440 ? `${Math.round(m / 60)}時間前` : `${Math.round(m / 1440)}日前`; };
 
 /** 公的情報フィード：為替・制裁リスト・公式ニュース（官公庁のRSS）を、毎時自動で取り込んだ最新の状態を表示する */

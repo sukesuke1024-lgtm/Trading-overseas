@@ -6,14 +6,16 @@ import { nextSaleNo, paymentJournal, saleAmounts, salesJournal } from "./journal
 import { rateNow } from "./fx";
 import { DATA_VERSION, makeSeed } from "./seed";
 import { stageOf } from "./constants";
+import { SERVER } from "./mode";
+import { diffData, type Op } from "./sync";
 
 // モック段階の永続化はブラウザの localStorage。Phase 実装時は同じ関数シグネチャのまま Supabase 呼び出しに差し替える。
 const KEY = "hlink-crm.v3";
 const SESSION = "hlink-crm.session";
 const ACTIVE = "hlink-crm.lastActive", LOGOUT = "hlink-crm.logout", SECURITY = "hlink-crm.security";
 
-interface State { data: Data | null; meId: string | null; theme: "light" | "dark"; notice: string }
-let state: State = { data: null, meId: null, theme: "light", notice: "" };
+interface State { data: Data | null; meId: string | null; theme: "light" | "dark"; notice: string; ready: boolean; mustChange: boolean; syncError: string }
+let state: State = { data: null, meId: null, theme: "light", notice: "", ready: !SERVER, mustChange: false, syncError: "" };
 const listeners = new Set<() => void>();
 const emit = () => listeners.forEach((l) => l());
 const set = (patch: Partial<State>) => { state = { ...state, ...patch }; emit(); };
@@ -24,6 +26,7 @@ const ls = () => (typeof window === "undefined" ? undefined : window.localStorag
 const ss = () => (typeof window === "undefined" ? undefined : window.sessionStorage);
 
 export function initStore() {
+  if (SERVER) { void serverInit(); return; }
   if (state.data) return;
   let data: Data | null = null;
   const raw = read(KEY, ls());
@@ -60,14 +63,87 @@ function commit(mut: (d: Data) => Data, audit?: { action: string; entity: string
   if (audit && state.meId) {
     next = { ...next, audit: [{ id: uid("l"), at: new Date().toISOString(), userId: state.meId, ...audit }, ...next.audit].slice(0, 500) };
   }
+  if (SERVER) { queue(diffData(state.data, next)); set({ data: next }); return; }
   write(KEY, JSON.stringify(next), ls());
   set({ data: next });
 }
+
+// ---- サーバー版：ログイン・共有データの同期 ----
+// 画面の操作は「変更されたレコードだけ」を PUT /api/state に送る。サーバーが権限を確認して適用し、最新の全体を返す。
+// 別の人の変更は、10秒ごとの確認で取り込む。
+let rev = 0, pending: Op[] = [], flushing = false, timer: ReturnType<typeof setTimeout> | null = null, poller: ReturnType<typeof setInterval> | null = null, booted = false;
+const jsonHeaders = { "content-type": "application/json" };
+async function call(path: string, init?: RequestInit) { const r = await fetch(path, { cache: "no-store", ...init }); return { status: r.status, body: (await r.json().catch(() => ({}))) as Record<string, unknown> }; }
+function sessionLost(msg = "ログインの有効期限が切れました。もう一度ログインしてください。") { stopPolling(); pending = []; set({ meId: null, data: null, mustChange: false, notice: msg }); }
+function stopPolling() { if (poller) clearInterval(poller); poller = null; }
+function queue(ops: Op[]) { if (!ops.length) return; pending.push(...ops); if (timer) clearTimeout(timer); timer = setTimeout(() => void flush(), 300); }
+async function flush() {
+  if (flushing || !pending.length) return;
+  flushing = true;
+  const ops = pending; pending = [];
+  try {
+    const r = await call("/api/state", { method: "PUT", headers: jsonHeaders, body: JSON.stringify({ ops }) });
+    if (r.status === 401) return sessionLost();
+    if (r.status !== 200) throw new Error(String(r.status));
+    rev = r.body.rev as number;
+    const denied = (r.body.denied as string[]) ?? [];
+    if (!pending.length) set({ data: r.body.state as Data, syncError: "", ...(denied.length ? { notice: `権限がないため保存されなかった変更があります（${denied[0]}）。画面を最新の内容に戻しました。` } : {}) });
+    else set({ syncError: "" });
+  } catch { pending = [...ops, ...pending]; set({ syncError: "保存できていません。通信を確認しています…" }); setTimeout(() => void flush(), 5000); }
+  finally { flushing = false; if (pending.length && !timer) timer = setTimeout(() => void flush(), 300); }
+}
+async function pull() {
+  if (flushing || pending.length) return;
+  try {
+    const r = await call(`/api/state?since=${rev}`);
+    if (r.status === 401) return sessionLost();
+    if (r.status === 200 && r.body.state && !pending.length && !flushing) { rev = r.body.rev as number; set({ data: r.body.state as Data, syncError: "" }); }
+    else if (r.status === 200) set({ syncError: "" });
+  } catch { set({ syncError: "サーバーに接続できません。接続が戻ると自動で再開します。" }); }
+}
+async function enter(id: string, mustChange: boolean) {
+  const r = await call("/api/state");
+  if (r.status !== 200) return false;
+  rev = r.body.rev as number;
+  write(ACTIVE, String(Date.now()), ls());
+  set({ data: r.body.state as Data, meId: id, mustChange, notice: "", syncError: "" });
+  stopPolling(); poller = setInterval(() => void pull(), 10_000);
+  return true;
+}
+async function serverInit() {
+  if (booted) return; booted = true;
+  const theme = (read("hlink-crm.theme", ls()) as "light" | "dark" | null) ?? (window.matchMedia?.("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+  document.documentElement.dataset.theme = theme; set({ theme });
+  try { const me = await call("/api/auth/me"); if (me.status === 200) await enter(me.body.id as string, !!me.body.mustChange); } catch { /* 未接続：ログイン画面を出す */ }
+  set({ ready: true });
+  window.addEventListener("storage", (e) => { if (e.key === LOGOUT && e.newValue && state.meId) sessionLost(JSON.parse(e.newValue).reason === "idle" ? "しばらく操作がなかったため、自動でログアウトしました。" : "別の画面でログアウトしたため、ログアウトしました。"); });
+}
+/** ログイン第1段階（従業員番号＋PIN） */
+export const serverLogin = (id: string, pin: string) => call("/api/auth/login", { method: "POST", headers: jsonHeaders, body: JSON.stringify({ id, pin }) });
+/** ログイン第2段階（認証アプリのコード）。成功すると画面に入る */
+export async function serverVerify(ticket: string, code: string) {
+  const r = await call("/api/auth/verify", { method: "POST", headers: jsonHeaders, body: JSON.stringify({ ticket, code }) });
+  if (r.status === 200) await enter(r.body.id as string, !!r.body.mustChange);
+  return r;
+}
+export async function serverChangePin(current: string, next: string) {
+  const r = await call("/api/auth/pin", { method: "POST", headers: jsonHeaders, body: JSON.stringify({ current, next }) });
+  if (r.status === 200) set({ mustChange: false });
+  return r;
+}
+/** 管理者が従業員のPINを初期PINに戻す（端末の紛失・PINを忘れたとき） */
+export const serverAdminReset = (id: string) => call("/api/auth/admin-reset", { method: "POST", headers: jsonHeaders, body: JSON.stringify({ id }) });
 
 // ---- 認証（モック。実装時は Supabase Auth）----
 export const login = (userId: string) => { write(SESSION, userId, ss()); write(ACTIVE, String(Date.now()), ls()); set({ meId: userId, notice: "" }); };
 /** ログアウト。理由つき（手動／無操作）。ほかのタブにも伝わる（同じブラウザで開いているすべての画面からログアウト） */
 export const logout = (reason: "manual" | "idle" = "manual") => {
+  if (SERVER) {
+    write(LOGOUT, JSON.stringify({ at: Date.now(), reason }), ls());
+    const msg = reason === "idle" ? "しばらく操作がなかったため、自動でログアウトしました。" : "ログアウトしました。";
+    void flush().finally(() => fetch("/api/auth/logout", { method: "POST" }).catch(() => {})).finally(() => sessionLost(msg));
+    return;
+  }
   try { ss()?.removeItem(SESSION); } catch { /* noop */ }
   write(LOGOUT, JSON.stringify({ at: Date.now(), reason }), ls());
   set({ meId: null, notice: reason === "idle" ? "しばらく操作がなかったため、自動でログアウトしました。" : "ログアウトしました。" });
@@ -91,6 +167,7 @@ export function toggleTheme() {
   set({ theme });
 }
 export function resetDemo() {
+  if (SERVER) return;
   const data = makeSeed();
   write(KEY, JSON.stringify(data), ls());
   set({ data });

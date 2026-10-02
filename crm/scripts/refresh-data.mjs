@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url";
 import { parseFeed, parseSdnCsv, ratesFromErApi, ratesFromFrankfurter } from "./feeds-lib.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const OUT = path.join(root, "public/data");
+const OUT = process.env.CRM_DATA_DIR ? path.join(process.env.CRM_DATA_DIR, "public-data") : path.join(root, "public/data"); // サーバー運用ではデータ領域へ書き出す
 const cfg = JSON.parse(fs.readFileSync(path.join(root, "scripts/data-sources.json"), "utf8"));
 fs.mkdirSync(OUT, { recursive: true });
 const read = (f, fallback) => { try { return JSON.parse(fs.readFileSync(path.join(OUT, f), "utf8")); } catch { return fallback; } };

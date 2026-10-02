@@ -1,13 +1,16 @@
 name: H-LINK CRM
 
 on:
+  workflow_dispatch:
   push:
+    tags: ['crm-v*']
     paths: ['crm/**', '.github/workflows/crm.yml']
   pull_request:
     paths: ['crm/**', '.github/workflows/crm.yml']
 
 permissions:
   contents: read
+  packages: write
 
 jobs:
   check:
@@ -27,3 +30,23 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run build:static
+      - run: npm run build:server
+
+  # サーバー版（ログイン・共有データ）のコンテナ。タグ crm-v* を付けたとき、または手動実行で GitHub Container Registry に公開する
+  server-image:
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/crm-v')
+    needs: check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: crm
+          file: crm/Dockerfile.server
+          push: true
+          tags: ghcr.io/${{ github.repository_owner }}/hlink-crm:latest

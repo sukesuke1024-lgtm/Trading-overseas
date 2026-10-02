@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { AlertTriangle, CheckCircle2, ExternalLink, ShieldAlert } from "lucide-react";
 import { setOrgScreening, useStore } from "@/lib/store";
 import { screen, type Match, type SdnData } from "@/lib/screening";
-import { asset } from "@/lib/asset";
+import { dataUrl } from "@/lib/asset";
 import { useNow } from "@/lib/useNow";
 import { fmtDate } from "@/lib/dates";
 import { flag } from "@/lib/constants";
@@ -35,7 +35,7 @@ function Screening() {
 
   useEffect(() => {
     let live = true;
-    fetch(`${asset("/data/sanctions.json")}?t=${Math.floor(Date.now() / 600000)}`).then((r) => r.json()).then((j: SdnData) => { if (live) setData({ ...j, status: j.entries?.length ? "ok" : "empty" }); }).catch((e: Error) => { if (live) setData({ updatedAt: null, source: "OFAC SDN", count: 0, entries: [], status: "error", error: e.message }); });
+    fetch(`${dataUrl("sanctions.json")}?t=${Math.floor(Date.now() / 600000)}`).then((r) => r.json()).then((j: SdnData) => { if (live) setData({ ...j, status: j.entries?.length ? "ok" : "empty" }); }).catch((e: Error) => { if (live) setData({ updatedAt: null, source: "OFAC SDN", count: 0, entries: [], status: "error", error: e.message }); });
     return () => { live = false; };
   }, []);
 
