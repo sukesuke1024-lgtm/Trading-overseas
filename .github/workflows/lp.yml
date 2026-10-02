@@ -3,13 +3,10 @@ name: Recruitment LP
 on:
   push:
     branches: [main, claude/overseas-buyer-sales-recruitment-video-idqyvw]
-    paths: ['lp/**', 'portal/**', 'crm/**', 'recruit-video/out/**', '.github/workflows/lp.yml']
+    paths: ['lp/**', 'recruit-video/out/**', '.github/workflows/lp.yml']
   pull_request:
     paths: ['lp/**', 'recruit-video/out/**', '.github/workflows/lp.yml']
   workflow_dispatch:
-  # 毎時17分に自動実行：CRM の公的データ（為替・制裁リスト・公式ニュース）を取り込み直して再公開する（24時間365日の自動更新）
-  schedule:
-    - cron: '17 * * * *'
 
 permissions:
   contents: read
@@ -20,7 +17,6 @@ concurrency:
 
 jobs:
   test:
-    if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -39,7 +35,7 @@ jobs:
 
   deploy:
     # GitHub Pages を「Source: GitHub Actions」で有効にすると公開されます
-    if: always() && github.event_name != 'pull_request' && (needs.test.result == 'success' || github.event_name == 'schedule')
+    if: github.event_name != 'pull_request' && needs.test.result == 'success'
     needs: test
     runs-on: ubuntu-latest
     permissions:
@@ -61,59 +57,6 @@ jobs:
           SITE_URL: ${{ vars.SITE_URL || format('{0}/', steps.pages.outputs.base_url) }}
           CNAME: ${{ vars.CNAME }}
         run: node build.mjs
-      # 社内ポータルのデモ版（静的書き出し）を /portal/ 配下に同梱して公開する
-      - name: Build portal demo
-        working-directory: portal
-        env:
-          NEXT_PUBLIC_BASE_PATH: ${{ steps.pages.outputs.base_path }}/portal
-        run: |
-          npm ci
-          npm run build:static
-          mkdir -p ../lp/dist/portal
-          cp -r out/. ../lp/dist/portal/
-          touch ../lp/dist/.nojekyll
-      # 公的データの自動取り込み（為替・OFAC 制裁リスト・官公庁の RSS/Atom）。失敗しても公開は続け、前回の値を残す
-      - name: Restore previous public data
-        uses: actions/cache/restore@v4
-        with:
-          path: crm/public/data
-          key: crm-data-never-matches
-          restore-keys: crm-data-
-      - name: Refresh public data (FX / sanctions / official feeds)
-        working-directory: crm
-        continue-on-error: true
-        run: node scripts/refresh-data.mjs
-      - name: Save public data for the next run
-        uses: actions/cache/save@v4
-        if: always()
-        with:
-          path: crm/public/data
-          key: crm-data-${{ github.run_id }}
-      # 営業CRM（Phase 1 デモ版・静的書き出し）を /crm/ 配下に同梱して公開する
-      - name: Build CRM demo
-        working-directory: crm
-        env:
-          NEXT_PUBLIC_BASE_PATH: ${{ steps.pages.outputs.base_path }}/crm
-        run: |
-          npm ci
-          npm run build:static
-          mkdir -p ../lp/dist/crm
-          cp -r out/. ../lp/dist/crm/
-      # 前の版（Mirai HD 版ポータル）も /portal-v1/ で引き続き使えるように同梱する（固定コミットから別途ビルド）
-      - name: Checkout previous portal version
-        uses: actions/checkout@v4
-        with:
-          ref: 682fa3e69b416494cc84ce5cd1199f5dedeaf7da
-          path: legacy
-      - name: Build previous portal version
-        working-directory: legacy/portal
-        env:
-          NEXT_PUBLIC_BASE_PATH: ${{ steps.pages.outputs.base_path }}/portal-v1
-        run: |
-          npm ci
-          npm run build:static
-          mkdir -p ../../lp/dist/portal-v1
-          cp -r out/. ../../lp/dist/portal-v1/
       - uses: actions/upload-pages-artifact@v3
         with:
           path: lp/dist

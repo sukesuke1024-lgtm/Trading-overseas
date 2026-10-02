@@ -1,0 +1,46 @@
+# H-LINK 社内ポータル + 営業CRM を「外部に公開せず」動かす構成（無料で運用できる）。
+#   cp .env.example .env  →  値を編集  →  docker compose up -d --build
+# ポート公開は 127.0.0.1 のみ（LANにも出さない）。外からは次のどちらかだけで入る:
+#   A) Tailscale（tailscale serve で自分の端末だけに https 公開）   B) Cloudflare Tunnel + Access（メール認証。--profile cloudflare）
+# 詳細は README.md
+name: hlink
+x-hardening: &hardening
+  restart: unless-stopped
+  security_opt: ["no-new-privileges:true"]
+  cap_drop: ["ALL"]
+  read_only: true
+  tmpfs: ["/tmp", "/app/.next/cache"]
+  logging: { driver: json-file, options: { max-size: "10m", max-file: "5" } }
+
+services:
+  portal:
+    <<: *hardening
+    build: { context: ../../portal }
+    environment:
+      PORTAL_INITIAL_PIN: ${PORTAL_INITIAL_PIN:?.env に PORTAL_INITIAL_PIN を設定してください}
+      PORTAL_SESSION_SECRET: ${PORTAL_SESSION_SECRET:?.env に PORTAL_SESSION_SECRET を設定してください}
+    volumes: ["portal-data:/data"]
+    ports: ["127.0.0.1:${PORTAL_PORT:-3000}:3000"]
+
+  crm:
+    <<: *hardening
+    build: { context: ../../crm, dockerfile: Dockerfile.server }
+    environment:
+      CRM_INITIAL_PIN: ${CRM_INITIAL_PIN:?.env に CRM_INITIAL_PIN を設定してください}
+      CRM_SESSION_SECRET: ${CRM_SESSION_SECRET:?.env に CRM_SESSION_SECRET を設定してください}
+    volumes: ["crm-data:/data"]
+    ports: ["127.0.0.1:${CRM_PORT:-3001}:3000"]
+
+  # B) Cloudflare Tunnel：受信ポートを開けずに、Cloudflare Access（許可したメールだけ）経由で公開する
+  cloudflared:
+    profiles: ["cloudflare"]
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:-}
+    depends_on: [portal, crm]
+
+volumes:
+  portal-data:
+  crm-data:
