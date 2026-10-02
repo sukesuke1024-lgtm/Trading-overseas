@@ -82,7 +82,7 @@ function build(doc, font) {
 
   const numCfg = (ref) => ({ reference: ref, levels: [{ level: 0, format: LevelFormat.DECIMAL, text: "%1.", alignment: AlignmentType.LEFT, style: { paragraph: { indent: { left: 540, hanging: 360 } } } }] });
   return new Document({
-    creator: "AITREK", title: doc.title, description: doc.subtitle,
+    creator: "H-LINK", title: doc.title, description: doc.subtitle,
     styles: {
       default: { document: { run: { font, size: 21 } } },
       paragraphStyles: [
@@ -102,7 +102,7 @@ function build(doc, font) {
 
 fs.mkdirSync(path.join(root, "public/docs"), { recursive: true });
 const tmp = fs.mkdtempSync("/tmp/crmdocs-");
-for (const [name, doc] of [["AITREK-CRM_操作マニュアル", MANUAL], ["AITREK-CRM_設計書", DESIGN]]) {
+for (const [name, doc] of [["H-LINK-CRM_操作マニュアル", MANUAL], ["H-LINK-CRM_設計書", DESIGN]]) {
   // 配布用 .docx は Word 標準の「Meiryo」。PDF は同じ内容を、この環境にあるフォントで描画して変換する。
   fs.writeFileSync(path.join(OUT, name + ".docx"), await Packer.toBuffer(build(doc, "Meiryo")));
   fs.writeFileSync(path.join(tmp, name + ".docx"), await Packer.toBuffer(build(doc, process.env.PDF_FONT ?? "IPAGothic")));

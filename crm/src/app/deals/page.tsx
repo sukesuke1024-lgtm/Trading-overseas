@@ -116,7 +116,7 @@ function Row({ d, x, editable, onStage }: { d: Data; x: Deal; editable: boolean;
       <td className="num text-right font-semibold"><span className="whitespace-nowrap">{money(x.amount, x.currency)}</span>{x.currency !== "JPY" && <div className="text-[10.5px] font-normal text-ink-3">≈{yenShort(dealJPY(x))}</div>}</td>
       <td className="num w-[58px] text-right text-ink-2">{open ? `${x.probability}%` : "—"}</td>
       <td className="w-[132px]">{open ? <input type="date" aria-label="予定受注日" className="inline num" disabled={!editable} value={x.expectedCloseDate ?? ""} onChange={(e) => updateDeal(x.id, { expectedCloseDate: e.target.value || null })} /> : <StageChip stage={x.stage} />}</td>
-      <td className="w-[104px]"><span className="inline-flex items-center gap-1.5"><Avatar user={d.users.find((u) => u.id === x.ownerId)} size={20} /><span className="truncate">{d.users.find((u) => u.id === x.ownerId)?.name.split(" ")[0]}</span></span></td>
+      <td className="w-[104px]"><span className="inline-flex items-center gap-1.5"><Avatar user={d.users.find((u) => u.id === x.ownerId)} size={20} /><span className="truncate">{d.users.find((u) => u.id === x.ownerId)?.name}</span></span></td>
       <td className="min-w-[320px]">
         {open ? (
           <div className="flex items-center gap-2">

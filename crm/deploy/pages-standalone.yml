@@ -1,0 +1,38 @@
+# 専用リポジトリ（例：hlink-crm）に crm/ の中身を置き、GitHub Pages で「社内ポータルとは別のURL」として公開するためのワークフロー。
+# 使い方：このファイルを専用リポジトリの .github/workflows/pages.yml にコピー → Settings → Pages → Source: GitHub Actions。
+# 独自ドメインにする場合は、リポジトリ変数 CNAME（例 crm.example.co.jp）と PORTAL_URL（ポータルのURL）を設定してください。
+name: H-LINK CRM (Pages)
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: true
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - id: pages
+        uses: actions/configure-pages@v5
+      - run: npm ci
+      - run: npx next build
+        env:
+          STATIC: '1'
+          NEXT_PUBLIC_BASE_PATH: ${{ vars.CNAME && '' || steps.pages.outputs.base_path }}
+          NEXT_PUBLIC_PORTAL_URL: ${{ vars.PORTAL_URL }}
+      - run: touch out/.nojekyll && if [ -n "${{ vars.CNAME }}" ]; then echo "${{ vars.CNAME }}" > out/CNAME; fi
+      - uses: actions/upload-pages-artifact@v3
+        with: { path: out }
+      - id: deployment
+        uses: actions/deploy-pages@v4

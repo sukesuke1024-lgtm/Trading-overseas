@@ -4,14 +4,16 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   Activity as ActivityIcon, BarChart3, Building2, CheckSquare, ChevronsUpDown, Contact as ContactIcon, ExternalLink, Handshake, KanbanSquare, LogOut,
-  Menu, Moon, Plus, Search, Settings, Sun, X, BookOpen, Globe2, Plane,
+  Menu, Moon, Plus, Search, Settings, Sun, X, BookOpen, Plane, Calculator, GitBranch, Landmark, LifeBuoy, Mail, Megaphone, Package, Receipt,
 } from "lucide-react";
 import { getSnapshot, initStore, logout, openQuickLog, switchUser, toggleTheme, useMe, useStore } from "@/lib/store";
 import { Avatar, ROLE_LABEL } from "./ui";
 import { LoginScreen } from "./LoginScreen";
 import { QuickLog } from "./QuickLog";
 import { flag } from "@/lib/constants";
-import { dashboardStats } from "@/lib/selectors";
+import { dashboardStats, permsFor } from "@/lib/selectors";
+import { AITREK_OS_URL, PORTAL_URL, asset } from "@/lib/asset";
+import { SALES_DEPT } from "@/lib/roster";
 
 /** 表示中の顧客／案件を「活動を記録」の初期値にする（画面に応じて入力を減らす） */
 function contextPreset() {
@@ -23,7 +25,7 @@ function contextPreset() {
   return deal ? { orgId: deal.orgId, dealId: deal.id, contactId: deal.contactId ?? undefined } : {};
 }
 
-const NAV: { href: string; label: string; icon: typeof BarChart3; group: string }[] = [
+const NAV: { href: string; label: string; icon: typeof BarChart3; group: string; only?: "manager" | "salesBoard" }[] = [
   { href: "/", label: "ダッシュボード", icon: BarChart3, group: "ホーム" },
   { href: "/tasks/", label: "Task / Next Action", icon: CheckSquare, group: "ホーム" },
   { href: "/pipeline/", label: "パイプライン", icon: KanbanSquare, group: "営業" },
@@ -31,9 +33,19 @@ const NAV: { href: string; label: string; icon: typeof BarChart3; group: string 
   { href: "/customers/", label: "顧客", icon: Building2, group: "営業" },
   { href: "/contacts/", label: "担当者", icon: ContactIcon, group: "営業" },
   { href: "/activities/", label: "活動履歴", icon: ActivityIcon, group: "営業" },
-  { href: "/settings/", label: "設定・監査ログ", icon: Settings, group: "管理" },
+  { href: "/calculator/", label: "見積・粗利の計算", icon: Calculator, group: "営業ツール" },
+  { href: "/decision/", label: "契約可否の判定", icon: GitBranch, group: "営業ツール" },
+  { href: "/fx/", label: "為替・為替予約", icon: Landmark, group: "営業ツール" },
+  { href: "/catalog/", label: "商品カタログ", icon: Package, group: "営業ツール" },
+  { href: "/mail/", label: "メール配信・チラシ", icon: Mail, group: "営業ツール" },
+  { href: "/board/", label: "営業部のお知らせ", icon: Megaphone, group: "情報", only: "salesBoard" },
+  { href: "/help/", label: "困った時は（逆引き）", icon: LifeBuoy, group: "情報" },
+  { href: "/accounting/", label: "売上と仕訳", icon: Receipt, group: "管理", only: "manager" },
+  { href: "/settings/", label: "設定・名簿・監査ログ", icon: Settings, group: "管理" },
   { href: "/manual/", label: "マニュアル", icon: BookOpen, group: "管理" },
 ];
+/** 営業部のお知らせは、従業員名簿で営業部の人と Manager 以上だけが見られる */
+export const canSeeBoard = (me: { dept: string; role: string } | null) => !!me && (me.dept === SALES_DEPT || me.role !== "sales");
 
 export function Shell({ children }: { children: ReactNode }) {
   const s = useStore();
@@ -61,22 +73,22 @@ export function Shell({ children }: { children: ReactNode }) {
   if (!me) return <LoginScreen />;
 
   const active = (href: string) => (href === "/" ? path === "/" : path.startsWith(href.replace(/\/$/, "")));
-  const groups = ["ホーム", "営業", "管理"];
+  const groups = ["ホーム", "営業", "営業ツール", "情報", "管理"];
+  const perms = permsFor(me);
+  const visibleNav = NAV.filter((n) => (n.only === "manager" ? perms.isManager : n.only === "salesBoard" ? canSeeBoard(me) : true));
 
   const sidebar = (
     <div className="flex h-full flex-col bg-[var(--side)] text-[var(--side-ink)]">
-      <div className="flex h-14 items-center gap-2.5 px-4">
-        <span className="grid h-7 w-7 place-items-center rounded-lg bg-white/10 text-white"><Globe2 size={16} /></span>
-        <div className="leading-tight">
-          <div className="text-[14px] font-bold tracking-wide text-white">AITREK CRM</div>
-          <div className="text-[10.5px] text-[var(--side-ink-2)]">海外営業</div>
-        </div>
+      <div className="flex h-16 items-center px-4">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={asset("/brand/logo-horizontal-night.png")} alt="H-LINK" className="h-9 w-auto" />
+        <span className="ml-2 self-end pb-2.5 text-[10.5px] font-semibold tracking-[.14em] text-[var(--side-ink-2)]">CRM</span>
       </div>
       <nav className="flex-1 overflow-y-auto px-2.5 pb-3 pt-1">
         {groups.map((g) => (
           <div key={g} className="mb-3">
             <div className="px-2.5 pb-1 pt-2 text-[10.5px] font-semibold tracking-[.12em] text-[var(--side-ink-2)]">{g}</div>
-            {NAV.filter((n) => n.group === g).map((n) => (
+            {visibleNav.filter((n) => n.group === g).map((n) => (
               <Link key={n.href} href={n.href} aria-current={active(n.href) ? "page" : undefined}
                 className={`mb-0.5 flex h-8 items-center gap-2.5 rounded-lg px-2.5 text-[13px] font-medium transition-colors ${active(n.href) ? "bg-[var(--side-active)] text-white" : "hover:bg-[var(--side-hover)] hover:text-white"}`}>
                 <n.icon size={16} strokeWidth={1.9} />
@@ -88,8 +100,8 @@ export function Shell({ children }: { children: ReactNode }) {
         ))}
         <div className="px-2.5 pb-1 pt-2 text-[10.5px] font-semibold tracking-[.12em] text-[var(--side-ink-2)]">社内リンク</div>
         {[
-          { href: "../portal/", label: "社内ポータル", icon: Building2 },
-          { href: "../aitrek-os/", label: "AITREK OS（輸出管理）", icon: Plane },
+          { href: PORTAL_URL, label: "H-LINK 社内ポータル", icon: Building2 },
+          { href: AITREK_OS_URL, label: "AITREK OS（輸出管理）", icon: Plane },
         ].map((l) => (
           <a key={l.label} href={l.href} className="mb-0.5 flex h-8 items-center gap-2.5 rounded-lg px-2.5 text-[13px] font-medium hover:bg-[var(--side-hover)] hover:text-white">
             <l.icon size={16} strokeWidth={1.9} /><span className="flex-1">{l.label}</span><ExternalLink size={12} className="opacity-50" />
@@ -171,6 +183,12 @@ function Palette({ onClose }: { onClose: () => void }) {
       { key: "a-task", group: "移動", label: "Task / Next Action", sub: "", href: "/tasks/" },
       { key: "a-deals", group: "移動", label: "案件一覧", sub: "", href: "/deals/" },
       { key: "a-orgs", group: "移動", label: "顧客一覧", sub: "", href: "/customers/" },
+      { key: "a-calc", group: "移動", label: "見積・粗利の自動計算", sub: "", href: "/calculator/" },
+      { key: "a-flow", group: "移動", label: "契約可否の判定フロー", sub: "", href: "/decision/" },
+      { key: "a-fx", group: "移動", label: "為替レート・為替予約", sub: "", href: "/fx/" },
+      { key: "a-cat", group: "移動", label: "商品カタログ", sub: "", href: "/catalog/" },
+      { key: "a-mail", group: "移動", label: "メール配信・電子チラシ", sub: "", href: "/mail/" },
+      { key: "a-help", group: "移動", label: "困った時は（逆引き辞典）", sub: "", href: "/help/" },
     ];
     if (!n) return actions;
     const orgs: Hit[] = d.organizations.filter((o) => o.name.toLowerCase().includes(n) || o.country.includes(n) || o.city.toLowerCase().includes(n)).slice(0, 5)

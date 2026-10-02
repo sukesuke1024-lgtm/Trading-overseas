@@ -1,4 +1,5 @@
 import type { ActivityType, Currency, Role, Segment, Source, Stage, StageId } from "./types";
+import { FALLBACK_RATES, rateNow } from "./fx";
 
 /**
  * 営業ステージ。仕様書の初期案（Lead→First Contact→Qualification→Hearing→Proposal→Quotation→Negotiation→Won/Lost/On Hold）から
@@ -45,9 +46,9 @@ export const ROLES: { id: Role; label: string; desc: string }[] = [
   { id: "sales", label: "Sales", desc: "全データの閲覧、自分が担当する顧客・案件・Task の編集" },
 ];
 
-// デモ用の固定為替（JPY換算。実運用では設定画面／外部レート）
-export const FX: Record<Currency, number> = { JPY: 1, USD: 152, SGD: 113, HKD: 19.5, EUR: 165, AUD: 99, THB: 4.3 };
-export const toJPY = (amount: number, c: Currency) => Math.round(amount * FX[c]);
+// 一覧・ダッシュボードの円換算は「現在レート」（取得できなければ参考値）。売上は計上時のレートで固定される
+export const FX = FALLBACK_RATES;
+export const toJPY = (amount: number, c: Currency) => Math.round(amount * rateNow(c));
 
 export const COUNTRY_FLAG: Record<string, string> = {
   シンガポール: "🇸🇬", 香港: "🇭🇰", タイ: "🇹🇭", ベトナム: "🇻🇳", 米国: "🇺🇸", UAE: "🇦🇪", 台湾: "🇹🇼",

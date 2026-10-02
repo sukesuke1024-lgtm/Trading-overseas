@@ -4,10 +4,10 @@ import { PageHeader } from "@/components/ui";
 
 const base = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 const FILES = [
-  { title: "操作マニュアル（PDF）", desc: "印刷・配布用。画面の使い方、1日の流れ、よくある質問、運用ルール", href: `${base}/docs/AITREK-CRM_操作マニュアル.pdf`, icon: FileText },
-  { title: "操作マニュアル（Word）", desc: "社内向けに編集・加筆できる版（.docx）", href: `${base}/docs/AITREK-CRM_操作マニュアル.docx`, icon: FileText },
-  { title: "設計書（PDF）", desc: "設計レビュー、画面一覧、Customer 360°／パイプライン設計、DB/ER、権限、セキュリティ、開発順序", href: `${base}/docs/AITREK-CRM_設計書.pdf`, icon: BookOpen },
-  { title: "設計書（Word）", desc: "編集可能な設計書（.docx）", href: `${base}/docs/AITREK-CRM_設計書.docx`, icon: BookOpen },
+  { title: "操作マニュアル（PDF）", desc: "印刷・配布用。画面の使い方、1日の流れ、よくある質問、運用ルール", href: `${base}/docs/H-LINK-CRM_操作マニュアル.pdf`, icon: FileText },
+  { title: "操作マニュアル（Word）", desc: "社内向けに編集・加筆できる版（.docx）", href: `${base}/docs/H-LINK-CRM_操作マニュアル.docx`, icon: FileText },
+  { title: "設計書（PDF）", desc: "設計レビュー、画面一覧、Customer 360°／パイプライン設計、DB/ER、権限、セキュリティ、開発順序", href: `${base}/docs/H-LINK-CRM_設計書.pdf`, icon: BookOpen },
+  { title: "設計書（Word）", desc: "編集可能な設計書（.docx）", href: `${base}/docs/H-LINK-CRM_設計書.docx`, icon: BookOpen },
 ];
 const QUICK = [
   ["まず見る場所", "ダッシュボードの「今日やること」と「要フォロー案件」。ここだけ見れば、今日動くべき相手がわかります。"],

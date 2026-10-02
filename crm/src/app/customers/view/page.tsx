@@ -108,7 +108,7 @@ function C360() {
               {contacts.map((c) => (
                 <li key={c.id} className="rounded-xl bg-surface-2 p-3">
                   <div className="flex items-start gap-2.5">
-                    <Avatar user={{ id: c.id, name: c.name, email: "", role: "sales", teamId: "", title: "", hue: (c.name.charCodeAt(0) * 7) % 360 }} size={30} />
+                    <Avatar user={{ name: c.name, hue: (c.name.charCodeAt(0) * 7) % 360 }} size={30} />
                     <div className="min-w-0 flex-1"><div className="truncate text-[13px] font-semibold">{c.name}</div><div className="truncate text-[11.5px] text-ink-3">{[c.department, c.title].filter(Boolean).join("・")}</div></div>
                     <div className="flex gap-0.5">
                       <button title="主要連絡先" disabled={!editable} onClick={() => updateContact(c.id, { isPrimary: !c.isPrimary })} className={`grid h-6 w-6 place-items-center rounded-md ${c.isPrimary ? "text-accent-2" : "text-ink-3/50 hover:text-ink-2"}`}><Star size={14} fill={c.isPrimary ? "currentColor" : "none"} /></button>

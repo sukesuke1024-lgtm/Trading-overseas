@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { Check, Clock, Trash2 } from "lucide-react";
-import type { ActivityType, Contact, Currency, Data, Deal, StageId } from "@/lib/types";
+import type { ActivityType, Contact, Currency, Data, Deal, Lang, StageId } from "@/lib/types";
 import { ACTIVITY_TYPES, COUNTRIES, LOST_REASONS, OPEN_STAGES, PRODUCTS, SEGMENTS, SOURCES, activityLabel, flag, stageOf } from "@/lib/constants";
 import { addDays, dueInfo, fmtDateTime, relativeDays, todayStr } from "@/lib/dates";
 import { addContact, addDeal, addOrg, completeTask, deleteActivity, moveStage, setNextAction, useMe } from "@/lib/store";
@@ -68,7 +68,7 @@ export function NewOrgDrawer({ d, open, onClose, onCreated }: { d: Data; open: b
   const dup = d.organizations.find((o) => f.name.trim().length > 2 && o.name.toLowerCase().includes(f.name.trim().toLowerCase()));
   const save = () => {
     const id = addOrg({ name: f.name.trim(), country: f.country, city: f.city, address: `${f.city}, ${f.country}`, url: f.url, segment: f.segment as never, source: f.source as never, industry: f.industry, ownerId: f.ownerId, memo: "" });
-    if (cName.trim()) addContact({ orgId: id, name: cName.trim(), department: "", title: cTitle, email: cEmail, phone: "", isPrimary: true, isDecisionMaker: false, note: "" });
+    if (cName.trim()) addContact({ orgId: id, name: cName.trim(), department: "", title: cTitle, email: cEmail, phone: "", isPrimary: true, isDecisionMaker: false, note: "", optOut: false, lang: f.country === "日本" ? "ja" : "en" });
     onCreated?.(id);
     onClose();
   };
@@ -101,7 +101,7 @@ export function NewOrgDrawer({ d, open, onClose, onCreated }: { d: Data; open: b
 }
 
 export function NewContactDrawer({ d, open, onClose, presetOrgId }: { d: Data; open: boolean; onClose: () => void; presetOrgId?: string }) {
-  const [f, setF] = useState({ orgId: presetOrgId ?? "", name: "", department: "", title: "", email: "", phone: "", isPrimary: false, isDecisionMaker: false, note: "" });
+  const [f, setF] = useState({ orgId: presetOrgId ?? "", name: "", department: "", title: "", email: "", phone: "", isPrimary: false, isDecisionMaker: false, note: "", optOut: false, lang: "en" as Lang });
   const set = (k: string, v: string | boolean) => setF((x) => ({ ...x, [k]: v }));
   const save = () => { addContact(f as Omit<Contact, "id">); onClose(); };
   return (
