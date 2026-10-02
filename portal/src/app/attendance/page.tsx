@@ -8,12 +8,28 @@ import { missingDays, monthLabel, monthSummary, shiftMonth } from "@/lib/attenda
 import { KINDS, autoKind, calcDay, daysOf, fmtH, holidayName, isHoliday, normalizeTime, overtimeLevel, toMin, type DayInput, type Kind } from "@/lib/work";
 import { useStore, ymd } from "@/lib/store";
 import { Badge, PageHeader, Progress } from "@/components/ui";
+import { ATTENDANCE_ON, ATTENDANCE_URL } from "@/lib/features";
 import { TodayCard } from "@/components/TodayCard";
 
 const DOW = "日月火水木金土";
 const TABS = ["日別入力", "全員の月次集計"] as const;
 
+/** 勤怠をSaaSに任せる設定のときの案内（NEXT_PUBLIC_ATTENDANCE=off） */
+function AttendanceMoved() {
+  return (
+    <div className="card mx-auto mt-8 max-w-xl p-6 text-center">
+      <h1 className="text-lg font-bold">勤怠は外部の勤怠サービスで入力します</h1>
+      <p className="mt-2 text-[13px] text-ink-2">このポータルでは勤怠の入力・打刻を行いません。</p>
+      {ATTENDANCE_URL && <a className="btn btn-primary mt-4 inline-flex" href={ATTENDANCE_URL} target="_blank" rel="noopener noreferrer">勤怠サービスを開く</a>}
+    </div>
+  );
+}
+
 export default function Attendance() {
+  return ATTENDANCE_ON ? <AttendanceInner /> : <AttendanceMoved />;
+}
+
+function AttendanceInner() {
   const { s, meId, role, emp, me } = useStore();
   const today = ymd(new Date());
   const [month, setMonth] = useState(today.slice(0, 7));

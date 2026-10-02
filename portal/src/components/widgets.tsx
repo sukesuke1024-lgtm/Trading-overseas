@@ -217,7 +217,8 @@ function SecurityWidget() {
 }
 
 export type WidgetDef = { id: string; title: string; col: "main" | "side"; flat?: boolean; show: (role: Parameters<typeof can.admin>[0]) => boolean; C: () => ReactNode };
-export const WIDGETS: WidgetDef[] = [
+import { ATTENDANCE_ON, ATTENDANCE_WIDGETS } from "@/lib/features";
+const ALL_WIDGETS: WidgetDef[] = [
   { id: "punch", title: "打刻", col: "side", show: () => true, C: TodayCard },
   { id: "attendance", title: "今月の勤怠", col: "main", show: () => true, C: Attendance },
   { id: "todo", title: "ToDo・承認依頼", col: "main", show: () => true, C: Todo },
@@ -233,6 +234,7 @@ export const WIDGETS: WidgetDef[] = [
   { id: "excel", title: "給与計算への連携", col: "side", show: can.excel, C: ExcelCard },
   { id: "news", title: "お知らせ", col: "main", flat: true, show: () => true, C: NewsList },
 ];
+export const WIDGETS: WidgetDef[] = ATTENDANCE_ON ? ALL_WIDGETS : ALL_WIDGETS.filter((w) => !ATTENDANCE_WIDGETS.includes(w.id)); // 勤怠をSaaSに任せる設定のときは勤怠カードを出さない
 /** 初期の表示順（一般社員／役職者で異なる）。勤怠のすぐ下にお知らせ。ToDoと全社の状況の間に大きなスケジュール枠。役職者向けのウィジェットは役職者のみ */
 export const DEFAULT_ORDER = {
   employee: ["punch", "attendance", "news", "todo", "schedule", "report", "leave", "quick"],

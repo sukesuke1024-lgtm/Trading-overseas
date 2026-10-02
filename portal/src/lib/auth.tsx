@@ -154,6 +154,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } else {
           const r = await fetch(`${BASE}/api/auth/me`, { credentials: "same-origin", cache: "no-store" });
           if (r.ok) { const d = await r.json(); setUser({ id: d.id, role: d.role }); setMustChange(!!d.mustChange); }
+          else { // Cloudflare Access 経由なら会社アカウントで自動ログイン（未設定のサーバーは 404 を返すだけ）
+            const { status, data } = await post<{ id: string; role: Role; mustChange: boolean }>("/api/auth/access", {});
+            if (status === 200) { setUser({ id: data.id, role: data.role }); setMustChange(!!data.mustChange); }
+          }
         }
       } catch {}
       setReady(true);

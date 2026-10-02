@@ -8,6 +8,7 @@ export const dynamic = "force-dynamic";
 const MAX_FAILS = 5, LOCK_MS = 15 * 60 * 1000;
 
 export async function POST(req: Request) {
+  if (process.env.ACCESS_ONLY === "1") return json({ error: "会社アカウント（Google / Microsoft）でのログインのみ有効です。" }, 403);
   const ip = clientIp(req);
   if (!sameOrigin(req)) return json({ error: "forbidden" }, 403);
   if (rateLimited(ip)) return json({ error: "試行回数が多すぎます。" }, 429);

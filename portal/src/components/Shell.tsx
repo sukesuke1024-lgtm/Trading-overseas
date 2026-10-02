@@ -21,7 +21,8 @@ import { runLocalArchive } from "@/lib/archive-client";
 import { Logo } from "./ui";
 
 type NavItem = { href: string; label: string; icon: typeof Home; show?: (r: RoleName) => boolean; group?: string };
-const NAV: NavItem[] = [
+import { ATTENDANCE_ON } from "@/lib/features";
+const ALL_NAV: NavItem[] = [
   { href: "/", label: "ホーム", icon: Home },
   { href: "/attendance", label: "勤怠", icon: Clock },
   { href: "/workflow", label: "申請・承認", icon: FileCheck2 },
@@ -55,6 +56,8 @@ const NAV: NavItem[] = [
   { href: "/ipo", label: "上場準備", icon: Rocket, show: can.viewAccounting, group: "監査・統制" },
   { href: "/admin", label: "監査ログ", icon: ShieldCheck, show: can.audit, group: "監査・統制" },
 ];
+// 勤怠をSaaSに任せる設定のときは、メニューの「勤怠」を外す（案内ページ /attendance にURLを表示）
+const NAV: NavItem[] = ATTENDANCE_ON ? ALL_NAV : ALL_NAV.filter((n) => n.href !== "/attendance" && n.href !== "/excel");
 const CRUMBS: Record<string, { group?: string; label: string }> = Object.fromEntries(NAV.map((n) => [n.href.split("?")[0], { group: n.group, label: n.label }]));
 CRUMBS["/workflow"] = { label: "申請・承認" };
 CRUMBS["/reset"] = { label: "PINの再設定" };
@@ -237,8 +240,8 @@ function Frame({ children, onLogout }: { children: ReactNode; onLogout: (all: bo
           © {COMPANY.name}　社外秘（Confidential）。無断での転載・社外共有を禁じます。　{STATIC ? "※デモ環境：データはこのブラウザ内にのみ保存されます。" : "※データは社内サーバーに保存され、ログイン中の端末間で同期されます。"}
         </footer>
       </div>
-      <nav className="print:hidden fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-line bg-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden" aria-label="モバイルメニュー">
-        {[["/", "ホーム", Home, 0], ["/attendance", "勤怠", Clock, 0], ["/workflow", "申請", FileCheck2, pending], ["/news", "お知らせ", Megaphone, unread]].map(([href, label, Icon, badge]) => {
+      <nav className="print:hidden fixed inset-x-0 bottom-0 z-30 grid grid-flow-col auto-cols-fr border-t border-line bg-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden" aria-label="モバイルメニュー">
+        {[["/", "ホーム", Home, 0], ...(ATTENDANCE_ON ? [["/attendance", "勤怠", Clock, 0]] : []), ["/workflow", "申請", FileCheck2, pending], ["/news", "お知らせ", Megaphone, unread]].map(([href, label, Icon, badge]) => {
           const I = Icon as typeof Home; const h = href as string;
           const active = h === "/" ? path === "/" : path.startsWith(h);
           return (

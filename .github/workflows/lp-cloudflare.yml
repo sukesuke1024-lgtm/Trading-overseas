@@ -1,0 +1,48 @@
+name: Recruitment LP (Cloudflare Pages)
+
+# 独自ドメインで公開する場合の配信先（無料）。非公開リポジトリでも使える。
+# 設定（GitHub → Settings → Secrets and variables → Actions）:
+#   Variables: CF_PAGES_PROJECT（Cloudflare Pages のプロジェクト名）, SITE_URL（例 https://www.example.co.jp/）, DISABLE_GITHUB_PAGES=true
+#   Secrets:   CLOUDFLARE_API_TOKEN（権限: Cloudflare Pages — Edit）, CLOUDFLARE_ACCOUNT_ID
+# 手順は lp/DOMAIN.md
+on:
+  push:
+    branches: [main]
+    paths: ['lp/**', 'recruit-video/out/**', '.github/workflows/lp-cloudflare.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: lp-cloudflare
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    if: vars.CF_PAGES_PROJECT != ''
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: lp/package-lock.json
+      - run: npm ci
+        working-directory: lp
+      - run: npx playwright install --with-deps chromium
+        working-directory: lp
+      - name: Build
+        working-directory: lp
+        env:
+          SITE_URL: ${{ vars.SITE_URL }}
+        run: node build.mjs
+      - run: npm test
+        working-directory: lp
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy lp/dist --project-name=${{ vars.CF_PAGES_PROJECT }} --branch=main

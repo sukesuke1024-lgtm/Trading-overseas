@@ -9,6 +9,7 @@ const MAX_FAILS = 5, LOCK_MS = 15 * 60 * 1000;
 
 /** 第1段階：従業員番号 + PIN。通れば、認証アプリのコード入力（または初回の登録）へ進む */
 export async function POST(req: Request) {
+  if (process.env.ACCESS_ONLY === "1") return json({ error: "会社アカウント（Google / Microsoft）でのログインのみ有効です。" }, 403);
   const ip = clientIp(req);
   if (!sameOrigin(req)) return json({ error: "forbidden" }, 403);
   if (rateLimited(ip)) { logAuth({ actor: "-", event: "rate_limited", ip }); return json({ error: "試行回数が多すぎます。しばらくしてから再試行してください。" }, 429); }

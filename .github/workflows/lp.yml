@@ -35,7 +35,8 @@ jobs:
 
   deploy:
     # GitHub Pages を「Source: GitHub Actions」で有効にすると公開されます
-    if: github.event_name != 'pull_request' && needs.test.result == 'success'
+    # リポジトリを非公開にする、または Cloudflare Pages に移す場合は、Variables に DISABLE_GITHUB_PAGES=true を設定（このジョブを止める）
+    if: github.event_name != 'pull_request' && needs.test.result == 'success' && vars.DISABLE_GITHUB_PAGES != 'true'
     needs: test
     runs-on: ubuntu-latest
     permissions:

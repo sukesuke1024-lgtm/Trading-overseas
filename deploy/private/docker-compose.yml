@@ -15,10 +15,15 @@ x-hardening: &hardening
 services:
   portal:
     <<: *hardening
-    build: { context: ../../portal }
+    build:
+      context: ../../portal
+      args: { NEXT_PUBLIC_ATTENDANCE: "${PORTAL_ATTENDANCE:-}", NEXT_PUBLIC_ATTENDANCE_URL: "${PORTAL_ATTENDANCE_URL:-}" }
     environment:
       PORTAL_INITIAL_PIN: ${PORTAL_INITIAL_PIN:?.env に PORTAL_INITIAL_PIN を設定してください}
       PORTAL_SESSION_SECRET: ${PORTAL_SESSION_SECRET:?.env に PORTAL_SESSION_SECRET を設定してください}
+      ACCESS_TEAM_DOMAIN: ${PORTAL_ACCESS_TEAM_DOMAIN:-}
+      ACCESS_AUD: ${PORTAL_ACCESS_AUD:-}
+      ACCESS_ONLY: ${ACCESS_ONLY:-0}
     volumes: ["portal-data:/data"]
     ports: ["127.0.0.1:${PORTAL_PORT:-3000}:3000"]
 
@@ -28,6 +33,9 @@ services:
     environment:
       CRM_INITIAL_PIN: ${CRM_INITIAL_PIN:?.env に CRM_INITIAL_PIN を設定してください}
       CRM_SESSION_SECRET: ${CRM_SESSION_SECRET:?.env に CRM_SESSION_SECRET を設定してください}
+      ACCESS_TEAM_DOMAIN: ${CRM_ACCESS_TEAM_DOMAIN:-}
+      ACCESS_AUD: ${CRM_ACCESS_AUD:-}
+      ACCESS_ONLY: ${ACCESS_ONLY:-0}
     volumes: ["crm-data:/data"]
     ports: ["127.0.0.1:${CRM_PORT:-3001}:3000"]
 

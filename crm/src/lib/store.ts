@@ -114,7 +114,11 @@ async function serverInit() {
   if (booted) return; booted = true;
   const theme = (read("hlink-crm.theme", ls()) as "light" | "dark" | null) ?? (window.matchMedia?.("(prefers-color-scheme: dark)").matches ? "dark" : "light");
   document.documentElement.dataset.theme = theme; set({ theme });
-  try { const me = await call("/api/auth/me"); if (me.status === 200) await enter(me.body.id as string, !!me.body.mustChange); } catch { /* 未接続：ログイン画面を出す */ }
+  try {
+    let me = await call("/api/auth/me");
+    if (me.status !== 200) me = await call("/api/auth/access", { method: "POST", headers: jsonHeaders, body: "{}" }); // Cloudflare Access 経由なら会社アカウントで自動ログイン
+    if (me.status === 200) await enter(me.body.id as string, !!me.body.mustChange);
+  } catch { /* 未接続：ログイン画面を出す */ }
   set({ ready: true });
   window.addEventListener("storage", (e) => { if (e.key === LOGOUT && e.newValue && state.meId) sessionLost(JSON.parse(e.newValue).reason === "idle" ? "しばらく操作がなかったため、自動でログアウトしました。" : "別の画面でログアウトしたため、ログアウトしました。"); });
 }
