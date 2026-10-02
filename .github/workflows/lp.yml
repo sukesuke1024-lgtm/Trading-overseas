@@ -3,7 +3,7 @@ name: Recruitment LP
 on:
   push:
     branches: [main, claude/overseas-buyer-sales-recruitment-video-idqyvw]
-    paths: ['lp/**', 'portal/**', 'recruit-video/out/**', '.github/workflows/lp.yml']
+    paths: ['lp/**', 'portal/**', 'crm/**', 'recruit-video/out/**', '.github/workflows/lp.yml']
   pull_request:
     paths: ['lp/**', 'recruit-video/out/**', '.github/workflows/lp.yml']
   workflow_dispatch:
@@ -68,6 +68,17 @@ jobs:
           mkdir -p ../lp/dist/portal
           cp -r out/. ../lp/dist/portal/
           touch ../lp/dist/.nojekyll
+      # 営業CRM（Phase 1 デモ版・静的書き出し）を /crm/ 配下に同梱して公開する
+      - name: Build CRM demo
+        working-directory: crm
+        env:
+          STATIC: '1'
+          NEXT_PUBLIC_BASE_PATH: ${{ steps.pages.outputs.base_path }}/crm
+        run: |
+          npm ci
+          npx next build
+          mkdir -p ../lp/dist/crm
+          cp -r out/. ../lp/dist/crm/
       # 前の版（Mirai HD 版ポータル）も /portal-v1/ で引き続き使えるように同梱する（固定コミットから別途ビルド）
       - name: Checkout previous portal version
         uses: actions/checkout@v4

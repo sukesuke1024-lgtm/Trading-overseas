@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720" font-family="IPAGothic, sans-serif">
+<rect width="1200" height="720" fill="#fff"/>
+<defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#55565e"/></marker></defs>
+<g stroke="#55565e" stroke-width="1.6" fill="none" marker-end="url(#a)">
+<path d="M155 210V180"/><path d="M400 200H345V260H290"/><path d="M760 110H700"/><path d="M550 300V250"/><path d="M700 330H730V200H760"/><path d="M700 370H760"/><path d="M550 540V500"/><path d="M290 570H345V420H400"/>
+</g>
+<g font-size="13">
+<g><rect x="20" y="60" width="270" height="120" rx="8" fill="#e8eef7" stroke="#1f3a5f"/><text x="34" y="84" font-weight="700" font-size="15" fill="#1f3a5f">teams</text><text x="34" y="108">id / name</text></g>
+<g><rect x="20" y="210" width="270" height="170" rx="8" fill="#e8eef7" stroke="#1f3a5f"/><text x="34" y="234" font-weight="700" font-size="15" fill="#1f3a5f">users</text><text x="34" y="258">id / team_id / name / email</text><text x="34" y="280">role (admin|manager|sales)</text><text x="34" y="302">title / is_active</text></g>
+<g><rect x="400" y="60" width="300" height="190" rx="8" fill="#fff" stroke="#1f3a5f" stroke-width="2"/><text x="414" y="84" font-weight="700" font-size="15" fill="#1f3a5f">organizations（顧客）</text><text x="414" y="108">id / name / url / country / city</text><text x="414" y="130">industry / segment / source</text><text x="414" y="152">owner_id → users</text><text x="414" y="174">memo / created_at / deleted_at</text></g>
+<g><rect x="760" y="60" width="300" height="190" rx="8" fill="#fff" stroke="#1f3a5f"/><text x="774" y="84" font-weight="700" font-size="15" fill="#1f3a5f">contacts（担当者）</text><text x="774" y="108">id / org_id → organizations</text><text x="774" y="130">name / department / title</text><text x="774" y="152">email / phone</text><text x="774" y="174">is_primary / is_decision_maker</text><text x="774" y="196">note</text></g>
+<g><rect x="400" y="300" width="300" height="200" rx="8" fill="#fff" stroke="#1f3a5f" stroke-width="2"/><text x="414" y="324" font-weight="700" font-size="15" fill="#1f3a5f">deals（案件）</text><text x="414" y="348">id / name / org_id / contact_id</text><text x="414" y="370">owner_id → users</text><text x="414" y="392">amount / currency / probability</text><text x="414" y="414">stage_id → deal_stages</text><text x="414" y="436">expected_close_date / lost_reason</text><text x="414" y="458">product / memo</text><text x="414" y="480">stage_changed_at / closed_at</text></g>
+<g><rect x="760" y="300" width="300" height="130" rx="8" fill="#fff" stroke="#1f3a5f"/><text x="774" y="324" font-weight="700" font-size="15" fill="#1f3a5f">deal_stages</text><text x="774" y="348">id / label / probability</text><text x="774" y="370">kind (open|won|lost|hold) / sort</text></g>
+<g><rect x="400" y="540" width="300" height="140" rx="8" fill="#fff" stroke="#1f3a5f" stroke-width="2"/><text x="414" y="564" font-weight="700" font-size="15" fill="#1f3a5f">activities（活動）</text><text x="414" y="588">id / type / org_id / deal_id</text><text x="414" y="610">contact_id / user_id / at</text><text x="414" y="632">summary / note</text></g>
+<g><rect x="20" y="540" width="270" height="140" rx="8" fill="#fff" stroke="#1f3a5f" stroke-width="2"/><text x="34" y="564" font-weight="700" font-size="15" fill="#1f3a5f">tasks（Task / Next Action）</text><text x="34" y="588">id / title / type / due_date</text><text x="34" y="610">assignee_id / status</text><text x="34" y="632">deal_id / org_id / contact_id</text><text x="34" y="654">is_next_action</text></g>
+<g><rect x="760" y="460" width="300" height="100" rx="8" fill="#f1f1ee" stroke="#8a8c95"/><text x="774" y="484" font-weight="700" font-size="15" fill="#54565e">audit_logs</text><text x="774" y="508">at / user_id</text><text x="774" y="528">action / entity</text><text x="774" y="548">entity_id / diff</text></g>
+</g>
+<text x="760" y="620" font-size="12" fill="#54565e">太枠 = 中心テーブル（顧客・案件・活動・Task）</text>
+<text x="760" y="642" font-size="12" fill="#54565e">矢印 = 外部キー（多 → 1）</text>
+<text x="760" y="664" font-size="12" fill="#54565e">将来追加：quotes / contracts / orders / invoices /</text><text x="760" y="684" font-size="12" fill="#54565e">payments / products / tags / attachments</text>
+</svg>
