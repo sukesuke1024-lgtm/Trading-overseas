@@ -1,79 +1,81 @@
-// H-LINK のアプリアイコン一式（角丸の白地に H ロゴ）を、ロゴ素材 brand/src/mark.png から生成する。
-//   npm run icons  →  portal/public/icons, crm/public/icons, 各アプリの public/brand/H-LINK-icons.zip（ダウンロード用）
+// H-LINK のアプリアイコン一式を、ロゴ原本 brand/src/mark.png から生成する（全端末・ポータルと CRM で同一）。
+//   npm run icons  →  portal/public と crm/public の icons/・brand/ に同じファイルを書き出す
+// ロゴは加工しません（拡大縮小・白地への配置のみ。描き直し・変形・シャープ処理はしない）。
 import sharp from "sharp";
-import { mkdir, writeFile, copyFile, rm } from "node:fs/promises";
+import { mkdir, writeFile, rm, readdir } from "node:fs/promises";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
-const crmRoot = path.join(root, "..", "crm");
+const targets = [path.join(root, "public"), path.join(root, "..", "crm", "public")]; // 同期先（常に同一内容）
 const WHITE = { r: 255, g: 255, b: 255, alpha: 1 };
+const CLEAR = { r: 0, g: 0, b: 0, alpha: 0 };
 
-// ロゴ（透明背景の H）。余白を詰める
+// ロゴ原本（透明背景）。余白だけを詰める
 const mark = await sharp(path.join(root, "brand/src/mark.png")).ensureAlpha().trim({ threshold: 1 }).png().toBuffer();
 
-/** size 四方。rounded=角丸(透明の角)。fill=ロゴが占める幅の割合 */
-async function icon(size, { rounded = true, fill = 0.8, border = true } = {}) {
-  const w = Math.round(size * fill);
-  const logo = await sharp(mark).resize({ width: w }).png().toBuffer();
+/** size 四方の白地にロゴを中央配置。shape: "square"=全面白（iOS・ストア・maskable）/ "rounded"=角丸 */
+async function tile(size, { shape = "rounded", fill = 0.8, border = true } = {}) {
+  const logo = await sharp(mark).resize({ width: Math.round(size * fill), kernel: "lanczos3" }).png().toBuffer();
   const r = Math.round(size * 0.224);
-  const base = rounded
-    ? Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}"><rect width="${size}" height="${size}" rx="${r}" fill="#fff"${border ? ` stroke="#d9d9d9" stroke-width="${Math.max(1, size / 128)}"` : ""}/></svg>`)
-    : null;
-  const bg = base ? sharp(base) : sharp({ create: { width: size, height: size, channels: 4, background: WHITE } });
+  const bg = shape === "rounded"
+    ? sharp(Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}"><rect x="0.5" y="0.5" width="${size - 1}" height="${size - 1}" rx="${r}" fill="#fff"${border && size >= 64 ? ` stroke="#d9d9d9" stroke-width="${Math.max(1, size / 256)}"` : ""}/></svg>`))
+    : sharp({ create: { width: size, height: size, channels: 4, background: WHITE } });
   return bg.composite([{ input: logo, gravity: "center" }]).png().toBuffer();
 }
+/** ロゴの形をそのまま保つため、ファビコンはロゴを大きめ（幅の92%）に置く */
+const fav = (s) => tile(s, { fill: 0.92 });
 
-/** 小さいサイズ(16〜48px)：角丸の枠を省き、ロゴを端いっぱいまで大きくして、アーチと H を潰さない */
-async function small(size) {
-  const pad = Math.max(0, Math.round(size * 0.04));
-  const w = size - pad * 2;
-  const logo = await sharp(mark).resize({ width: w, kernel: "lanczos3" }).sharpen({ sigma: 0.6, m1: 1.2, m2: 2 }).png().toBuffer();
-  return sharp({ create: { width: size, height: size, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } }).composite([{ input: logo, gravity: "center" }]).png().toBuffer();
-}
+const out = {}; // ファイル名 → Buffer
+out["app-icon-1024.png"] = await tile(1024, { shape: "square", fill: 0.78 });          // ストア提出・Mac/iOS/Android の原版（OS が角丸を付ける）
+out["app-icon-1024-rounded.png"] = await tile(1024);                                    // 角丸つき（見せる用）
+out["icon-512.png"] = await tile(512); out["icon-192.png"] = await tile(192);           // PWA（Android・Windows・Mac のインストール）
+out["icon-maskable-512.png"] = await tile(512, { shape: "square", fill: 0.56 });        // Android の丸/しずく型に切られても欠けない
+out["apple-touch-icon.png"] = await tile(180, { shape: "square", fill: 0.74 });         // iPhone / iPad のホーム画面
+for (const s of [16, 32, 48]) out[`favicon-${s}.png`] = await fav(s);
+for (const s of [150, 310]) out[`windows-tile-${s}.png`] = await tile(s, { shape: "square", fill: 0.7 }); // Windows スタートのタイル
+out["logo-mark-transparent.png"] = await sharp(mark).resize({ width: 1200 }).png().toBuffer();
 
-/** 16〜48px は縮小せず、太い柱と太い赤いアーチをピクセルに合わせて描く（縮小すると細い線が消えるため） */
-const bold = (px) => sharp(Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" shape-rendering="crispEdges"><rect x="1" y="2" width="4" height="12" fill="#0b0b0d"/><rect x="11" y="2" width="4" height="12" fill="#0b0b0d"/><path d="M0 11 L2 9 L4 7.5 L6 6.5 L8 6 L10 6.5 L12 7.5 L14 9 L16 11 L16 12 L14 10.5 L12 9.5 L10 8.7 L8 8.5 L6 8.7 L4 9.5 L2 10.5 L0 12Z" fill="#e60012" shape-rendering="geometricPrecision"/></svg>`), { density: 72 * (px / 16) }).png().toBuffer();
-
-const sizes = {
-  "app-icon-1024.png": await icon(1024),
-  "icon-512.png": await icon(512),
-  "icon-192.png": await icon(192),
-  "icon-maskable-512.png": await icon(512, { rounded: false, fill: 0.56 }), // 端末が角を切り取っても欠けない余白つき
-  "apple-touch-icon.png": await icon(180, { rounded: false, fill: 0.74 }), // iOS が角丸を付ける
-  "favicon-16.png": await bold(16),
-  "favicon-32.png": await bold(32),
-  "favicon-48.png": await bold(48),
-};
-
-// favicon.ico（16/32/48 の PNG を格納）
-function ico(pngs) {
-  const head = Buffer.alloc(6); head.writeUInt16LE(1, 2); head.writeUInt16LE(pngs.length, 4);
-  let off = 6 + 16 * pngs.length; const dir = [];
-  for (const { size, buf } of pngs) {
-    const e = Buffer.alloc(16); e[0] = size; e[1] = size; e.writeUInt16LE(1, 4); e.writeUInt16LE(32, 6); e.writeUInt32LE(buf.length, 8); e.writeUInt32LE(off, 12);
+// favicon.ico / Windows 用 .ico（PNG 格納の複数サイズ）
+function ico(list) {
+  const head = Buffer.alloc(6); head.writeUInt16LE(1, 2); head.writeUInt16LE(list.length, 4);
+  let off = 6 + 16 * list.length; const dir = [];
+  for (const { size, buf } of list) {
+    const e = Buffer.alloc(16); e[0] = size >= 256 ? 0 : size; e[1] = size >= 256 ? 0 : size; e.writeUInt16LE(1, 4); e.writeUInt16LE(32, 6); e.writeUInt32LE(buf.length, 8); e.writeUInt32LE(off, 12);
     dir.push(e); off += buf.length;
   }
-  return Buffer.concat([head, ...dir, ...pngs.map((p) => p.buf)]);
+  return Buffer.concat([head, ...dir, ...list.map((p) => p.buf)]);
 }
-const icoBuf = ico([16, 32, 48].map((s) => ({ size: s, buf: sizes[`favicon-${s}.png`] })));
+out["favicon.ico"] = ico([16, 32, 48].map((s) => ({ size: s, buf: out[`favicon-${s}.png`] })));
+const winSizes = [16, 24, 32, 48, 64, 128, 256];
+out["H-LINK-windows.ico"] = ico(await Promise.all(winSizes.map(async (s) => ({ size: s, buf: await tile(s, { fill: 0.92 }) }))));
+
+// Mac 用 .icns（PNG 格納）
+function icns(parts) {
+  const chunks = parts.map(([type, buf]) => { const h = Buffer.alloc(8); h.write(type, 0, "ascii"); h.writeUInt32BE(buf.length + 8, 4); return Buffer.concat([h, buf]); });
+  const total = 8 + chunks.reduce((n, c) => n + c.length, 0);
+  const h = Buffer.alloc(8); h.write("icns", 0, "ascii"); h.writeUInt32BE(total, 4);
+  return Buffer.concat([h, ...chunks]);
+}
+out["H-LINK-mac.icns"] = icns([["icp4", await tile(16, { fill: 0.92 })], ["icp5", await tile(32, { fill: 0.92 })], ["icp6", await tile(64)], ["ic07", await tile(128)], ["ic08", await tile(256)], ["ic09", out["icon-512.png"]], ["ic10", await tile(1024)]]);
 
 // ブラウザタブの見本
-const tabSvg = (logoB64) => `<svg xmlns="http://www.w3.org/2000/svg" width="720" height="120"><rect width="720" height="120" fill="#e8eaed"/><path d="M20 120V44q0-14 14-14h300q14 0 14 14v76z" fill="#fff"/><image href="data:image/png;base64,${logoB64}" x="44" y="46" width="32" height="32"/><text x="92" y="68" font-family="sans-serif" font-size="20" fill="#202124">H-LINK ｜ つなぐ、越える、</text><text x="318" y="68" font-size="20" fill="#5f6368" font-family="sans-serif">×</text></svg>`;
-const tab = await sharp(Buffer.from(tabSvg(sizes["favicon-32.png"].toString("base64")))).png().toBuffer();
+const tabSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="720" height="120"><rect width="720" height="120" fill="#e8eaed"/><path d="M20 120V44q0-14 14-14h300q14 0 14 14v76z" fill="#fff"/><image href="data:image/png;base64,${out["favicon-32.png"].toString("base64")}" x="44" y="46" width="32" height="32"/><text x="92" y="68" font-family="sans-serif" font-size="20" fill="#202124">H-LINK ｜ つなぐ、越える、</text></svg>`;
+out["browser-tab-sample.png"] = await sharp(Buffer.from(tabSvg)).png().toBuffer();
+const readme = "H-LINK アイコン一式（ロゴは加工していません）\n\n[Mac] H-LINK-mac.icns / app-icon-1024.png\n[Windows] H-LINK-windows.ico / windows-tile-150,310.png\n[iPhone・iPad] apple-touch-icon.png（ホーム画面に追加）\n[Android・Chrome・Edge] icon-192/512.png / icon-maskable-512.png\n[ブラウザのタブ] favicon.ico / favicon-16,32,48.png\n[ストア・印刷] app-icon-1024.png（全面白地）/ app-icon-1024-rounded.png（角丸）\n[透明背景] logo-mark-transparent.png\n";
 
-for (const app of [path.join(root, "public"), path.join(crmRoot, "public")]) {
-  const icons = path.join(app, "icons"), brand = path.join(app, "brand"), tmp = path.join(app, "brand", "_zip");
+const web = new Set(["icon-512.png", "icon-192.png", "icon-maskable-512.png", "apple-touch-icon.png", "favicon-16.png", "favicon-32.png", "favicon-48.png", "favicon.ico"]);
+for (const app of targets) {
+  const icons = path.join(app, "icons"), brand = path.join(app, "brand"), tmp = path.join(brand, "_zip");
+  await rm(tmp, { recursive: true, force: true });
   await mkdir(icons, { recursive: true }); await mkdir(tmp, { recursive: true });
-  for (const [name, buf] of Object.entries(sizes)) { await writeFile(path.join(tmp, name), buf); if (!name.startsWith("app-icon")) await writeFile(path.join(icons, name), buf); }
-  await writeFile(path.join(tmp, "favicon.ico"), icoBuf); await writeFile(path.join(icons, "favicon.ico"), icoBuf);
-  await writeFile(path.join(tmp, "browser-tab-sample.png"), tab);
-  await sharp(mark).resize({ width: 1200 }).png().toFile(path.join(tmp, "logo-mark-transparent.png"));
-  await writeFile(path.join(tmp, "README.txt"), "H-LINK アイコン\napp-icon-1024.png … アプリアイコン (1024x1024)\nicon-512/192.png … PWA・ホーム画面\nicon-maskable-512.png … Android 用（全面の白地）\napple-touch-icon.png … iOS ホーム画面\nfavicon.ico / favicon-16,32,48.png … ブラウザのタブ\nbrowser-tab-sample.png … タブ表示の見本\nlogo-mark-transparent.png … 透明背景のロゴ\n");
+  for (const [name, buf] of Object.entries(out)) { await writeFile(path.join(tmp, name), buf); if (web.has(name)) await writeFile(path.join(icons, name), buf); }
+  for (const f of ["app-icon-1024.png", "H-LINK-mac.icns", "H-LINK-windows.ico"]) await writeFile(path.join(brand, f), out[f]); // 直接ダウンロード用
+  await writeFile(path.join(tmp, "README.txt"), readme);
   const zip = path.join(brand, "H-LINK-icons.zip"); await rm(zip, { force: true });
-  execFileSync("zip", ["-j", "-q", zip, ...(await import("node:fs")).readdirSync(tmp).map((f) => path.join(tmp, f))]);
-  await copyFile(path.join(tmp, "app-icon-1024.png"), path.join(brand, "app-icon-1024.png"));
+  const files = (await readdir(tmp)).sort().map((f) => path.join(tmp, f));
+  execFileSync("zip", ["-X", "-j", "-q", zip, ...files]);
   await rm(tmp, { recursive: true });
 }
-console.log("icons generated");
+console.log("icons generated:", Object.keys(out).length, "files ×", targets.length, "apps");
