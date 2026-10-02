@@ -1,0 +1,516 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>H-LINK 北海道の食を世界へ</title>
+<meta name="description" content="H-LINKは、北海道を起点に、生産者・メーカーと海外バイヤーをつなぐ食のサプライチェーン企業です。輸出のご相談、取引のご相談はお気軽に。">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@500;600;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Cormorant+Garamond:ital,wght@1,500&display=swap">
+<style>
+/* Layout: one bright page built around a route from Hokkaido outward. Every section ends in a path to the inquiry form. */
+:root{
+  --bg:#F6F8FB; --surface:#FFFFFF; --ink:#0B1B3A; --mute:#52607A; --line:#D9E0EC;
+  --red:#E60012; --red-ink:#C4000F; --navy:#0B1B3A; --sky:#DCE8FA; --on-navy:#FFFFFF; --on-navy-mute:#B7C5E3;
+  --shadow:0 20px 50px rgba(11,27,58,.10);
+  --serif:"Shippori Mincho","Hiragino Mincho ProN","Yu Mincho",serif;
+  --sans:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic",system-ui,sans-serif;
+  --en:"Cormorant Garamond","Times New Roman",serif;
+  --wrap:1180px; --gut:clamp(16px,4.5vw,56px); --ease:cubic-bezier(.22,.61,.2,1);
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0A1428; --surface:#101D38; --ink:#EAF0FB; --mute:#9DB0D0; --line:#22375F;
+  --red:#FF3B47; --red-ink:#FF6A73; --navy:#06101F; --sky:#16284A; --shadow:0 20px 50px rgba(0,0,0,.45); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0A1428; --surface:#101D38; --ink:#EAF0FB; --mute:#9DB0D0; --line:#22375F;
+  --red:#FF3B47; --red-ink:#FF6A73; --navy:#06101F; --sky:#16284A; --shadow:0 20px 50px rgba(0,0,0,.45); color-scheme:dark}
+
+*,*::before,*::after{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:84px}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 16px/1.9 var(--sans);letter-spacing:.03em;-webkit-font-smoothing:antialiased;padding-inline:0}
+h1,h2,h3,p,ul,ol,dl,dd{margin:0}
+ul,ol{padding:0;list-style:none}
+a{color:inherit;text-decoration:none}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--red);outline-offset:3px;border-radius:4px}
+.wrap{max-width:var(--wrap);margin-inline:auto;padding-inline:var(--gut)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.skip{position:fixed;left:12px;top:12px;z-index:100;background:var(--ink);color:var(--bg);padding:10px 16px;transform:translateY(-200%)}
+.skip:focus{transform:none}
+
+/* header */
+.hd{position:sticky;top:0;z-index:50;background:color-mix(in srgb,var(--bg) 90%,transparent);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
+.hd-in{height:68px;display:flex;align-items:center;gap:20px}
+.brand{font:700 22px/1 var(--serif);letter-spacing:.14em;display:flex;align-items:center;gap:10px}
+.brand i{display:block;width:10px;height:10px;background:var(--red);border-radius:50%}
+.nav{display:none;margin-inline-start:auto;gap:26px;font-size:14px;font-weight:500}
+.nav a{padding:6px 0;border-bottom:2px solid transparent;transition:border-color .3s}
+.nav a:hover{border-color:var(--red)}
+.hd-cta{margin-inline-start:auto}
+@media (min-width:900px){.nav{display:flex}.hd-cta{margin-inline-start:0}}
+
+/* buttons */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;min-height:52px;padding:0 28px;border:1.5px solid var(--ink);background:transparent;font-weight:700;font-size:15px;letter-spacing:.08em;border-radius:999px;transition:background .3s,color .3s,border-color .3s,transform .3s var(--ease)}
+.btn:hover{transform:translateY(-2px)}
+.btn svg{width:16px;height:16px;transition:transform .3s var(--ease)}
+.btn:hover svg{transform:translateX(4px)}
+.btn--red{background:var(--red);border-color:var(--red);color:#fff}
+.btn--red:hover{background:var(--red-ink);border-color:var(--red-ink)}
+.btn--sm{min-height:42px;padding:0 20px;font-size:13.5px}
+.btn--ghost:hover{background:var(--ink);color:var(--bg)}
+
+/* shared type */
+.kicker{font:italic 500 18px/1 var(--en);letter-spacing:.12em;color:var(--red-ink);display:flex;align-items:center;gap:14px}
+.kicker::after{content:"";flex:0 0 48px;height:1.5px;background:var(--red)}
+@media (max-width:520px){.kicker{font-size:15px}}
+h2.h{font:600 clamp(27px,3.6vw,44px)/1.5 var(--serif);letter-spacing:.08em;text-wrap:balance;margin-top:14px;word-break:auto-phrase}
+.sec{padding-block:clamp(72px,9vw,128px)}
+.lead{color:var(--mute);max-width:36em;margin-top:18px}
+
+/* hero */
+.hero{position:relative;overflow:hidden;background:var(--navy);color:var(--on-navy)}
+.hero canvas{position:absolute;inset:0;width:100%;height:100%}
+.hero::before{content:"";position:absolute;inset:0;background:radial-gradient(60% 60% at 18% 40%,rgba(11,27,58,.0),rgba(6,16,31,.55)),linear-gradient(180deg,transparent 60%,rgba(255,140,60,.18));pointer-events:none}
+.hero-in{position:relative;padding-block:clamp(72px,11vw,150px) clamp(64px,8vw,110px);display:grid;gap:28px;max-width:var(--wrap);margin-inline:auto;padding-inline:var(--gut)}
+.hero .kicker{color:#fff}
+.hero .kicker::after{background:var(--red)}
+.hero h1{font:600 clamp(36px,6.4vw,80px)/1.3 var(--serif);letter-spacing:.1em;word-break:auto-phrase;text-wrap:balance;max-width:11em}
+.hero h1 em{font-style:normal;border-bottom:4px solid var(--red);padding-bottom:2px}
+.hero p.sub{max-width:33em;color:var(--on-navy-mute);font-size:clamp(15px,1.4vw,17px)}
+.paths{display:grid;gap:14px;max-width:760px;margin-top:6px}
+@media (min-width:720px){.paths{grid-template-columns:1fr 1fr}}
+.path{display:grid;gap:4px;padding:20px 22px;border:1px solid rgba(255,255,255,.28);background:rgba(11,27,58,.55);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);border-radius:14px;transition:background .3s,border-color .3s,transform .3s var(--ease)}
+.path:hover{background:rgba(230,0,18,.92);border-color:var(--red);transform:translateY(-3px)}
+.path small{font-size:12px;letter-spacing:.14em;color:var(--on-navy-mute);transition:color .3s}
+.path:hover small{color:#fff}
+.path b{font:600 19px/1.5 var(--serif);letter-spacing:.06em;display:flex;justify-content:space-between;align-items:center;gap:12px}
+.path svg{width:18px;height:18px;flex:none}
+.hero .note{font-size:13px;color:var(--on-navy-mute)}
+
+/* audience tabs */
+.tabs{display:inline-flex;padding:5px;border:1px solid var(--line);background:var(--surface);border-radius:999px;margin-top:32px;gap:4px;max-width:100%;flex-wrap:wrap}
+.tab{padding:10px 22px;border:0;background:none;border-radius:999px;font-weight:700;font-size:14.5px;color:var(--mute);transition:background .3s,color .3s}
+.tab[aria-selected="true"]{background:var(--ink);color:var(--bg)}
+.panel{display:grid;gap:32px;margin-top:32px;padding:clamp(24px,4vw,48px);background:var(--surface);border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow)}
+.panel[hidden]{display:none}
+@media (min-width:900px){.panel{grid-template-columns:1.1fr 1fr;align-items:center}}
+.panel h3{font:600 clamp(22px,2.4vw,30px)/1.55 var(--serif);letter-spacing:.07em}
+.panel p{color:var(--mute);margin-top:12px}
+.panel ul{display:grid;gap:12px;margin-top:4px}
+.panel li{display:grid;grid-template-columns:28px 1fr;gap:12px;align-items:start;padding:14px 0;border-bottom:1px solid var(--line)}
+.panel li:last-child{border-bottom:0}
+.panel li svg{width:22px;height:22px;color:var(--red);margin-top:4px}
+.panel li b{display:block;font-weight:700}
+.panel li span{font-size:14px;color:var(--mute)}
+.panel .btn{margin-top:22px}
+
+/* value chain */
+.vc{background:var(--surface);border-block:1px solid var(--line)}
+.chain{display:grid;gap:0;margin-top:44px;position:relative}
+@media (min-width:900px){.chain{grid-template-columns:repeat(5,1fr)}.chain::before{content:"";position:absolute;left:10%;right:10%;top:29px;height:2px;background:linear-gradient(90deg,var(--line),var(--red),var(--line))}}
+.step{display:grid;justify-items:center;text-align:center;gap:8px;padding:12px 8px 20px}
+.step .dot{width:58px;height:58px;border-radius:50%;background:var(--bg);border:2px solid var(--line);display:grid;place-items:center;font:600 18px var(--serif);position:relative;transition:border-color .3s,background .3s,color .3s}
+.step:hover .dot{background:var(--red);border-color:var(--red);color:#fff}
+.step b{font:600 17px/1.4 var(--serif);letter-spacing:.08em}
+.step span{font-size:13.5px;color:var(--mute);max-width:15em}
+.here{display:inline-block;margin-top:2px;font-size:11px;font-weight:700;letter-spacing:.14em;color:#fff;background:var(--red);padding:1px 10px;border-radius:999px}
+@media (max-width:899px){.step{grid-template-columns:58px 1fr;justify-items:start;text-align:left;column-gap:18px;padding:14px 0;border-bottom:1px solid var(--line)}.step .dot{grid-row:span 3}}
+
+/* strengths */
+.grid4{display:grid;gap:18px;margin-top:44px}
+@media (min-width:700px){.grid4{grid-template-columns:1fr 1fr}}
+@media (min-width:1060px){.grid4{grid-template-columns:repeat(4,1fr)}}
+.card{padding:28px 24px;background:var(--surface);border:1px solid var(--line);border-top:4px solid var(--ink);border-radius:4px 4px 16px 16px;display:grid;gap:12px;align-content:start;transition:border-color .3s,transform .3s var(--ease),box-shadow .3s}
+.card:hover{border-top-color:var(--red);transform:translateY(-4px);box-shadow:var(--shadow)}
+.card .no{font:italic 500 38px/1 var(--en);color:var(--red-ink)}
+.card h3{font:600 19px/1.55 var(--serif);letter-spacing:.07em}
+.card p{font-size:14.5px;color:var(--mute)}
+
+/* process */
+.flow{display:grid;gap:18px;margin-top:44px;counter-reset:s}
+@media (min-width:900px){.flow{grid-template-columns:repeat(4,1fr)}}
+.flow li{counter-increment:s;position:relative;padding:26px 22px 22px;background:var(--surface);border:1px solid var(--line);border-radius:16px;display:grid;gap:8px;align-content:start}
+.flow li::before{content:"STEP " counter(s);font:700 12px/1 var(--sans);letter-spacing:.2em;color:var(--red-ink)}
+.flow b{font:600 18px/1.5 var(--serif);letter-spacing:.06em}
+.flow span{font-size:14px;color:var(--mute)}
+.flow-note{margin-top:22px;font-size:13.5px;color:var(--mute)}
+
+/* faq */
+.faq{display:grid;gap:10px;margin-top:40px;max-width:820px}
+.faq details{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:0 22px}
+.faq summary{list-style:none;cursor:pointer;display:flex;justify-content:space-between;gap:16px;align-items:center;padding:18px 0;font-weight:700}
+.faq summary::-webkit-details-marker{display:none}
+.faq summary::after{content:"+";font:400 24px/1 var(--sans);color:var(--red-ink);transition:transform .3s}
+.faq details[open] summary::after{transform:rotate(45deg)}
+.faq p{padding-bottom:20px;color:var(--mute);font-size:15px}
+
+/* contact */
+.contact{background:var(--navy);color:var(--on-navy)}
+.contact .kicker{color:#fff}
+.contact h2.h{color:#fff}
+.contact .lead{color:var(--on-navy-mute)}
+.cgrid{display:grid;gap:36px;margin-top:8px}
+@media (min-width:960px){.cgrid{grid-template-columns:.8fr 1.2fr;gap:64px}}
+.promise{display:grid;gap:14px;margin-top:28px}
+.promise li{display:flex;gap:12px;align-items:flex-start;font-size:14.5px;color:var(--on-navy-mute)}
+.promise svg{width:20px;height:20px;color:#fff;flex:none;margin-top:5px}
+.form{background:var(--surface);color:var(--ink);padding:clamp(22px,3.4vw,40px);border-radius:20px;display:grid;gap:18px;box-shadow:0 30px 70px rgba(0,0,0,.35)}
+.seg{display:flex;gap:6px;padding:5px;background:var(--bg);border-radius:999px;border:1px solid var(--line)}
+.seg button{flex:1;border:0;background:none;padding:10px 8px;border-radius:999px;font-weight:700;font-size:14px;color:var(--mute);transition:background .3s,color .3s}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+.row2{display:grid;gap:18px}
+@media (min-width:600px){.row2{grid-template-columns:1fr 1fr}}
+.fld{display:grid;gap:6px;min-width:0}
+.fld label{font-size:13.5px;font-weight:700}
+.fld .req{color:var(--red-ink);font-size:12px;margin-inline-start:6px}
+.fld input:not([type=checkbox]),.fld select,.fld textarea{width:100%;background:var(--bg);border:1.5px solid var(--line);border-radius:10px;padding:12px 14px;min-height:48px}
+.fld textarea{min-height:130px;resize:vertical}
+.fld input:not([type=checkbox]):focus,.fld select:focus,.fld textarea:focus{outline:none;border-color:var(--red);box-shadow:0 0 0 3px color-mix(in srgb,var(--red) 22%,transparent)}
+.fld .err{display:block;visibility:hidden;min-height:1.4em;margin-top:-2px;font-size:12.5px;line-height:1.4;color:var(--red-ink);font-weight:700}
+.fld.bad .err{visibility:visible}.fld.bad input:not([type=checkbox]),.fld.bad select,.fld.bad textarea{border-color:var(--red)}
+.agree{display:flex;gap:10px;align-items:flex-start;font-size:13.5px;color:var(--mute)}
+.agree input{width:20px;height:20px;margin-top:4px;accent-color:var(--red)}
+.form .btn{width:100%;min-height:58px;font-size:16px}
+.fine{font-size:12.5px;color:var(--mute);text-align:center}
+.done{display:none;gap:14px}
+.done.on{display:grid}
+.done h3{font:600 22px/1.5 var(--serif)}
+.done pre{margin:0;white-space:pre-wrap;word-break:break-word;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:14px;font:13px/1.8 var(--sans);max-height:260px;overflow:auto}
+.done .acts{display:flex;flex-wrap:wrap;gap:10px}
+
+/* footer */
+.ft{padding-block:48px calc(32px + env(safe-area-inset-bottom,0px));font-size:13.5px;color:var(--mute)}
+.ft-in{display:flex;flex-wrap:wrap;justify-content:space-between;gap:18px;align-items:center}
+.ft .brand{color:var(--ink)}
+
+/* sticky mobile CTA */
+.bar{position:fixed;left:0;right:0;bottom:0;z-index:60;padding:10px var(--gut) calc(10px + env(safe-area-inset-bottom,0px));background:color-mix(in srgb,var(--bg) 94%,transparent);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-top:1px solid var(--line);transform:translateY(110%);transition:transform .4s var(--ease)}
+.bar.on{transform:none}
+.bar .btn{width:100%}
+@media (min-width:900px){.bar{display:none}}
+@media (max-width:899px){body{padding-bottom:76px}}
+
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<a class="skip" href="#contact">お問い合わせへ移動</a>
+
+<header class="hd">
+  <div class="wrap hd-in">
+    <a class="brand" href="#top" aria-label="H-LINK トップへ"><i></i>H-LINK</a>
+    <nav class="nav" aria-label="メインメニュー">
+      <a href="#who">ご相談の内容</a>
+      <a href="#chain">事業</a>
+      <a href="#strength">強み</a>
+      <a href="#flow">ご相談の流れ</a>
+      <a href="#faq">よくある質問</a>
+    </nav>
+    <a class="btn btn--red btn--sm hd-cta" href="#contact">お問い合わせ</a>
+  </div>
+</header>
+
+<main id="top">
+<section class="hero" aria-labelledby="h1">
+  <canvas id="route" aria-hidden="true"></canvas>
+  <div class="hero-in">
+    <p class="kicker">Food Supply Chain from Hokkaido</p>
+    <h1 id="h1">北海道の食を、<br><em>世界の食卓</em>へ。</h1>
+    <p class="sub">H-LINKは、北海道の生産者・メーカーと、海外のバイヤーをつなぐ会社です。産地での調達から輸出の実務まで、つなぎ役として伴走します。</p>
+    <div class="paths">
+      <a class="path" href="#contact" data-pick="producer"><small>生産者・メーカーの方</small><b>輸出について相談する<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 8h10M9 4l4 4-4 4"/></svg></b></a>
+      <a class="path" href="#contact" data-pick="buyer"><small>海外バイヤーの方</small><b>取引について相談する<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 8h10M9 4l4 4-4 4"/></svg></b></a>
+    </div>
+    <p class="note">ご相談・お問い合わせは無料です。まだ具体的に決まっていない段階でも構いません。</p>
+  </div>
+</section>
+
+<section class="sec" id="who" aria-labelledby="who-h">
+  <div class="wrap">
+    <p class="kicker">For You</p>
+    <h2 class="h" id="who-h">あなたの立場から、<br>必要なことを選べます。</h2>
+    <div class="tabs" role="tablist" aria-label="立場を選ぶ">
+      <button class="tab" role="tab" id="t-producer" aria-controls="p-producer" aria-selected="true">生産者・メーカーの方</button>
+      <button class="tab" role="tab" id="t-buyer" aria-controls="p-buyer" aria-selected="false" tabindex="-1">海外バイヤーの方</button>
+    </div>
+
+    <div class="panel" id="p-producer" role="tabpanel" aria-labelledby="t-producer">
+      <div>
+        <h3>良い商品を、<br>海外の買い手まで届けたい。</h3>
+        <p>輸出に必要な相手探し、書類、物流まで、H-LINKが窓口になります。まずは商品の状況をお聞かせください。</p>
+        <a class="btn btn--red" href="#contact" data-pick="producer">輸出について相談する<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 8h10M9 4l4 4-4 4"/></svg></a>
+      </div>
+      <ul>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l3 3 5-6"/></svg><div><b>買い手とのご紹介</b><span>商品に合う海外バイヤーを探し、商談の場をつくります。</span></div></li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l3 3 5-6"/></svg><div><b>輸出実務のサポート</b><span>書類、通関、梱包、物流の手配をまとめて相談できます。</span></div></li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l3 3 5-6"/></svg><div><b>はじめての方も安心</b><span>輸出の経験がなくても、一つずつ順番に進めます。</span></div></li>
+      </ul>
+    </div>
+
+    <div class="panel" id="p-buyer" role="tabpanel" aria-labelledby="t-buyer" hidden>
+      <div>
+        <h3>北海道の食材を、<br>安定して仕入れたい。</h3>
+        <p>ご希望の品目・数量・条件をお聞きし、産地とメーカーから候補をご提案します。サンプルのご相談も可能です。</p>
+        <a class="btn btn--red" href="#contact" data-pick="buyer">取引について相談する<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 8h10M9 4l4 4-4 4"/></svg></a>
+      </div>
+      <ul>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l3 3 5-6"/></svg><div><b>産地とメーカーの窓口を一本化</b><span>複数の生産者への問い合わせを、H-LINKがまとめます。</span></div></li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l3 3 5-6"/></svg><div><b>条件に合う商品の提案</b><span>品目、ロット、価格帯、納期に合わせて候補を選びます。</span></div></li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l3 3 5-6"/></svg><div><b>出荷までの手配</b><span>輸出書類や物流の調整を含めて対応します。</span></div></li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section class="sec vc" id="chain" aria-labelledby="chain-h">
+  <div class="wrap">
+    <p class="kicker">What We Connect</p>
+    <h2 class="h" id="chain-h">産地から食卓まで、<br>途切れない一本の流れに。</h2>
+    <p class="lead">生産、加工、物流、貿易、そして海外の買い手。H-LINKは、これらの間に立ち、つなぎ目で起きる手間と不安を減らします。</p>
+    <ol class="chain">
+      <li class="step"><span class="dot">1</span><b>産地</b><span>北海道の生産者</span></li>
+      <li class="step"><span class="dot">2</span><b>加工・製造</b><span>メーカー、工場</span></li>
+      <li class="step"><span class="dot">3</span><b>物流</b><span>保管、輸送、温度管理</span></li>
+      <li class="step"><span class="dot">4</span><b>貿易実務</b><span>書類、通関、契約</span><span class="here">H-LINKが担当</span></li>
+      <li class="step"><span class="dot">5</span><b>海外バイヤー</b><span>輸入、販売</span></li>
+    </ol>
+  </div>
+</section>
+
+<section class="sec" id="strength" aria-labelledby="st-h">
+  <div class="wrap">
+    <p class="kicker">Why H-LINK</p>
+    <h2 class="h" id="st-h">選ばれる理由は、<br>「窓口が一つ」で済むこと。</h2>
+    <ul class="grid4">
+      <li class="card"><span class="no">01</span><h3>北海道を起点にした調達</h3><p>産地とのつながりを活かし、商品づくりの背景までお伝えできます。</p></li>
+      <li class="card"><span class="no">02</span><h3>輸出実務までひとまとめ</h3><p>相手探しから書類、物流まで、複数の会社に分けて頼む手間を減らします。</p></li>
+      <li class="card"><span class="no">03</span><h3>両側の言葉がわかる</h3><p>生産者の事情と、海外バイヤーの要望を、それぞれに伝わる形で橋渡しします。</p></li>
+      <li class="card"><span class="no">04</span><h3>取引のあとも続く関係</h3><p>一度きりで終わらせず、継続した取引になるよう伴走します。</p></li>
+    </ul>
+  </div>
+</section>
+
+<section class="sec vc" id="flow" aria-labelledby="fl-h">
+  <div class="wrap">
+    <p class="kicker">How It Works</p>
+    <h2 class="h" id="fl-h">ご相談から出荷まで、<br>4つのステップ。</h2>
+    <ol class="flow">
+      <li><b>お問い合わせ</b><span>下のフォームから、わかる範囲でご入力ください。</span></li>
+      <li><b>ヒアリング</b><span>商品や取引のご希望を、オンラインまたは電話でお聞きします。</span></li>
+      <li><b>ご提案・サンプル</b><span>候補のご紹介と、条件のすり合わせを行います。</span></li>
+      <li><b>ご契約・出荷</b><span>条件が決まったら、書類と物流を整えて出荷します。</span></li>
+    </ol>
+    <p class="flow-note">ご相談の段階では費用はかかりません。内容に応じて、進め方をご案内します。</p>
+  </div>
+</section>
+
+<section class="sec" id="faq" aria-labelledby="faq-h">
+  <div class="wrap">
+    <p class="kicker">FAQ</p>
+    <h2 class="h" id="faq-h">よくあるご質問</h2>
+    <div class="faq">
+      <details><summary>輸出の経験がなくても相談できますか。</summary><p>はい。経験がない方こそ、最初のご相談をおすすめします。何から始めるべきかを整理するところからご一緒します。</p></details>
+      <details><summary>まだ商品や数量が固まっていなくても大丈夫ですか。</summary><p>大丈夫です。ご希望の方向性だけでも構いません。お話を聞きながら、決めるべきことを一緒に整理します。</p></details>
+      <details><summary>海外バイヤーですが、日本語が話せません。</summary><p>英語でのお問い合わせを想定しています。フォームには英語でご入力いただいて構いません。</p></details>
+      <details><summary>相談には費用がかかりますか。</summary><p>ご相談・お問い合わせは無料です。取引が具体的になった段階で、必要な条件を事前にご説明します。</p></details>
+      <details><summary>返信までどのくらいかかりますか。</summary><p>内容を確認し、担当者から順次ご連絡します。お急ぎの場合は、その旨をメッセージにご記入ください。</p></details>
+    </div>
+  </div>
+</section>
+
+<section class="sec contact" id="contact" aria-labelledby="c-h">
+  <div class="wrap cgrid">
+    <div>
+      <p class="kicker">Contact</p>
+      <h2 class="h" id="c-h">まずは、<br>気軽にご相談ください。</h2>
+      <p class="lead">必須項目は4つだけです。商品や条件が決まっていなくても、お送りいただけます。</p>
+      <ul class="promise">
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l3 3 5-6"/></svg>ご相談・お問い合わせは無料です</li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l3 3 5-6"/></svg>無理な営業は行いません</li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l3 3 5-6"/></svg>ご入力内容は、ご相談への対応にのみ使います</li>
+      </ul>
+    </div>
+
+    <form class="form" id="form" novalidate>
+      <div class="seg" role="group" aria-label="ご相談の種類">
+        <button type="button" data-type="producer" aria-pressed="true">生産者・メーカー</button>
+        <button type="button" data-type="buyer" aria-pressed="false">海外バイヤー</button>
+      </div>
+      <div class="row2">
+        <div class="fld"><label for="company">会社名・屋号<span class="req">必須</span></label><input id="company" name="company" autocomplete="organization"><span class="err">会社名・屋号を入力してください。</span></div>
+        <div class="fld"><label for="name">お名前<span class="req">必須</span></label><input id="name" name="name" autocomplete="name"><span class="err">お名前を入力してください。</span></div>
+      </div>
+      <div class="fld"><label for="email">メールアドレス<span class="req">必須</span></label><input id="email" name="email" type="email" autocomplete="email" inputmode="email"><span class="err">正しいメールアドレスを入力してください。</span></div>
+      <div class="row2">
+        <div class="fld"><label for="topic">ご相談の内容</label><select id="topic" name="topic"></select></div>
+        <div class="fld"><label for="item">取り扱い・ご希望の品目</label><input id="item" name="item" placeholder="例: 水産加工品、乳製品、農産物"></div>
+      </div>
+      <div class="fld"><label for="msg">メッセージ</label><textarea id="msg" name="msg" placeholder="現在の状況やご希望を、わかる範囲でご記入ください。"></textarea></div>
+      <div class="fld" id="agree-f">
+        <label class="agree"><input type="checkbox" id="agree"><span>ご入力内容を、ご相談への対応のために利用することに同意します。<span class="req">必須</span></span></label>
+        <span class="err">同意にチェックを入れてください。</span>
+      </div>
+      <button class="btn btn--red" type="submit">入力内容を確認する<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 8h10M9 4l4 4-4 4"/></svg></button>
+      <p class="fine">次の画面で内容をご確認いただき、メールで送信できます。</p>
+    </form>
+
+    <div class="form done" id="done" role="status" aria-live="polite" hidden>
+      <h3>内容をまとめました。メールで送ってください。</h3>
+      <p>下の内容でメールを作成します。送信はメールソフトから行われます。</p>
+      <pre id="summary"></pre>
+      <div class="acts">
+        <a class="btn btn--red" id="mail" href="#">メールを作成する</a>
+        <button class="btn btn--ghost" type="button" id="copy">内容をコピー</button>
+        <button class="btn btn--ghost" type="button" id="back">入力に戻る</button>
+      </div>
+      <p class="fine" id="mailaddr"></p>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer class="ft">
+  <div class="wrap ft-in">
+    <span class="brand"><i></i>H-LINK</span>
+    <span>北海道を起点に、食をつなぐ。</span>
+    <span>&copy; H-LINK</span>
+  </div>
+</footer>
+
+<div class="bar" id="bar"><a class="btn btn--red" href="#contact">無料で相談する</a></div>
+
+<script>
+/* 送信先メールアドレス(ここを実際の窓口に変更してください) */
+const CONTACT_EMAIL = "hello@example.com";
+
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const TOPICS = {
+  producer: ["輸出について相談したい", "海外バイヤーを紹介してほしい", "商品の海外展開を相談したい", "その他"],
+  buyer: ["北海道の商品を仕入れたい", "サンプルを取り寄せたい", "継続取引について相談したい", "その他 (English OK)"]
+};
+let type = "producer";
+
+/* tabs */
+function showTab(t, focus) {
+  for (const k of ["producer", "buyer"]) {
+    $("#t-" + k).setAttribute("aria-selected", String(k === t));
+    $("#t-" + k).tabIndex = k === t ? 0 : -1;
+    $("#p-" + k).hidden = k !== t;
+  }
+  if (focus) $("#t-" + t).focus();
+}
+$$(".tab").forEach((b) => {
+  b.addEventListener("click", () => showTab(b.id.slice(2)));
+  b.addEventListener("keydown", (e) => {
+    if (e.key === "ArrowRight" || e.key === "ArrowLeft") showTab(b.id === "t-producer" ? "buyer" : "producer", true);
+  });
+});
+
+/* form type */
+function setType(t) {
+  type = t;
+  $$(".seg button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.type === t)));
+  $("#topic").innerHTML = TOPICS[t].map((x) => `<option>${x}</option>`).join("");
+}
+$$(".seg button").forEach((b) => b.addEventListener("click", () => setType(b.dataset.type)));
+$$("[data-pick]").forEach((a) => a.addEventListener("click", () => setType(a.dataset.pick)));
+setType("producer");
+
+/* validation + summary (no server: the visitor sends it from their own mail app) */
+const form = $("#form"), done = $("#done");
+const rules = {
+  company: (v) => v.trim().length > 0,
+  name: (v) => v.trim().length > 0,
+  email: (v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim()),
+};
+function mark(id, ok) { const f = $("#" + id).closest(".fld"); f.classList.toggle("bad", !ok); return ok; }
+for (const id of Object.keys(rules)) $("#" + id).addEventListener("blur", () => mark(id, rules[id]($("#" + id).value)));
+$("#agree").addEventListener("change", () => $("#agree-f").classList.toggle("bad", !$("#agree").checked));
+
+function compose() {
+  const who = type === "producer" ? "生産者・メーカー" : "海外バイヤー";
+  const g = (id) => $("#" + id).value.trim() || "(未入力)";
+  const body = [
+    `【ご相談の種類】${who}`, `【会社名・屋号】${g("company")}`, `【お名前】${g("name")}`, `【メール】${g("email")}`,
+    `【ご相談の内容】${$("#topic").value}`, `【品目】${g("item")}`, "", "【メッセージ】", g("msg"),
+  ].join("\n");
+  return { subject: `[H-LINK] ${who}からのお問い合わせ`, body };
+}
+form.addEventListener("submit", (e) => {
+  e.preventDefault();
+  let ok = true, first = null;
+  for (const id of Object.keys(rules)) { const r = mark(id, rules[id]($("#" + id).value)); if (!r && !first) first = $("#" + id); ok = ok && r; }
+  const ag = $("#agree").checked; $("#agree-f").classList.toggle("bad", !ag); if (!ag) { ok = false; first = first || $("#agree"); }
+  if (!ok) { first.focus(); return; }
+  const { subject, body } = compose();
+  $("#summary").textContent = body;
+  $("#mail").href = `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  $("#mailaddr").textContent = `送信先: ${CONTACT_EMAIL}`;
+  form.hidden = true; done.hidden = false; done.classList.add("on");
+  done.scrollIntoView({ block: "center" });
+});
+$("#back").addEventListener("click", () => { done.hidden = true; done.classList.remove("on"); form.hidden = false; form.scrollIntoView({ block: "center" }); });
+$("#copy").addEventListener("click", async () => {
+  const b = $("#copy");
+  try { await navigator.clipboard.writeText($("#summary").textContent); b.textContent = "コピーしました"; }
+  catch { const r = document.createRange(); r.selectNodeContents($("#summary")); const s = getSelection(); s.removeAllRanges(); s.addRange(r); b.textContent = "選択しました。コピーしてください"; }
+  setTimeout(() => (b.textContent = "内容をコピー"), 2400);
+});
+
+/* sticky CTA: show after hero, hide while the form is on screen */
+const bar = $("#bar"), hero = $(".hero"), contact = $("#contact");
+function barState() {
+  const past = hero.getBoundingClientRect().bottom < 0;
+  const r = contact.getBoundingClientRect();
+  const atForm = r.top < innerHeight * .7 && r.bottom > 0;
+  bar.classList.toggle("on", past && !atForm);
+}
+addEventListener("scroll", barState, { passive: true }); addEventListener("resize", barState); barState();
+
+/* hero route: lines from Hokkaido to Asia-Pacific (decorative) */
+(() => {
+  const cv = $("#route"), ctx = cv.getContext("2d");
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const ORIGIN = [43.06, 141.35];
+  const DEST = [[1.35,103.8],[22.3,114.2],[25.0,121.5],[13.7,100.5],[37.6,127.0],[31.2,121.5],[14.6,121.0],[10.8,106.7],[35.7,139.7],[3.1,101.7],[-6.2,106.8],[22.5,88.4]];
+  let W, H, dpr, t0 = performance.now();
+  const proj = ([la, lo]) => [(lo - 70) / 100 * W * 1.1 + W * -.02, (58 - la) / 72 * H];
+  function size() {
+    dpr = Math.min(devicePixelRatio || 1, 2);
+    const r = cv.getBoundingClientRect(); W = r.width; H = r.height;
+    cv.width = W * dpr; cv.height = H * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  function frame(now) {
+    const t = reduce ? 9 : (now - t0) / 1000;
+    ctx.clearRect(0, 0, W, H);
+    const step = 18;
+    for (let x = step / 2; x < W; x += step) for (let y = step / 2; y < H; y += step) {
+      ctx.fillStyle = "rgba(183,197,227,.16)"; ctx.fillRect(x, y, 1.6, 1.6);
+    }
+    const [ox, oy] = proj(ORIGIN);
+    DEST.forEach((d, i) => {
+      const [dx, dy] = proj(d);
+      const p = Math.min(1, Math.max(0, (t - .4 - i * .14) / 1.8));
+      if (p <= 0) return;
+      const cx = (ox + dx) / 2, cy = Math.min(oy, dy) - Math.hypot(dx - ox, dy - oy) * .28;
+      ctx.beginPath(); ctx.moveTo(ox, oy);
+      const n = 40;
+      for (let k = 1; k <= n * p; k++) { const u = k / n, a = (1 - u) * (1 - u), b = 2 * (1 - u) * u, c = u * u; ctx.lineTo(a * ox + b * cx + c * dx, a * oy + b * cy + c * dy); }
+      ctx.strokeStyle = W < 720 ? "rgba(255,255,255,.2)" : "rgba(255,255,255,.5)"; ctx.lineWidth = 1.2; ctx.stroke();
+      if (p >= 1 && W >= 720) { ctx.beginPath(); ctx.arc(dx, dy, 3.2, 0, 7); ctx.fillStyle = "#fff"; ctx.fill(); }
+    });
+    const pulse = reduce ? 0 : (Math.sin(t * 2.4) + 1) / 2;
+    ctx.beginPath(); ctx.arc(ox, oy, 14 + pulse * 10, 0, 7); ctx.fillStyle = `rgba(230,0,18,${.22 - pulse * .1})`; ctx.fill();
+    ctx.beginPath(); ctx.arc(ox, oy, 6, 0, 7); ctx.fillStyle = "#E60012"; ctx.fill();
+    ctx.lineWidth = 2; ctx.strokeStyle = "#fff"; ctx.stroke();
+    if (!reduce) requestAnimationFrame(frame);
+  }
+  size(); addEventListener("resize", () => { size(); if (reduce) frame(0); });
+  reduce ? frame(0) : requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
