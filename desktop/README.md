@@ -28,3 +28,4 @@ CRM のユーザーは、ポータルの「従業員・権限 → CRM用に書�
 
 ## 複数人で使う
 1台のPC（または社内サーバー）で `--lan` 起動し、各自のブラウザから開きます。常時稼働は Docker（`portal/Dockerfile`、`crm/Dockerfile.server`）が向いています。
+- アプリアイコン等のダウンロード: 公開URLの `/portal/brand/icons.html`、`/crm/brand/icons.html`（ZIP一式）。再生成は `cd portal && npm run icons`。

@@ -5,7 +5,7 @@ import { asset } from "@/lib/asset";
 
 export const metadata: Metadata = {
   title: "H-LINK CRM｜海外営業",
-  icons: { icon: asset("/icons/favicon-32.png"), apple: asset("/icons/apple-touch-icon.png") },
+  icons: { icon: [{ url: asset("/icons/favicon.ico"), sizes: "any" }, { url: asset("/icons/favicon-32.png"), type: "image/png" }], apple: asset("/icons/apple-touch-icon.png") },
   description: "顧客 × 案件 × 活動 × Next Action を一つに。海外事業の営業を前に進める社内CRM",
   robots: { index: false, follow: false },
 };
