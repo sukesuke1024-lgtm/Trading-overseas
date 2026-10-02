@@ -73,9 +73,11 @@ export const EXT_KINDS = ["与信", "反社", "公的情報", "その他"] as co
 export type ExtLink = { id: string; name: string; url: string; kind: (typeof EXT_KINDS)[number]; dept: string; accountId?: string; note?: string };
 export const isHttps = (u: string) => /^https:\/\/[^\s"'<>]{3,300}$/.test(u);
 export const DEFAULT_EXT_LINKS: ExtLink[] = [
-  { id: "x-tdb", name: "帝国データバンク（COSMOS／企業情報）", url: "https://www.tdb.co.jp/", kind: "与信", dept: "", note: "企業の信用調査・評点。契約している事業部のIDで利用（調査報告書は決算書とあわせて保管）" },
-  { id: "x-gsearch", name: "G-Search 企業情報", url: "https://db.g-search.or.jp/", kind: "与信", dept: "", note: "企業概要・財務・信用情報の検索。契約している事業部のIDで利用" },
-  { id: "x-tsr", name: "東京商工リサーチ（TSR企業情報）", url: "https://www.tsr-net.co.jp/", kind: "与信", dept: "", note: "企業の信用調査・倒産情報" },
+  { id: "x-tdb", name: "帝国データバンク（COSMOS／企業情報）", url: "https://www.tdb.co.jp/", kind: "与信", dept: "", note: "有料サービスのため、URLのご案内のみです（閲覧には各社の契約・課金が必要）。契約のある事業部のIDでログインして確認" },
+  { id: "x-gsearch", name: "G-Search 企業情報", url: "https://db.g-search.or.jp/", kind: "与信", dept: "", note: "有料サービスのため、URLのご案内のみです（閲覧には契約・課金が必要）。契約のある事業部のIDで確認" },
+  { id: "x-tsr", name: "東京商工リサーチ（TSR企業情報）", url: "https://www.tsr-net.co.jp/", kind: "与信", dept: "", note: "有料サービスのため、URLのご案内のみです（閲覧には契約・課金が必要）" },
+  { id: "x-touki", name: "登記情報提供サービス（法務局・登記簿の取得）", url: "https://www1.touki.or.jp/", kind: "公的情報", dept: "", note: "法人の登記事項（商号・所在地・役員・目的）。取得は有料のため、URLのご案内のみです" },
+  { id: "x-moj", name: "法務局（登記・供託の窓口案内）", url: "https://houmukyoku.moj.go.jp/", kind: "公的情報", dept: "", note: "登記事項証明書の請求・管轄の法務局の案内" },
   { id: "x-houjin", name: "国税庁 法人番号公表サイト", url: "https://www.houjin-bangou.nta.go.jp/", kind: "公的情報", dept: "", note: "法人番号・所在地・商号の確認" },
   { id: "x-invoice", name: "国税庁 適格請求書発行事業者公表サイト", url: "https://www.invoice-kohyo.nta.go.jp/", kind: "公的情報", dept: "", note: "登録番号（T＋13桁）の確認" },
   { id: "x-kanpo", name: "官報（破産・会社法公告の確認）", url: "https://www.kanpo.go.jp/", kind: "公的情報", dept: "", note: "破産・解散等の公告" },
@@ -220,3 +222,41 @@ export function orderMoveOk(cur: OrderStatus, next: OrderStatus, isAdmin: boolea
   if (!isAdmin) return false;
   return ORDER_STATUS.indexOf(next) > ORDER_STATUS.indexOf(cur);
 }
+
+// ---------- 個人の予定・会議室の予約（全員のスケジュール確認） ----------
+export const SCHED_KINDS = ["個人", "会議", "商談", "来客", "外出", "その他"] as const;
+/** 全社＝誰でも内容を見られる／事業部＝同じ事業部の人（と役員）だけ内容を見られる、他の人には「予定あり」／鍵＝本人と招待した参加者だけ（他の人には「予定あり」の時間帯のみ） */
+export const SCHED_VIS = ["全社", "事業部", "鍵"] as const;
+export type SchedVis = (typeof SCHED_VIS)[number];
+export type Room = { id: string; name: string; capacity?: number; note?: string };
+export const DEFAULT_ROOMS: Room[] = [
+  { id: "room-a", name: "会議室A", capacity: 8 },
+  { id: "room-b", name: "会議室B", capacity: 4 },
+  { id: "room-o", name: "応接室", capacity: 6 },
+];
+export type Sched = {
+  id: string; title: string; date: string; start?: string; end?: string; ownerId: string; attendees: string[]; roomId?: string;
+  kind: (typeof SCHED_KINDS)[number]; vis: SchedVis; note?: string; at: string;
+  /** 内容を見られない人向けの表示（時間帯・予約済みの事実だけ。件名・備考・参加者は含まない） */
+  masked?: boolean; busyIds?: string[];
+};
+export const MASKED_TITLE = "予定あり";
+/** 閲覧者に見せる形にする。見られない予定は、時間・誰が埋まっているか・会議室の予約済みだけ残す */
+export function maskSched(s: Sched, v: Pick<Viewer, "id" | "role" | "dept">, deptOfId: (id: string) => string): Sched {
+  if (s.masked) return s;
+  const involved = s.ownerId === v.id || s.attendees.includes(v.id);
+  const full = involved || (s.vis === "全社") || (s.vis === "事業部" && (v.role === "executive" || deptOfId(s.ownerId) === v.dept));
+  if (full) return s;
+  return { id: s.id, title: MASKED_TITLE, date: s.date, ...(s.start ? { start: s.start } : {}), ...(s.end ? { end: s.end } : {}), ownerId: s.ownerId, attendees: [], ...(s.roomId ? { roomId: s.roomId } : {}), kind: "その他", vis: s.vis, at: s.at, masked: true, busyIds: [s.ownerId, ...s.attendees.filter((a) => a !== s.ownerId)] };
+}
+/** 同じ日の表示順：時刻のあるものを開始時刻順に上から、終日は下 */
+export const schedOrder = (a: Pick<Sched, "start" | "title">, b: Pick<Sched, "start" | "title">) => (a.start ? 0 : 1) - (b.start ? 0 : 1) || (a.start ?? "").localeCompare(b.start ?? "") || a.title.localeCompare(b.title);
+const hm = (t: string) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5));
+const span = (x: Pick<Sched, "start" | "end">): [number, number] => x.start ? [hm(x.start), x.end ? hm(x.end) : hm(x.start) + 60] : [0, 1440];
+export const overlaps = (a: Pick<Sched, "start" | "end">, b: Pick<Sched, "start" | "end">) => { const [a1, a2] = span(a), [b1, b2] = span(b); return a1 < b2 && b1 < a2; };
+/** 同じ会議室・同じ日・重なる時間の予約（自分自身は除く） */
+export const roomConflict = (list: Sched[], x: Pick<Sched, "id" | "date" | "start" | "end" | "roomId">): Sched | undefined =>
+  x.roomId ? list.find((o) => o.id !== x.id && o.roomId === x.roomId && o.date === x.date && overlaps(o, x)) : undefined;
+/** 参加者のうち、その時間にすでに予定が入っている人 */
+export const busyAttendees = (list: Sched[], x: Pick<Sched, "id" | "date" | "start" | "end" | "ownerId" | "attendees">): string[] =>
+  [...new Set([x.ownerId, ...x.attendees])].filter((pid) => list.some((o) => o.id !== x.id && o.date === x.date && overlaps(o, x) && (o.masked ? (o.busyIds ?? []).includes(pid) : o.ownerId === pid || o.attendees.includes(pid))));

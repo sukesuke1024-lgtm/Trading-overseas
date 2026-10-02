@@ -1,5 +1,6 @@
 "use client";
 
+import { Pager, usePaged } from "@/components/Pager";
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Check, Copy, FileSpreadsheet, KeyRound, Lock, Pencil, Plus, ShieldCheck, X } from "lucide-react";
@@ -22,9 +23,10 @@ export default function Employees() {
   const [pinFor, setPinFor] = useState<string | null>(null);
   const file = useRef<HTMLInputElement>(null);
   const admin = can.manageEmployees(role);
+  const rows = s.employees.filter((e) => !q || `${e.id}${e.name}${e.kana ?? ""}${e.job}${e.employment}`.includes(q));
+  const pg = usePaged(rows, 10, q);
   if (!can.viewEmployees(role)) return <div className="card p-8 text-center text-ink-2"><Lock className="mx-auto mb-2 text-ink-3" />この画面は役員・管理者のみ閲覧できます。</div>;
 
-  const rows = s.employees.filter((e) => !q || `${e.id}${e.name}${e.kana ?? ""}${e.job}${e.employment}`.includes(q));
   const norm = (n: string) => n.replace(/\s+/g, "");
   const onFile = async (f?: File) => {
     if (!f) return;
@@ -49,7 +51,7 @@ export default function Employees() {
       <div className="mb-3 flex flex-wrap items-center gap-2"><input className="input !w-72" placeholder="番号・氏名・職種で検索" aria-label="検索" value={q} onChange={(e) => setQ(e.target.value)} /><span className="text-[12.5px] text-ink-3">{rows.length}名</span></div>
       <div className="card overflow-x-auto">
         <table className="w-full min-w-[920px] text-[13px]"><thead><tr><th className="th">従業員番号</th><th className="th">氏名</th><th className="th">雇用区分</th><th className="th">職種</th><th className="th text-right">所定(時間/日)</th><th className="th">入社日</th><th className="th">部署</th><th className="th">権限</th>{admin && <th className="th"><span className="sr-only">操作</span></th>}</tr></thead>
-          <tbody>{rows.map((e) => (
+          <tbody>{pg.items.map((e) => (
             <tr key={e.id}>
               <td className="td tabular">{e.id}</td>
               <td className="td"><div className="font-medium">{e.name}{e.id === PRESIDENT_ID && <span className="ml-2 text-[11px] text-ink-3">社長</span>}{e.sample && <span className="ml-2"><Badge>サンプル</Badge></span>}</div>{e.kana && <div className="text-[11.5px] text-ink-3">{e.kana}</div>}</td>
@@ -59,7 +61,7 @@ export default function Employees() {
               ) : <Badge tone={e.role === "admin" ? "bad" : "gray"}>{ROLE_LABEL[e.role]}</Badge>}</td>
               {admin && <td className="td"><div className="flex gap-1"><button className="btn !h-8 !w-8 !p-0" aria-label={`${e.name}を編集`} title="編集" onClick={() => setEditing(e)}><Pencil size={13} /></button><button className="btn !h-8 !w-8 !p-0" aria-label={`${e.name}のPINを再設定`} title="PINの再設定" onClick={() => setPinFor(e.id)}><KeyRound size={13} /></button></div></td>}
             </tr>))}
-          </tbody></table>
+          </tbody></table><Pager pg={pg} />
         {rows.length === 0 && <Empty>該当する従業員はいません</Empty>}
       </div>
       <p className="mt-2 text-[11.5px] text-ink-3">{STATIC ? "デモ版のため、ログインできるのはサンプル3名と社長のみです。" : "従業員を追加・取込すると、その人のログインアカウントが自動で作られます。従業員番号と初期PINでログインし、初回に二要素認証の登録とPINの変更を行います。メールアドレスを登録すると、本人がPINを再設定できます。"} 給与額・生年月日・マイナンバーなどは、ポータルには取り込みません（Excelで管理）。</p>

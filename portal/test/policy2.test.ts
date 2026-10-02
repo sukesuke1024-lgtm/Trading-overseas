@@ -184,3 +184,37 @@ test("備品注文: 依頼は自分の名義・自事業部で。承認〜納品
   const seen = sanitizeForRead({ ...st, employees: emps }, "020", "employee");
   assert.equal(seen!.orders.length, 0); // 他事業部の注文は見えない
 });
+
+test("予定: 自分の名義で登録・鍵と事業部の公開範囲・会議室の重複予約を拒否・他人の予定は変更不可", () => {
+  const rooms = [{ id: "room-a", name: "会議室A" }];
+  const b = (over = {}) => base({ rooms, sched: [], ...over });
+  const sc = (over: Record<string, unknown> = {}) => ({ id: "S1", title: "A社 商談", date: "2026-10-05", start: "10:00", end: "11:00", ownerId: "011", attendees: ["010"], kind: "商談", vis: "全社", note: "見積の件", at: "x", ...over });
+  const r = mergeWrite(b(), { sched: [sc()] }, "011", "employee", ctx);
+  assert.equal(r.denied.length, 0); assert.equal(r.state.sched[0].at, NOW);
+  assert.ok(mergeWrite(b(), { sched: [sc({ ownerId: "010" })] }, "011", "employee", ctx).denied.includes("sched")); // なりすまし
+  assert.ok(mergeWrite(b(), { sched: [sc({ start: "11:00", end: "10:00" })] }, "011", "employee", ctx).denied.includes("sched"));
+  assert.ok(mergeWrite(b(), { sched: [sc({ attendees: ["999"] })] }, "011", "employee", ctx).denied.includes("sched"));
+  // 公開範囲
+  const lock = mergeWrite(b(), { sched: [sc({ vis: "鍵", attendees: ["010"] })] }, "011", "employee", ctx).state;
+  const seen = (uid: string, role: string) => sanitizeForRead({ ...lock, employees: emps }, uid, role as never)!.sched[0];
+  assert.equal(seen("011", "employee").title, "A社 商談"); // 本人
+  assert.equal(seen("010", "employee").title, "A社 商談"); // 招待した参加者
+  const other = seen("020", "employee"); // 他の人：時間帯だけ
+  assert.equal(other.title, "予定あり"); assert.equal(other.note, undefined); assert.deepEqual(other.attendees, []); assert.equal(other.start, "10:00");
+  assert.equal(seen("003", "admin").title, "予定あり"); // 管理者でも鍵は見えない
+  assert.equal(seen("002", "executive").title, "予定あり");
+  const dv = mergeWrite(b(), { sched: [sc({ vis: "事業部" })] }, "011", "employee", ctx).state;
+  const sd = (uid: string, role: string) => sanitizeForRead({ ...dv, employees: emps }, uid, role as never)!.sched[0].title;
+  assert.equal(sd("010", "employee"), "A社 商談"); assert.equal(sd("020", "employee"), "予定あり"); assert.equal(sd("002", "executive"), "A社 商談");
+  // 他人の予定は変更・削除できない（見えていても）
+  assert.ok(mergeWrite(lock, { sched: [{ ...lock.sched[0], title: "改ざん" }] }, "020", "employee", ctx).denied.includes("sched"));
+  assert.ok(mergeWrite(lock, { schedDel: ["S1"] }, "020", "employee", ctx).denied.includes("sched"));
+  assert.equal(mergeWrite(lock, { schedDel: ["S1"] }, "011", "employee", ctx).state.sched.length, 0);
+  // 見えている形（予定あり）をそのまま送り返しても壊れない
+  assert.equal(mergeWrite(lock, { sched: [other] }, "020", "employee", ctx).denied.length, 0);
+  // 会議室の二重予約
+  const room1 = mergeWrite(b(), { sched: [sc({ roomId: "room-a" })] }, "011", "employee", ctx).state;
+  assert.ok(mergeWrite(room1, { sched: [sc({ id: "S2", ownerId: "020", attendees: [], roomId: "room-a", start: "10:30", end: "11:30" })] }, "020", "employee", ctx).denied.includes("sched"));
+  assert.equal(mergeWrite(room1, { sched: [sc({ id: "S2", ownerId: "020", attendees: [], roomId: "room-a", start: "11:00", end: "12:00" })] }, "020", "employee", ctx).denied.length, 0); // 隣り合う時間はOK
+  assert.ok(mergeWrite(b(), { sched: [sc({ roomId: "room-x" })] }, "011", "employee", ctx).denied.includes("sched")); // 存在しない会議室
+});

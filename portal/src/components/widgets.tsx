@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { ArrowRight, ShieldAlert, CalendarCheck2, FileSpreadsheet, FileSignature, MonitorUp, NotebookPen, Receipt, Target, Users } from "lucide-react";
+import { schedOrder } from "@/lib/ops";
 import { eventTime, eventsOn, kpiAttainment, paidLeave } from "@/lib/biz";
 import { can } from "@/lib/perm";
 import { missingDays, monthLabel, monthSummary } from "@/lib/attendance-view";
@@ -49,7 +50,8 @@ function Todo() {
 }
 
 function Schedule() {
-  const { s } = useStore();
+  const { s, meId } = useStore();
+  const mineOn = (iso: string) => s.sched.filter((x) => x.date === iso && !x.masked && (x.ownerId === meId || x.attendees.includes(meId))).sort(schedOrder); // 自分の予定・会議（時刻順、終日は下）
   const today = ymd(new Date());
   const days = Array.from({ length: 7 }, (_, i) => { const d = new Date(); d.setDate(d.getDate() + i); return ymd(d); });
   const WD = ["日", "月", "火", "水", "木", "金", "土"];
@@ -65,7 +67,8 @@ function Schedule() {
               <div className="space-y-1 text-[12.5px]">
                 {h && <Badge tone="bad">{h}</Badge>}
                 {evs.map((e) => <div key={e.id} className="rounded bg-surface px-1.5 py-1"><span className="tabular mr-1.5 text-ink-3">{eventTime(e)}</span>{e.title}</div>)}
-                {!h && evs.length === 0 && <span className="text-ink-3">予定なし</span>}
+                {mineOn(iso).map((x) => <div key={x.id} className="rounded border border-brand/30 bg-surface px-1.5 py-1"><span className="tabular mr-1.5 text-ink-3">{x.start ?? "終日"}</span>{x.vis === "鍵" ? "🔒 " : ""}{x.title}</div>)}
+                {!h && evs.length === 0 && mineOn(iso).length === 0 && <span className="text-ink-3">予定なし</span>}
               </div>
             </li>
           );

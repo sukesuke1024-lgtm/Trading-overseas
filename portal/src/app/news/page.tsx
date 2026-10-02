@@ -1,5 +1,6 @@
 "use client";
 
+import { Pager, usePaged } from "@/components/Pager";
 import { useMemo, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Plus, Trash2, ArrowLeft } from "lucide-react";
@@ -23,6 +24,7 @@ export default function NewsPage() {
 
   const list = useMemo(() => s.news.filter((n) =>
     (cat === "すべて" || n.category === cat) && (!unreadOnly || !readSet.includes(n.id)) && (n.title + n.body).includes(q)), [s.news, readSet, cat, q, unreadOnly]);
+  const pg = usePaged(list, 10, `${cat}|${q}|${unreadOnly}`);
   const cur = s.news.find((n) => n.id === id);
 
   if (cur) {
@@ -50,7 +52,7 @@ export default function NewsPage() {
       </div>
       <div className="card">
         {list.length === 0 && <Empty>該当するお知らせはありません</Empty>}
-        {list.map((n) => (
+        {pg.items.map((n) => (
           <div key={n.id} className="flex items-center gap-3 border-b border-line px-4 py-3 last:border-0">
             <span className={`h-2 w-2 shrink-0 rounded-full ${readSet.includes(n.id) ? "bg-transparent" : "bg-brand-2"}`} aria-label={readSet.includes(n.id) ? "既読" : "未読"} />
             <button className="min-w-0 flex-1 text-left" onClick={() => router.push(`/news?id=${n.id}`)}>
@@ -60,6 +62,7 @@ export default function NewsPage() {
             {canPost && <button className="btn btn-danger !h-8 !w-8 !p-0" aria-label="削除" onClick={() => confirm("このお知らせを削除しますか？") && d({ t: "news-del", id: n.id })}><Trash2 size={14} /></button>}
           </div>
         ))}
+        <Pager pg={pg} />
       </div>
       {compose && <Compose onClose={() => setCompose(false)} />}
     </div>

@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   Home, Megaphone, FileCheck2, Clock, Users, Search, Menu, X, ShieldCheck, CornerDownLeft, LogOut, Ellipsis, Cloud, CloudOff,
-  Landmark, ShoppingCart, ChevronDown, ChevronRight, BookText, FileSearch, Rocket, FileSpreadsheet, Settings as Gear, ShieldAlert, Lock, HeartHandshake, LifeBuoy, FileUser, Mail, Boxes, Archive, ScrollText, Banknote, CalendarDays, NotebookPen, Target, Receipt, FileSignature, FolderOpen, Network, CalendarCheck2, MonitorUp,
+  Landmark, KeyRound, ShoppingCart, ChevronDown, ChevronRight, BookText, FileSearch, Rocket, FileSpreadsheet, Settings as Gear, ShieldAlert, Lock, HeartHandshake, LifeBuoy, FileUser, Mail, Boxes, Archive, ScrollText, Banknote, CalendarDays, NotebookPen, Target, Receipt, FileSignature, FolderOpen, Network, CalendarCheck2, MonitorUp,
 } from "lucide-react";
 import { COMPANY, ROLE_LABEL } from "@/lib/data";
 import { BASE, STATIC, AuthProvider, useAuth } from "@/lib/auth";
@@ -44,6 +44,7 @@ const NAV: NavItem[] = [
   { href: "/helpdesk", label: "ヘルプデスク", icon: LifeBuoy, group: "社内情報" },
   { href: "/assets", label: "固定資産台帳", icon: Boxes, group: "社内情報" },
   { href: "/remote", label: "リモート接続", icon: MonitorUp, group: "社内情報" },
+  { href: "/accounts", label: "ID・PIN・URL管理", icon: KeyRound, show: can.admin, group: "管理" },
   { href: "/employees", label: "従業員・権限", icon: Users, show: can.viewEmployees, group: "管理" },
   { href: "/excel", label: "Excel連携・CSV", icon: FileSpreadsheet, show: can.excel, group: "管理" },
   { href: "/security", label: "セキュリティ", icon: ShieldAlert, show: can.manageSecurity, group: "管理" },

@@ -1,5 +1,6 @@
 "use client";
 
+import { Pager, usePaged } from "@/components/Pager";
 import { NumInput } from "@/components/NumInput";
 import { useMemo, useState } from "react";
 import { Download, Pencil, Plus, Trash2 } from "lucide-react";
@@ -18,6 +19,7 @@ export default function AssetsPage() {
   const today = ymd(new Date()).slice(0, 7);
   const mine = useMemo(() => (role === "employee" ? s.assets.filter((a) => a.assigneeId === meId) : s.assets), [s.assets, role, meId]);
   const list = useMemo(() => mine.filter((a) => (cat === "すべて" || a.category === cat) && `${a.id}${a.name}${a.serial ?? ""}${a.model ?? ""}${a.assigneeId ? nameOf(a.assigneeId) : ""}${a.dept ?? ""}`.includes(q)), [mine, cat, q, nameOf]);
+  const pg = usePaged(list, 10, `${cat}|${q}`);
   const total = list.reduce((sum, a) => sum + bookValue(a, today).value, 0);
   const csv = () => { download(`固定資産台帳_${ymd(new Date())}.csv`, toCsv(["資産番号", "名称", "区分", "メーカー", "型番", "シリアル/IMEI", "取得日", "取得価額", "耐用年数", "月額償却", "償却累計", "帳簿価額", "使用者", "事業部", "設置場所", "状態", "廃棄日", "備考"], list.map((a) => { const b = bookValue(a, today); return [a.id, a.name, a.category, a.maker ?? "", a.model ?? "", a.serial ?? "", a.purchaseDate, a.cost, a.usefulLife, b.monthly, b.accumulated, b.value, a.assigneeId ? nameOf(a.assigneeId) : "", a.dept ?? "", a.location ?? "", a.status, a.disposedAt ?? "", a.note ?? ""]; }))); d({ t: "export-log", by: meId, what: `固定資産台帳CSV（${list.length}件）` }); };
 
@@ -33,14 +35,14 @@ export default function AssetsPage() {
       )}
       <div className="card overflow-x-auto">
         <table className="w-full min-w-[900px] text-[13px]"><thead><tr><th className="th">資産番号</th><th className="th">名称・型番</th><th className="th">使用者・事業部</th><th className="th">取得</th><th className="th text-right">取得価額</th><th className="th text-right">帳簿価額</th><th className="th">状態</th>{manage && <th className="th"><span className="sr-only">操作</span></th>}</tr></thead>
-          <tbody>{list.map((a) => { const b = bookValue(a, today); return (
+          <tbody>{pg.items.map((a) => { const b = bookValue(a, today); return (
             <tr key={a.id}><td className="td tabular font-medium">{a.id}</td>
               <td className="td"><div className="font-medium">{a.name}</div><div className="text-[11.5px] text-ink-3">{a.category}{a.maker ? `・${a.maker}` : ""}{a.model ? ` ${a.model}` : ""}{a.serial ? `・S/N ${a.serial}` : ""}</div></td>
               <td className="td">{a.assigneeId ? nameOf(a.assigneeId) : "—"}<div className="text-[11.5px] text-ink-3">{a.dept}{a.location ? `・${a.location}` : ""}</div></td>
               <td className="td tabular">{a.purchaseDate}<div className="text-[11.5px] text-ink-3">耐用{a.usefulLife}年</div></td>
               <td className="td tabular text-right">{yen(a.cost)}</td><td className="td tabular text-right">{yen(b.value)}{b.expensed && <div className="text-[11px] text-ink-3">少額（費用処理）</div>}</td>
               <td className="td"><Badge tone={a.status === "使用中" ? "good" : a.status === "廃棄・売却" ? "gray" : "warn"}>{a.status}</Badge></td>
-              {manage && <td className="td"><div className="flex gap-1"><button className="btn !h-8 !w-8 !p-0" aria-label={`${a.name}を編集`} onClick={() => setEdit(a)}><Pencil size={13} /></button><button className="btn btn-danger !h-8 !w-8 !p-0" aria-label={`${a.name}を削除`} onClick={() => confirm(`「${a.id} ${a.name}」を削除しますか？（廃棄の場合は状態を「廃棄・売却」にしてください）`) && d({ t: "asset-del", id: a.id, by: meId })}><Trash2 size={13} /></button></div></td>}</tr>); })}</tbody></table>
+              {manage && <td className="td"><div className="flex gap-1"><button className="btn !h-8 !w-8 !p-0" aria-label={`${a.name}を編集`} onClick={() => setEdit(a)}><Pencil size={13} /></button><button className="btn btn-danger !h-8 !w-8 !p-0" aria-label={`${a.name}を削除`} onClick={() => confirm(`「${a.id} ${a.name}」を削除しますか？（廃棄の場合は状態を「廃棄・売却」にしてください）`) && d({ t: "asset-del", id: a.id, by: meId })}><Trash2 size={13} /></button></div></td>}</tr>); })}</tbody></table><Pager pg={pg} />
         {list.length === 0 && <Empty>{manage ? "資産がまだありません。「資産を登録」から追加してください。" : "割り当てられている資産はありません。"}</Empty>}
         {role !== "employee" && list.length > 0 && <div className="flex justify-between border-t border-line px-4 py-2 text-[12.5px]"><span className="text-ink-3">{list.length}件</span><span>帳簿価額の合計（{today}）：<b className="tabular">{yen(total)}</b></span></div>}
       </div>

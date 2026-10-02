@@ -1,5 +1,6 @@
 "use client";
 
+import { Pager, usePaged } from "@/components/Pager";
 import { NumInput } from "@/components/NumInput";
 import { useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -34,6 +35,7 @@ export default function WorkflowPage() {
     return role !== "employee";
   }), [s.workflows, role, tab, meId, typeFilter]);
 
+  const pg = usePaged(rows, 10, `${tab}|${typeFilter}`);
   if (newType !== null || sp.has("new")) return <NewForm initial={WF_TYPES.some((t) => t.type === newType) ? newType! : "経費精算"} />;
   const cur = s.workflows.find((w) => w.id === id);
   if (cur) return <Detail w={cur} onBack={() => router.push("/workflow")} />;
@@ -52,7 +54,7 @@ export default function WorkflowPage() {
         <table className="w-full min-w-[720px] text-[13.5px]">
           <thead><tr><th className="th">申請番号</th><th className="th">種別</th><th className="th">件名</th><th className="th">申請者</th><th className="th text-right">金額</th><th className="th">状態</th></tr></thead>
           <tbody>
-            {rows.map((w) => (
+            {pg.items.map((w) => (
               <tr key={w.id} className="cursor-pointer hover:bg-bg" onClick={() => router.push(`/workflow?id=${w.id}`)}>
                 <td className="td tabular text-ink-3">{w.id}</td><td className="td">{w.type}</td>
                 <td className="td font-medium">{w.title}</td><td className="td">{nameOf(w.applicantId)}</td>
@@ -61,7 +63,7 @@ export default function WorkflowPage() {
               </tr>
             ))}
           </tbody>
-        </table>
+        </table><Pager pg={pg} />
         {rows.length === 0 && <Empty>{tab === "todo" ? "承認待ちの案件はありません（「表示ロール」を承認者に切り替えると確認できます）" : "該当する申請はありません"}</Empty>}
       </div>
     </div>

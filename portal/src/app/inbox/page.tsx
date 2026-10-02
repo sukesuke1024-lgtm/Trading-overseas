@@ -1,5 +1,6 @@
 "use client";
 
+import { Pager, usePaged } from "@/components/Pager";
 import { useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Inbox as InboxIcon, Mail as MailIcon, PenSquare, Send, Users, UserRound } from "lucide-react";
@@ -29,6 +30,7 @@ export default function InboxPage() {
   const inBox = (m: Mail) => box === "personal" ? m.toType === "個人" && m.toId === meId : box === "dept" ? m.toType === "事業部" && (lead || m.toId === dept) : box === "desk" ? m.toType === "窓口" && m.from !== meId : m.from === meId;
   const base = useMemo(() => mails.filter(inBox).sort((a, b) => (b.thread.at(-1)?.at ?? b.at).localeCompare(a.thread.at(-1)?.at ?? a.at)), [mails, box, meId, dept, lead]); // eslint-disable-line react-hooks/exhaustive-deps
   const list = base.filter((m) => (cat === "すべて" || m.category === cat) && (!onlyOpen || m.status !== "完了"));
+  const pg = usePaged(list, 10, `${cat}|${onlyOpen}`);
   const counts = (b: Box) => mails.filter((m) => (b === "personal" ? m.toType === "個人" && m.toId === meId : b === "dept" ? m.toType === "事業部" && (lead || m.toId === dept) : b === "desk" ? m.toType === "窓口" && m.from !== meId : m.from === meId) && isMailUnread(m, read, meId)).length;
   const cur = mails.find((m) => m.id === sel);
   const open = (m: Mail) => { setSel(m.id); if (!read.includes(mailReadKey(m))) d({ t: "read", emp: meId, id: mailReadKey(m) }); };
@@ -55,11 +57,11 @@ export default function InboxPage() {
         <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,340px)_1fr]">
           <section className="card self-start overflow-hidden" aria-label="メッセージ一覧">
             {list.length === 0 && <Empty>該当するメッセージはありません</Empty>}
-            <ul>{list.map((m) => { const un = isMailUnread(m, read, meId); return (
+            <ul>{pg.items.map((m) => { const un = isMailUnread(m, read, meId); return (
               <li key={m.id} className="border-b border-line last:border-0"><button className={`w-full px-3 py-2.5 text-left hover:bg-bg ${sel === m.id ? "bg-surface-2" : ""}`} onClick={() => open(m)}>
                 <div className="mb-0.5 flex items-center gap-1.5">{un && <span className="h-2 w-2 shrink-0 rounded-full bg-brand-2" aria-label="未読" />}<Badge>{m.category}</Badge><Badge tone={STATUS_TONE[m.status]}>{m.status}</Badge>{m.anon && <Badge tone="warn">匿名</Badge>}</div>
                 <div className={`truncate text-[13.5px] ${un ? "font-bold" : ""}`}>{m.subject}</div>
-                <div className="truncate text-[11.5px] text-ink-3">{m.anon && m.from !== meId ? "匿名" : nameOf(m.from)} → {m.toType === "個人" ? nameOf(m.toId) : m.toType === "事業部" ? `${m.toId}（事業部）` : `${m.toId}窓口`}・{when(m.thread.at(-1)?.at ?? m.at)}</div></button></li>); })}</ul>
+                <div className="truncate text-[11.5px] text-ink-3">{m.anon && m.from !== meId ? "匿名" : nameOf(m.from)} → {m.toType === "個人" ? nameOf(m.toId) : m.toType === "事業部" ? `${m.toId}（事業部）` : `${m.toId}窓口`}・{when(m.thread.at(-1)?.at ?? m.at)}</div></button></li>); })}</ul><Pager pg={pg} />
           </section>
           <section className="card min-w-0 p-4" aria-label="メッセージの内容">
             {cur ? <Thread mail={cur} /> : <p className="py-10 text-center text-ink-3">左の一覧からメッセージを選んでください。</p>}

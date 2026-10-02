@@ -9,7 +9,7 @@ import { seedState } from "./seed";
 import { checkEntry, isPosted, postJournal, reversal, workflowJournal, type Approvals, type Journal, type JournalCore, type TaxKind } from "./accounting";
 import { holidaySet, workdaysBetween, type Conditions, type DayInput } from "./work";
 import type { CalEvent, Doc, Kpi, Remote, Report, Reports } from "./biz";
-import { DEFAULT_EXT_LINKS, canSeeFile, statementPeriods, canSeeMail, maskMail, viewerOf, type Asset, type Benefit, type Client, type CreditCheck, type ExtLink, type FileRec, type Mail, type Order, type OrderStatus, type Retention } from "./ops";
+import { DEFAULT_EXT_LINKS, canSeeFile, statementPeriods, canSeeMail, maskMail, viewerOf, type Asset, type Benefit, type Client, type CreditCheck, type ExtLink, type FileRec, type Mail, type Order, type Room, type Sched, type OrderStatus, type Retention } from "./ops";
 import { routeFor, type AuthorityRule } from "./authority";
 
 export type AuditBody = { at: string; actor: string; action: string };
@@ -42,6 +42,9 @@ export type State = {
   mails: Mail[]; // 問い合わせ・ヘルプデスク
   assets: Asset[]; // 固定資産台帳
   orders: Order[]; // 備品・名刺の注文リスト
+  sched: Sched[]; // 個人の予定・会議・会議室の予約
+  schedDel: string[]; // 予定の削除の依頼（サーバーへ送る未送信分）
+  rooms: Room[]; // 会議室
   authority: AuthorityRule[]; // 職務権限規程（承認ルート）
   benefits: Benefit[]; // 福利厚生の案内
   retention: Retention; // 履歴の保存期間（月）
@@ -105,6 +108,10 @@ type Action =
   | { t: "mail-new"; mail: Mail }
   | { t: "mail-reply"; id: string; by: string; body: string }
   | { t: "mail-status"; id: string; status: Mail["status"]; by: string }
+  | { t: "sched-save"; item: Sched; by: string }
+  | { t: "sched-del"; id: string; by: string }
+  | { t: "room-save"; room: Room; by: string }
+  | { t: "room-del"; id: string; by: string }
   | { t: "order-add"; order: Order }
   | { t: "order-status"; id: string; status: OrderStatus; by: string; note?: string; now?: string }
   | { t: "asset-save"; asset: Asset; by: string }
@@ -251,6 +258,10 @@ function reducer(s: State, a: Action): State {
     case "mail-new": return { ...s, mails: [a.mail, ...s.mails] };
     case "mail-reply": return { ...s, mails: s.mails.map((m) => (m.id === a.id ? { ...m, thread: [...m.thread, { by: a.by, at: nowIso(), body: a.body }], status: m.status === "未対応" && m.from !== a.by ? "対応中" : m.status } : m)) };
     case "mail-status": return logged(s, a.by, `問い合わせ状態: ${a.id} → ${a.status}`, { mails: s.mails.map((m) => (m.id === a.id ? { ...m, status: a.status } : m)) });
+    case "sched-save": { const ex = s.sched.some((x) => x.id === a.item.id); return logged(s, a.by, `予定${ex ? "更新" : "登録"}: ${a.item.date} ${a.item.title}${a.item.vis === "鍵" ? "（鍵）" : ""}`, { sched: ex ? s.sched.map((x) => (x.id === a.item.id ? a.item : x)) : [...s.sched, a.item] }); }
+    case "sched-del": return logged(s, a.by, `予定削除: ${s.sched.find((x) => x.id === a.id)?.title ?? a.id}`, { sched: s.sched.filter((x) => x.id !== a.id), schedDel: STATIC ? s.schedDel : [...s.schedDel, a.id] });
+    case "room-save": { const ex = s.rooms.some((x) => x.id === a.room.id); return logged(s, a.by, `会議室${ex ? "更新" : "登録"}: ${a.room.name}`, { rooms: ex ? s.rooms.map((x) => (x.id === a.room.id ? a.room : x)) : [...s.rooms, a.room] }); }
+    case "room-del": return logged(s, a.by, `会議室削除: ${s.rooms.find((x) => x.id === a.id)?.name ?? a.id}`, { rooms: s.rooms.filter((x) => x.id !== a.id) });
     case "order-add": {
       const no = a.order.no || `ORD-${a.order.at.slice(0, 4)}-${String(s.orders.length + 1).padStart(4, "0")}`; // サーバー版は保存時にサーバーが採番し直す
       const order = { ...a.order, no, history: a.order.history.length ? a.order.history : [{ at: a.order.at, by: a.order.requesterId, status: a.order.status }] };
@@ -321,6 +332,7 @@ export function StoreProvider({ meId, role, children }: { meId: string; role: Ro
     // 書き込める分だけ送る（サーバーでも検証する）
     if (!can.manageClients(role)) delete o.clients;
     if (!can.manageAssets(role)) delete o.assets;
+    if (!can.admin(role)) delete o.rooms;
     if (!can.manageAuthority(role)) delete o.authority;
     if (!can.manageBenefits(role)) delete o.benefits;
     if (!can.manageExtLinks(role)) delete o.extLinks;

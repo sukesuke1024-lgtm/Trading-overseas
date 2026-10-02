@@ -6,7 +6,7 @@ import { checkEntry, postJournal, workflowJournal } from "../lib/accounting.ts";
 import { KINDS, toMin } from "../lib/work.ts";
 import { EVENT_CATEGORIES, REMOTE_KINDS, remoteLink } from "../lib/biz.ts";
 import { APPROVERS, routeFor } from "../lib/authority.ts";
-import { ORDER_CATEGORIES, ORDER_STATUS, orderMoveOk, creditStatementIssue, isFiscalPeriod, statementPeriods, ASSET_CATEGORIES, ASSET_STATUS, BENEFIT_CATEGORIES, CHECK_KINDS, CHECK_RESULTS, EXT_KINDS, FILE_KINDS, FILE_SCOPES, MAIL_CATEGORIES, MAIL_STATUS, PAY_KINDS, canSeeFile, canSeeMail, deptOf, isClientCode, isHttps, maskMail, viewerOf, type Viewer } from "../lib/ops.ts";
+import { SCHED_KINDS, SCHED_VIS, maskSched, roomConflict, ORDER_CATEGORIES, ORDER_STATUS, orderMoveOk, creditStatementIssue, isFiscalPeriod, statementPeriods, ASSET_CATEGORIES, ASSET_STATUS, BENEFIT_CATEGORIES, CHECK_KINDS, CHECK_RESULTS, EXT_KINDS, FILE_KINDS, FILE_SCOPES, MAIL_CATEGORIES, MAIL_STATUS, PAY_KINDS, canSeeFile, canSeeMail, deptOf, isClientCode, isHttps, maskMail, viewerOf, type Viewer } from "../lib/ops.ts";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type S = Record<string, any>;
@@ -41,6 +41,7 @@ export function sanitizeForRead(state: S | null, uid: string, role: RoleName): S
   const v: Viewer = me ? viewerOf(me as never) : { id: uid, role, dept: "", lead: role !== "employee" };
   const wfOf = (id?: string) => (state.workflows ?? []).find((w: S) => w.id === id);
   if (out.files) out.files = out.files.filter((f: S) => canSeeFile(f as never, v, f.wfId ? wfOf(f.wfId) : undefined));
+  if (out.sched) { const dep = (id: string) => deptOf((state.employees ?? []).find((e: S) => e.id === id) as never); out.sched = out.sched.map((x: S) => maskSched(x as never, v, dep)); }
   if (out.mails) out.mails = out.mails.filter((m: S) => canSeeMail(m as never, v)).map((m: S) => maskMail(m as never, uid));
   if (role === "employee") {
     const myClients = (out.clients ?? []).filter((c: S) => c.dept === v.dept);
@@ -277,6 +278,7 @@ export function mergeWrite(cur: S | null, inc: S, uid: string, role: RoleName, c
   adminList("clients", (l) => Array.isArray(l) && l.length <= 5000 && new Set(l.map((c) => c.code)).size === l.length && l.every((c) => isClientCode(c?.code) && str2(c.name, 100) && c.name && str2(c.dept, 40) && (c.kana == null || str2(c.kana, 100)) && (c.corpNo == null || /^\d{13}$/.test(c.corpNo) || c.corpNo === "") && (c.contact == null || str2(c.contact, 200)) && (c.note == null || str2(c.note, 300)) && typeof c.active === "boolean"));
   adminList("extLinks", (l) => Array.isArray(l) && l.length <= 300 && l.every((x) => str2(x?.id, 40) && str2(x.name, 80) && x.name && isHttps(x.url) && (EXT_KINDS as readonly string[]).includes(x.kind) && str2(x.dept, 40) && (x.accountId == null || str2(x.accountId, 80)) && (x.note == null || str2(x.note, 300))));
   adminList("assets", (l) => Array.isArray(l) && l.length <= 5000 && new Set(l.map((a) => a.id)).size === l.length && l.every((a) => str2(a?.id, 20) && a.id && str2(a.name, 100) && a.name && (ASSET_CATEGORIES as readonly string[]).includes(a.category) && isDate(a.purchaseDate) && typeof a.cost === "number" && a.cost >= 0 && a.cost < 1e11 && Number.isInteger(a.usefulLife) && a.usefulLife >= 1 && a.usefulLife <= 60 && (ASSET_STATUS as readonly string[]).includes(a.status) && ["maker", "model", "serial", "mgmtId", "assigneeId", "dept", "location", "note"].every((k) => a[k] == null || str2(a[k], 200)) && (a.disposedAt == null || isDate(a.disposedAt))), (l) => (role === "employee" ? l.filter((a) => a.assigneeId === uid) : l));
+  adminList("rooms", (l) => Array.isArray(l) && l.length <= 50 && new Set(l.map((r) => r.id)).size === l.length && l.every((r) => str2(r?.id, 40) && r.id && str2(r.name, 60) && r.name && (r.capacity == null || (Number.isInteger(r.capacity) && r.capacity > 0 && r.capacity < 1000)) && (r.note == null || str2(r.note, 200))));
   adminList("benefits", (l) => Array.isArray(l) && l.length <= 200 && l.every((b) => str2(b?.id, 40) && str2(b.title, 100) && b.title && (BENEFIT_CATEGORIES as readonly string[]).includes(b.category) && str2(b.summary, 300) && str2(b.body, 10000) && (b.link == null || b.link === "" || isHttps(b.link)) && (b.contact == null || str2(b.contact, 100))));
   adminList("authority", (l) => Array.isArray(l) && l.length <= 100 && l.every((r) => r && typeof r.type === "string" && typeof r.min === "number" && r.min >= 0 && r.min < 1e11 && Array.isArray(r.steps) && r.steps.length >= 1 && r.steps.length <= 5 && r.steps.every((s: string) => (APPROVERS as readonly string[]).includes(s))) && ["経費精算", "休暇申請", "出張申請", "稟議", "IT機器・アカウント申請", "異動変更届"].every((ty) => l.some((r) => r.type === ty && r.min === 0)));
   if (inc.retention !== undefined && !same(inc.retention, base.retention)) {
@@ -306,6 +308,40 @@ export function mergeWrite(cur: S | null, inc: S, uid: string, role: RoleName, c
       } else if (!same({ ...o, history: undefined }, { ...cur, history: undefined })) deny("orders");
     }
     out.orders = orders;
+  }
+
+  // ---- 個人の予定・会議室の予約：自分の名義でだけ登録・変更・削除。見られない予定は「予定あり」のまま戻す。会議室の重複予約は拒否 ----
+  if (inc.sched || inc.schedDel) {
+    const emps = employeesOf(out, base), me = emps.find((e: S) => e.id === uid);
+    const v: Viewer = me ? viewerOf(me as never) : { id: uid, role, dept: "", lead: role !== "employee" };
+    const dep = (id: string) => deptOf(emps.find((e: S) => e.id === id) as never);
+    const rooms: S[] = (out.rooms ?? base.rooms ?? []);
+    const HM = /^([01]\d|2[0-3]):[0-5]\d$/;
+    const baseS: S[] = base.sched ?? [];
+    let list = [...baseS];
+    for (const id of Array.isArray(inc.schedDel) ? (inc.schedDel as string[]).slice(0, 200) : []) {
+      const cur = baseS.find((x) => x.id === id);
+      if (!cur) continue;
+      if (cur.ownerId === uid || role === "admin") list = list.filter((x) => x.id !== id); else deny("sched");
+    }
+    const valid = (x: S) => str(x?.id, 40) && x.id && str(x.title, 120) && x.title.trim() && DATE.test(x.date ?? "") && (x.start == null || HM.test(x.start)) && (x.end == null || (x.start != null && HM.test(x.end) && x.end > x.start))
+      && (SCHED_KINDS as readonly string[]).includes(x.kind) && (SCHED_VIS as readonly string[]).includes(x.vis) && (x.note == null || str(x.note, 500))
+      && Array.isArray(x.attendees) && x.attendees.length <= 30 && x.attendees.every((a: unknown) => typeof a === "string" && emps.some((e: S) => e.id === a)) && new Set(x.attendees).size === x.attendees.length
+      && (x.roomId == null || (rooms.some((r) => r.id === x.roomId) && !!x.start));
+    const clean = (x: S, ownerId: string, at: string): S => ({ id: x.id, title: x.title.trim(), date: x.date, ...(x.start ? { start: x.start } : {}), ...(x.end ? { end: x.end } : {}), ownerId, attendees: x.attendees.filter((a: string) => a !== ownerId), ...(x.roomId ? { roomId: x.roomId } : {}), kind: x.kind, vis: x.vis, ...(x.note ? { note: x.note } : {}), at });
+    for (const x of (inc.sched ?? []) as S[]) {
+      const cur = list.find((o) => o.id === x?.id) ?? baseS.find((o) => o.id === x?.id);
+      if (cur && !list.some((o) => o.id === cur.id)) continue; // 削除した予定
+      if (!cur) {
+        if (valid(x) && x.ownerId === uid) list = [...list, clean(x, uid, now)]; else deny("sched");
+      } else if (cur.ownerId === uid) {
+        if (same(x, cur)) continue;
+        if (valid(x) && x.ownerId === uid) list = list.map((o) => (o.id === cur.id ? clean(x, uid, cur.at) : o)); else deny("sched");
+      } else if (!same(x, maskSched(cur as never, v, dep)) && !same(x, cur)) deny("sched"); // 他人の予定は変更不可
+    }
+    // 会議室の二重予約（変更・追加した分）
+    for (const x of list) { const was = baseS.find((o) => o.id === x.id); if (x.roomId && (!was || !same(was, x)) && roomConflict(list as never, x as never)) { deny("sched"); list = baseS.some((o) => o.id === x.id) ? list.map((o) => (o.id === x.id ? was! : o)) : list.filter((o) => o.id !== x.id); } }
+    out.sched = list;
   }
 
   // ---- 問い合わせ・ヘルプデスク ----

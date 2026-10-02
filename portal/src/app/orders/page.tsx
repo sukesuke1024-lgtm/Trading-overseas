@@ -1,5 +1,6 @@
 "use client";
 
+import { Pager, usePaged } from "@/components/Pager";
 import { useMemo, useState } from "react";
 import { Download, ExternalLink, Plus, ShoppingCart } from "lucide-react";
 import { NumInput } from "@/components/NumInput";
@@ -17,6 +18,7 @@ export default function OrdersPage() {
   const [flt, setFlt] = useState<"すべて" | OrderStatus>("すべて");
   const isAdmin = role === "admin";
   const list = useMemo(() => s.orders.filter((o) => flt === "すべて" || o.status === flt), [s.orders, flt]);
+  const pg = usePaged(list, 10, flt);
   const csv = () => download(`備品注文_${ymd(new Date())}.csv`, toCsv(["注文番号", "依頼日", "依頼者", "事業部", "区分", "発注先", "品名", "数量", "単価", "金額", "状態", "理由"], list.map((o) => [o.no, o.at.slice(0, 10), nameOf(o.requesterId), o.dept, o.category, o.vendor, o.item, o.qty, o.unitPrice ?? "", orderTotal(o), o.status, o.reason ?? ""])));
   const move = (o: Order, to: OrderStatus) => d({ t: "order-status", id: o.id, status: to, by: meId });
 
@@ -43,7 +45,7 @@ export default function OrdersPage() {
         <table className="w-full min-w-[860px] text-[13px]">
           <thead><tr><th className="th">注文番号</th><th className="th">依頼日</th><th className="th">依頼者</th><th className="th">発注先・区分</th><th className="th">品名</th><th className="th text-right">数量</th><th className="th text-right">金額</th><th className="th">状態</th><th className="th"></th></tr></thead>
           <tbody>
-            {list.map((o) => {
+            {pg.items.map((o) => {
               const next = NEXT[o.status];
               const last = o.history[o.history.length - 1];
               return (
@@ -65,6 +67,7 @@ export default function OrdersPage() {
             })}
           </tbody>
         </table>
+        <Pager pg={pg} />
         {list.length === 0 && <Empty>{role === "employee" ? "あなたの事業部の注文はまだありません。「注文を依頼」から追加してください。" : "注文はまだありません。"}</Empty>}
       </div>
       <p className="mt-2 text-[12px] text-ink-3">{role === "employee" ? "自事業部の注文が表示されます。" : "全事業部の注文が表示されます。"}承認・発注・納品の更新は管理者が行います。実際の発注は、上のサイトまたは取引先へ行ってください。</p>

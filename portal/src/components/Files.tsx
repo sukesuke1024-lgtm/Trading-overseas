@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Download, FileText, Trash2 } from "lucide-react";
+import { Pager, usePaged } from "@/components/Pager";
 import { DropZone } from "@/components/DropZone";
 import { fetchFile, saveBlob, uploadFile } from "@/lib/files";
 import { fmtBytes, type FileRec } from "@/lib/ops";
@@ -45,12 +46,13 @@ const when = (iso: string) => iso.slice(0, 16).replace("T", " ");
 /** 台帳の一覧（ファイル名・範囲・事業部・登録者・日時）。canDelete が true の行に削除ボタンを出す */
 export function FileTable({ files, empty, showTarget = false }: { files: FileRec[]; empty: string; showTarget?: boolean }) {
   const { d, meId, role, emp, nameOf } = useStore();
+  const pg = usePaged(files, 10, files.length);
   if (files.length === 0) return <p className="px-4 py-10 text-center text-ink-3">{empty}</p>;
   return (
     <div className="overflow-x-auto">
       <table className="w-full min-w-[760px] text-[13px]">
         <thead><tr><th className="th">ファイル</th><th className="th">公開範囲</th><th className="th">事業部</th><th className="th">登録者</th><th className="th">日時</th><th className="th text-right">サイズ</th><th className="th"><span className="sr-only">操作</span></th></tr></thead>
-        <tbody>{files.map((f) => {
+        <tbody>{pg.items.map((f) => {
           const up = emp(f.uploadedBy);
           const can = role === "admin" || (f.uploadedBy === meId && f.kind !== "給与明細" && f.kind !== "賞与明細" && f.kind !== "源泉徴収票" && f.kind !== "アーカイブ");
           return (
@@ -65,6 +67,7 @@ export function FileTable({ files, empty, showTarget = false }: { files: FileRec
           );
         })}</tbody>
       </table>
+      <Pager pg={pg} />
     </div>
   );
 }
