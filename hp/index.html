@@ -7,330 +7,365 @@
 <meta name="description" content="H-LINKは、北海道の生産者・メーカーと海外バイヤーを、輸出の実務までつなぐ会社です。ご相談は無料です。">
 <meta property="og:title" content="H-LINK 北海道の食を世界へ">
 <meta property="og:image" content="img/hero.webp">
+<meta name="theme-color" content="#050A14">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&family=Zen+Kaku+Gothic+New:wght@400;500;700;900&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700;800&family=Zen+Kaku+Gothic+New:wght@400;500;700;900&display=swap">
 <style>
-/* Layout: photo-led split hero, a four-cell catalogue bento, two audience doors, a dark route diagram, a sticky-left reasons list, then the form. */
+/* Concept: a night-to-sunrise film. Deep navy ground, the photographs carry the colour, red is the only accent.
+   Layout: floating glass nav, full-bleed centred hero, scrubbed statement, gapless bento, sticky split, drawn route, stacking reasons, form over a sunrise. */
 :root{
-  --bg:#F5F7FA; --surface:#FFFFFF; --ink:#0E1726; --mute:#4A576C; --line:#DAE0E9; --ink-soft:#1C2A44;
-  --red:#D70015; --red-hover:#B80012; --on-red:#FFFFFF;
-  --panel:#0E1B33; --on-panel:#FFFFFF; --on-panel-mute:#B4C2DC; --panel-line:rgba(255,255,255,.18);
-  --shadow:0 24px 60px -24px rgba(14,23,38,.28);
+  --bg:#050A14; --band:#08101F; --core:#0D1830; --ink:#F4F6FB; --mute:#A4B3CD; --line:rgba(255,255,255,.12); --hair:rgba(255,255,255,.08);
+  --accent:#E8222F; --accent-hi:#FF4C58; --on-accent:#FFFFFF;
   --sans:"Geist","Zen Kaku Gothic New","Hiragino Sans","Yu Gothic",system-ui,sans-serif;
-  --wrap:1240px; --gut:clamp(18px,4.5vw,64px); --ease:cubic-bezier(.16,1,.3,1);
-  --r-card:16px; --r-field:10px;
-  color-scheme:light;
+  --wrap:1280px; --gut:clamp(18px,4.5vw,72px);
+  --spring:cubic-bezier(.32,.72,0,1); --out:cubic-bezier(.16,1,.3,1);
+  --r-shell:28px; --r-core:22px; --r-field:14px;
+  color-scheme:dark;
 }
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
-  --bg:#0A1220; --surface:#111B2E; --ink:#EDF1F8; --mute:#A3B2CB; --line:#233453; --ink-soft:#D5DEEE;
-  --red:#FF4A57; --red-hover:#FF6C77; --on-red:#1A0004;
-  --panel:#060C18; --shadow:0 24px 60px -24px rgba(0,0,0,.7); color-scheme:dark}}
-:root[data-theme="dark"]{
-  --bg:#0A1220; --surface:#111B2E; --ink:#EDF1F8; --mute:#A3B2CB; --line:#233453; --ink-soft:#D5DEEE;
-  --red:#FF4A57; --red-hover:#FF6C77; --on-red:#1A0004;
-  --panel:#060C18; --shadow:0 24px 60px -24px rgba(0,0,0,.7); color-scheme:dark}
-
 *,*::before,*::after{box-sizing:border-box}
-html{scroll-behavior:smooth;scroll-padding-top:84px}
-body{margin:0;background:var(--bg);color:var(--ink);font:400 16px/1.9 var(--sans);letter-spacing:.02em;-webkit-font-smoothing:antialiased}
-h1,h2,h3,p,ul,ol,figure,dl,dd{margin:0}
+html{scroll-behavior:smooth;scroll-padding-top:96px;background:var(--bg)}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 16px/1.9 var(--sans);letter-spacing:.02em;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+h1,h2,h3,p,ul,ol,figure{margin:0}
 ul,ol{padding:0;list-style:none}
 a{color:inherit;text-decoration:none}
 button,input,select,textarea{font:inherit;color:inherit}
 button{cursor:pointer}
 img{display:block;max-width:100%}
-:focus-visible{outline:3px solid var(--red);outline-offset:3px;border-radius:6px}
+:focus-visible{outline:2px solid #fff;outline-offset:3px;border-radius:8px}
 .wrap{max-width:var(--wrap);margin-inline:auto;padding-inline:var(--gut)}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
-.skip{position:fixed;left:12px;top:12px;z-index:100;background:var(--ink);color:var(--bg);padding:10px 16px;transform:translateY(-200%)}
+.ic{width:1em;height:1em;fill:currentColor;flex:none}
+.skip{position:fixed;left:12px;top:12px;z-index:90;background:#fff;color:#000;padding:10px 16px;border-radius:10px;transform:translateY(-200%)}
 .skip:focus{transform:none}
-.ic{width:1.1em;height:1.1em;fill:currentColor;flex:none}
+/* film grain: fixed, non-interactive, never on scrolling content */
+body::after{content:"";position:fixed;inset:0;z-index:70;pointer-events:none;opacity:.05;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>")}
 
-/* header */
-.hd{position:sticky;top:0;z-index:40;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-bottom:1px solid var(--line)}
-.hd-in{height:68px;display:flex;align-items:center;gap:28px}
-.logo{font:800 22px/1 var(--sans);letter-spacing:.12em}
-.logo b{color:var(--red)}
-.nav{display:none;margin-inline-start:auto;gap:30px;font-size:14px;font-weight:500}
-.nav a{padding:6px 0;background:linear-gradient(var(--red),var(--red)) 0 100%/0 2px no-repeat;transition:background-size .4s var(--ease)}
-.nav a:hover{background-size:100% 2px}
-.hd .btn{margin-inline-start:auto}
-@media (min-width:960px){.nav{display:flex}.hd .btn{margin-inline-start:0}}
+/* ---------- floating glass nav ---------- */
+.nav{position:fixed;top:18px;left:50%;z-index:60;translate:-50% 0;width:min(1120px,calc(100% - 28px));display:flex;align-items:center;gap:18px;padding:8px 8px 8px 24px;border-radius:999px;background:rgba(10,18,34,.55);border:1px solid var(--line);backdrop-filter:blur(22px) saturate(1.4);-webkit-backdrop-filter:blur(22px) saturate(1.4);box-shadow:inset 0 1px 0 rgba(255,255,255,.12),0 18px 50px -18px rgba(0,0,0,.6);transition:background .6s var(--spring)}
+.logo{font:800 20px/1 var(--sans);letter-spacing:.14em;white-space:nowrap}
+.logo b{color:var(--accent-hi)}
+.links{display:none;margin-inline-start:auto;gap:6px;font-size:14px;font-weight:500}
+.links a{padding:9px 16px;border-radius:999px;color:var(--mute);transition:color .4s var(--spring),background .4s var(--spring)}
+.links a:hover{color:#fff;background:rgba(255,255,255,.08)}
+.nav .btn{margin-inline-start:auto}
+.burger{width:46px;height:46px;border-radius:50%;border:1px solid var(--line);background:rgba(255,255,255,.06);position:relative;flex:none}
+.burger i{position:absolute;left:14px;right:14px;height:1.5px;background:#fff;border-radius:2px;transition:transform .6s var(--spring),top .6s var(--spring),opacity .3s}
+.burger i:nth-child(1){top:19px}.burger i:nth-child(2){top:26px}
+.menu-open .burger i:nth-child(1){top:22.5px;transform:rotate(45deg)}
+.menu-open .burger i:nth-child(2){top:22.5px;transform:rotate(-45deg)}
+@media (max-width:959px){.nav .btn{display:none}.burger{margin-inline-start:auto}}
+@media (min-width:960px){.links{display:flex}.nav .btn{margin-inline-start:0}.burger{display:none}}
+.sheet{position:fixed;inset:0;z-index:55;display:grid;align-content:center;gap:6px;padding:100px var(--gut) 60px;background:rgba(5,10,20,.86);backdrop-filter:blur(30px);-webkit-backdrop-filter:blur(30px);opacity:0;visibility:hidden;transition:opacity .6s var(--spring),visibility .6s}
+.menu-open .sheet{opacity:1;visibility:visible}
+.sheet a{font:800 clamp(30px,8vw,48px)/1.4 var(--sans);transform:translateY(40px);opacity:0;transition:transform .8s var(--spring),opacity .8s var(--spring)}
+.menu-open .sheet a{transform:none;opacity:1}
+.menu-open .sheet a:nth-child(2){transition-delay:.06s}.menu-open .sheet a:nth-child(3){transition-delay:.12s}.menu-open .sheet a:nth-child(4){transition-delay:.18s}.menu-open .sheet a:nth-child(5){transition-delay:.24s}
 
-/* buttons: pill */
-.btn{position:relative;overflow:hidden;isolation:isolate;display:inline-flex;align-items:center;justify-content:center;gap:10px;min-height:54px;padding:0 30px;border:0;border-radius:999px;background:var(--red);color:var(--on-red);font-weight:700;font-size:15px;letter-spacing:.06em;white-space:nowrap;transition:transform .3s var(--ease)}
-.btn::before{content:"";position:absolute;inset:0;z-index:-1;background:var(--red-hover);transform:translateY(101%);transition:transform .45s var(--ease)}
-.btn:hover::before{transform:none}
-.btn:active{transform:scale(.98)}
-.btn .ic{transition:transform .3s var(--ease)}
-.btn:hover .ic{transform:translateX(4px)}
-.btn--sm{min-height:44px;padding:0 22px;font-size:14px}
-.link{display:inline-flex;align-items:center;gap:8px;font-weight:700;font-size:15px;padding-block:6px;background:linear-gradient(currentColor,currentColor) 0 100%/100% 1.5px no-repeat}
-.link .ic{transition:transform .3s var(--ease)}
-.link:hover .ic{transform:translateY(3px)}
+/* ---------- buttons: pill with nested icon island ---------- */
+.btn{position:relative;display:inline-flex;align-items:center;gap:16px;min-height:56px;padding:6px 6px 6px 30px;border:0;border-radius:999px;background:var(--accent);color:var(--on-accent);font-weight:700;font-size:15px;letter-spacing:.06em;white-space:nowrap;transition:transform .5s var(--spring),background .4s var(--spring);box-shadow:inset 0 1px 0 rgba(255,255,255,.28),0 14px 34px -12px rgba(232,34,47,.7)}
+.btn:hover{background:#F2303D}
+.btn:active{transform:scale(.97)}
+.btn .isl{width:44px;height:44px;border-radius:50%;background:rgba(0,0,0,.22);display:grid;place-items:center;font-size:18px;transition:transform .5s var(--spring)}
+.btn:hover .isl{transform:translate(3px,-2px) scale(1.06)}
+.btn--sm{min-height:46px;padding:4px 4px 4px 22px;font-size:14px}
+.btn--sm .isl{width:38px;height:38px}
+.btn--ghost{background:rgba(255,255,255,.08);box-shadow:inset 0 0 0 1px var(--line),inset 0 1px 0 rgba(255,255,255,.14);padding-right:30px}
+.btn--ghost:hover{background:rgba(255,255,255,.16)}
+.btn--ghost .isl{display:none}
 
-/* hero: split, photo bleeds to the right edge */
-.hero{display:grid;min-height:min(86svh,820px)}
-@media (min-width:960px){.hero{grid-template-columns:minmax(0,5fr) minmax(0,7fr)}}
-.hero-t{display:grid;align-content:center;gap:26px;padding:clamp(40px,7vw,96px) var(--gut) clamp(40px,7vw,96px);max-width:640px;margin-inline-start:auto;width:100%}
-@media (min-width:960px){.hero-t{padding-inline-start:max(var(--gut),calc((100vw - var(--wrap))/2 + var(--gut)));padding-inline-end:clamp(24px,3vw,56px);max-width:none;margin:0}}
-h1{font:900 clamp(38px,5.4vw,76px)/1.18 var(--sans);letter-spacing:-.005em;word-break:auto-phrase;text-wrap:balance}
-.hero-t p{color:var(--mute);max-width:26em;font-size:clamp(15px,1.3vw,17px)}
-.hero-cta{display:flex;flex-wrap:wrap;align-items:center;gap:14px 28px;margin-top:6px}
-.hero-img{position:relative;min-height:340px;overflow:hidden;background:var(--panel)}
-.hero-img img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:62% 50%;animation:settle 2.4s var(--ease) both}
-@keyframes settle{from{transform:scale(1.08)}to{transform:scale(1)}}
-@media (min-width:960px){.hero-img{border-radius:0 0 0 48px}}
+/* ---------- hero: cinematic centre ---------- */
+.hero{position:relative;min-height:100dvh;display:grid;place-items:center;text-align:center;overflow:hidden;isolation:isolate}
+.hero-bg{position:absolute;inset:-6% 0;z-index:-2;will-change:transform}
+.hero-bg img{width:100%;height:100%;object-fit:cover;object-position:50% 58%;animation:kb 18s var(--out) both}
+@keyframes kb{from{transform:scale(1.14)}to{transform:scale(1.02)}}
+.hero::before{content:"";position:absolute;inset:0;z-index:-1;background:radial-gradient(75% 60% at 50% 46%,rgba(5,10,20,.7),rgba(5,10,20,.35) 55%,rgba(5,10,20,.85) 100%),linear-gradient(180deg,rgba(5,10,20,.6),transparent 28%,transparent 58%,var(--bg))}
+.hero-in{display:grid;justify-items:center;gap:30px;padding:140px var(--gut) 120px;max-width:1240px}
+h1{font:900 clamp(40px,7.2vw,112px)/1.12 var(--sans);letter-spacing:-.01em;word-break:auto-phrase;text-wrap:balance;text-shadow:0 4px 60px rgba(0,0,0,.45)}
+h1 span{display:block;overflow:hidden;padding-bottom:.08em}
+h1 em{font-style:normal;display:inline-block;transform:translateY(0)}
+.hero p{max-width:38em;text-wrap:balance;color:#DCE5F5;font-size:clamp(15px,1.4vw,18px);text-shadow:0 2px 30px rgba(0,0,0,.6)}
+.hero-cta{display:flex;flex-wrap:wrap;justify-content:center;gap:14px}
+.hero .fade{opacity:0;transform:translateY(24px);animation:up 1.2s var(--out) forwards}
+.hero h1 span:nth-child(1) em{animation:rise 1.4s .15s var(--out) both}
+.hero h1 span:nth-child(2) em{animation:rise 1.4s .3s var(--out) both}
+@keyframes rise{from{transform:translateY(110%)}to{transform:none}}
+@keyframes up{to{opacity:1;transform:none}}
 
-/* section scaffolding */
-.sec{padding-block:clamp(72px,9vw,132px)}
-h2{font:800 clamp(28px,3.5vw,46px)/1.35 var(--sans);letter-spacing:0;word-break:auto-phrase;text-wrap:balance;max-width:16em}
-.lead{color:var(--mute);margin-top:18px;max-width:34em}
+/* ---------- shared ---------- */
+.sec{padding-block:clamp(96px,13vw,200px)}
+h2{font:800 clamp(30px,4.6vw,68px)/1.25 var(--sans);letter-spacing:-.005em;word-break:auto-phrase;text-wrap:balance}
+.lead{color:var(--mute);margin-top:22px;max-width:32em}
+.rv{opacity:0;transform:translateY(46px);filter:blur(10px);transition:opacity 1.1s var(--out),transform 1.1s var(--out),filter 1.1s var(--out)}
+.rv.in{opacity:1;transform:none;filter:none}
+.noscript .rv,.nojs .rv{opacity:1;transform:none;filter:none}
 
-/* catalogue bento: four cells */
-.bento{display:grid;gap:16px;margin-top:48px}
-@media (min-width:900px){.bento{grid-template-columns:7fr 5fr;grid-template-rows:auto auto}.b-a{grid-row:span 2}}
-.cell{background:var(--surface);border-radius:var(--r-card);overflow:hidden;display:flex;flex-direction:column;border:1px solid var(--line)}
-.cell .img{position:relative;overflow:hidden;flex:1;min-height:250px}
-.cell .img img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transition:transform 1.4s var(--ease)}
-.cell:hover img{transform:scale(1.04)}
-.cell figcaption{padding:16px 22px 18px;display:grid;gap:2px}
-.cell figcaption b{font-size:17px}
-.cell figcaption span{font-size:14px;color:var(--mute)}
-.b-d{background:var(--panel);color:var(--on-panel);border-color:transparent;padding:clamp(26px,3vw,40px);justify-content:space-between;gap:24px}
-.b-d p{font:700 clamp(20px,2vw,26px)/1.6 var(--sans)}
-.b-d .btn{align-self:flex-start}
-@media (min-width:900px){.b-a .img{min-height:420px}}
+/* double bezel */
+.shell{padding:8px;border-radius:var(--r-shell);background:rgba(255,255,255,.04);border:1px solid var(--hair);box-shadow:0 30px 80px -30px rgba(0,0,0,.7)}
+.dim{position:absolute;inset:0;background:var(--bg);opacity:0;pointer-events:none}
+.core{position:relative;border-radius:var(--r-core);background:var(--core);overflow:hidden;box-shadow:inset 0 1px 0 rgba(255,255,255,.12);height:100%;display:flex;flex-direction:column}
 
-/* audience doors: two equal columns */
-.doors{display:grid;gap:18px;margin-top:48px}
-@media (min-width:860px){.doors{grid-template-columns:1fr 1fr;gap:24px}}
-.door{display:grid;gap:0;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-card);overflow:hidden}
-.door .img{aspect-ratio:16/9;overflow:hidden}
-.door img{width:100%;height:100%;object-fit:cover;transition:transform 1.4s var(--ease)}
-.door:hover img{transform:scale(1.04)}
-.door-b{padding:clamp(22px,3vw,36px);display:grid;gap:14px;align-content:start}
-.door h3{font:800 clamp(21px,2.2vw,28px)/1.45 var(--sans)}
-.door p{color:var(--mute);font-size:15px}
-.door ul{display:grid;gap:8px;font-size:15px;margin-block:2px 8px}
-.door li{display:flex;gap:10px;align-items:flex-start}
-.door li .ic{color:var(--red);margin-top:6px}
+/* ---------- statement: words scrub in with scroll ---------- */
+.state{padding-block:clamp(110px,15vw,240px)}
+.state p{font:700 clamp(26px,4.4vw,64px)/1.55 var(--sans);letter-spacing:0;max-width:19em;word-break:auto-phrase}
+.state .w{opacity:1;transition:none}
+.state .pill{display:inline-block;width:1.9em;height:.85em;border-radius:999px;vertical-align:-.1em;margin-inline:.18em;background-size:cover;background-position:center;box-shadow:inset 0 0 0 1px rgba(255,255,255,.2)}
 
-/* route diagram on a dark panel */
-.route{background:var(--panel);color:var(--on-panel)}
-.route h2{color:#fff}
-.route .lead{color:var(--on-panel-mute)}
-.nodes{display:grid;gap:0;margin-top:56px;position:relative}
-@media (min-width:900px){.nodes{grid-template-columns:repeat(5,1fr)}}
-.node{display:grid;align-content:start;gap:6px;padding:0 0 28px 28px;position:relative;border-left:1px solid var(--panel-line)}
-.node::before{content:"";position:absolute;left:-6px;top:6px;width:11px;height:11px;border-radius:50%;background:var(--panel);border:2px solid #fff}
-.node b{font:800 20px/1.4 var(--sans)}
-.node span{font-size:14px;color:var(--on-panel-mute);max-width:14em}
+/* ---------- marquee (single) ---------- */
+.mq{overflow:hidden;border-block:1px solid var(--hair);padding-block:26px;background:var(--band)}
+.mq-t{display:flex;width:max-content;gap:56px;animation:mq 60s linear infinite}
+.mq:hover .mq-t{animation-play-state:paused}
+.mq span{font:800 clamp(34px,5vw,72px)/1.2 var(--sans);color:transparent;-webkit-text-stroke:1px rgba(255,255,255,.4);white-space:nowrap}
+.mq span:nth-child(3n){color:var(--ink);-webkit-text-stroke:0}
+@keyframes mq{to{transform:translateX(-50%)}}
+
+/* ---------- bento: gapless 12 col ---------- */
+.bento{display:grid;gap:18px;margin-top:64px;grid-auto-flow:dense}
 @media (min-width:900px){
-  .node{border-left:0;border-top:1px solid var(--panel-line);padding:28px 20px 0 0}
-  .node::before{left:0;top:-6px}
+  .bento{grid-template-columns:repeat(12,1fr);grid-auto-rows:minmax(0,auto)}
+  .b-a{grid-column:span 7;grid-row:span 2}.b-b{grid-column:span 5}.b-c{grid-column:span 5}.b-d{grid-column:1/-1}
 }
-.bridge{grid-column:1/-1;margin-top:36px;padding-top:22px;border-top:2px solid var(--red);display:flex;flex-wrap:wrap;gap:6px 18px;align-items:baseline;font-weight:700}
-.bridge span{font-weight:400;color:var(--on-panel-mute);font-size:14.5px}
+.pic{position:relative;overflow:hidden;flex:1;min-height:260px}
+.pic img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transition:transform 1.6s var(--spring)}
+.shell:hover .pic img{transform:scale(1.06)}
+.cap{padding:20px 26px 24px;display:grid;gap:2px}
+.cap b{font-size:19px}
+.cap span{font-size:14px;color:var(--mute)}
+@media (min-width:900px){.b-a .pic{min-height:560px}}
+.cta-core{padding:clamp(28px,4vw,56px);display:grid;gap:26px;justify-items:start;align-items:center;background:radial-gradient(80% 140% at 100% 0%,rgba(232,34,47,.28),transparent 60%),var(--core)}
+@media (min-width:760px){.cta-core{grid-template-columns:1fr auto;justify-items:stretch}.cta-core .btn{justify-self:end}}
+.cta-core p{font:800 clamp(22px,2.8vw,38px)/1.5 var(--sans)}
 
-/* reasons: sticky left, list right */
-.why{display:grid;gap:36px}
-@media (min-width:960px){.why{grid-template-columns:5fr 7fr;gap:clamp(48px,7vw,112px)}.why-h{position:sticky;top:112px;align-self:start}}
-.reasons{display:grid}
-.reasons li{padding:28px 0;border-top:1px solid var(--line);display:grid;gap:8px}
-.reasons li:last-child{border-bottom:1px solid var(--line)}
-.reasons h3{font:800 clamp(19px,1.8vw,24px)/1.5 var(--sans)}
-.reasons p{color:var(--mute);max-width:36em}
+/* ---------- audience: sticky title, doors scroll ---------- */
+.split{display:grid;gap:48px}
+@media (min-width:960px){.split{grid-template-columns:5fr 7fr;gap:clamp(48px,7vw,120px)}.split-h{position:sticky;top:130px;align-self:start}.split-h h2{font-size:clamp(28px,3.1vw,46px)}}
+.doors{display:grid;gap:28px}
+.door .pic{aspect-ratio:16/10;min-height:0;flex:none}
+.door-b{padding:clamp(24px,3vw,38px);display:grid;gap:16px;align-content:start}
+.door h3{font:800 clamp(24px,2.6vw,34px)/1.4 var(--sans)}
+.door p{color:var(--mute)}
+.door ul{display:grid;gap:8px;margin-block:2px 10px}
+.door li{display:flex;gap:12px;align-items:flex-start;font-size:15.5px}
+.door li .ic{color:var(--accent-hi);margin-top:7px}
 
-/* flow: four verbs on one rail */
-.flow{background:color-mix(in srgb,var(--surface) 70%,var(--bg))}
-.rail{display:grid;gap:0;margin-top:48px}
-@media (min-width:900px){.rail{grid-template-columns:repeat(4,1fr);gap:24px}}
-.rail li{padding:22px 0;border-top:3px solid var(--ink);display:grid;gap:8px;align-content:start}
-.rail li:first-child{border-top-color:var(--red)}
-.rail b{font:800 22px/1.4 var(--sans)}
-.rail span{font-size:14.5px;color:var(--mute)}
-.fine{margin-top:26px;font-size:14px;color:var(--mute)}
+/* ---------- route: line draws with scroll ---------- */
+.route{position:relative;background:var(--band);overflow:hidden;isolation:isolate}
+.route-bg{position:absolute;inset:0;z-index:-1;opacity:.28}
+.route-bg img{width:100%;height:100%;object-fit:cover}
+.route::after{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(180deg,var(--band),rgba(8,16,31,.5) 40%,var(--band))}
+.track{position:relative;margin-top:84px;--p:0}
+.nodes{display:grid;gap:34px;position:relative}
+.line{position:absolute;left:11px;top:6px;bottom:6px;width:2px;background:var(--line)}
+.line i{position:absolute;inset:0;background:linear-gradient(var(--accent-hi),#FF9B5C);transform-origin:top;transform:scaleY(var(--p))}
+.node{position:relative;padding-left:50px}
+.node::before{content:"";position:absolute;left:0;top:6px;width:24px;height:24px;border-radius:50%;background:var(--bg);border:2px solid var(--line);transition:border-color .6s var(--spring),box-shadow .6s var(--spring),background .6s var(--spring)}
+.node.on::before{border-color:var(--accent-hi);background:var(--accent);box-shadow:0 0 0 8px rgba(232,34,47,.18)}
+.node b{display:block;font:800 clamp(20px,2.2vw,28px)/1.4 var(--sans);opacity:.45;transition:opacity .6s var(--spring)}
+.node span{color:var(--mute);font-size:15px;opacity:.45;transition:opacity .6s var(--spring)}
+.node.on b,.node.on span{opacity:1}
+@media (min-width:900px){
+  .nodes{grid-template-columns:repeat(5,1fr);gap:0}
+  .line{left:0;right:0;top:11px;bottom:auto;width:auto;height:2px}
+  .line i{transform-origin:left;transform:scaleX(var(--p))}
+  .node{padding:56px 22px 0 0}
+  .node::before{top:0}
+}
+.bridge{margin-top:56px;padding-top:26px;border-top:1px solid var(--line);display:flex;flex-wrap:wrap;gap:6px 22px;align-items:baseline}
+.bridge b{font:800 22px var(--sans);letter-spacing:.1em}
+.bridge span{color:var(--mute)}
 
-/* faq: borderless, plus toggle */
-.faq{margin-top:40px;max-width:860px;border-top:1px solid var(--line)}
+/* ---------- reasons: cards stack ---------- */
+.stack{display:grid;gap:0;margin-top:64px}
+.scard{position:sticky;top:calc(96px + var(--i) * 22px);z-index:calc(var(--i) + 1);margin-bottom:34px;transform-origin:50% 0;background:#0A1020}
+.scard .core{padding:clamp(30px,4vw,60px);min-height:clamp(240px,38vh,360px);justify-content:space-between;gap:32px;background:linear-gradient(135deg,var(--core),#0A1426)}
+.scard h3{font:800 clamp(24px,3.4vw,46px)/1.4 var(--sans);max-width:16em;word-break:auto-phrase}
+.scard p{color:var(--mute);max-width:30em}
+.scard .tick{width:46px;height:3px;border-radius:2px;background:var(--accent)}
+
+/* ---------- flow ---------- */
+.rail{display:grid;gap:0;margin-top:60px}
+@media (min-width:900px){.rail{grid-template-columns:repeat(4,1fr);gap:28px}}
+.rail li{padding:26px 0 30px;border-top:1px solid var(--line);position:relative;display:grid;gap:8px;align-content:start}
+.rail li::before{content:"";position:absolute;left:0;top:-1px;width:44px;height:2px;background:var(--accent-hi)}
+.rail b{font:800 24px/1.4 var(--sans)}
+.rail span{color:var(--mute);font-size:15px}
+.fine{margin-top:28px;color:var(--mute);font-size:14.5px}
+
+/* ---------- faq ---------- */
+.faq{margin-top:56px;max-width:900px;border-top:1px solid var(--line)}
 .faq details{border-bottom:1px solid var(--line)}
-.faq summary{list-style:none;cursor:pointer;display:flex;justify-content:space-between;gap:18px;align-items:center;padding:22px 0;font-weight:700;font-size:17px}
+.faq summary{list-style:none;cursor:pointer;display:flex;justify-content:space-between;gap:20px;align-items:center;padding:26px 0;font-weight:700;font-size:clamp(16px,1.6vw,20px)}
 .faq summary::-webkit-details-marker{display:none}
-.faq summary .ic{color:var(--red);transition:transform .35s var(--ease);width:1.2em;height:1.2em}
-.faq details[open] summary .ic{transform:rotate(45deg)}
-.faq p{padding:0 0 24px;color:var(--mute);max-width:42em}
+.faq summary .tg{width:36px;height:36px;border-radius:50%;border:1px solid var(--line);display:grid;place-items:center;flex:none;transition:transform .6s var(--spring),background .4s}
+.faq summary:hover .tg{background:rgba(255,255,255,.1)}
+.faq details[open] .tg{transform:rotate(45deg);background:var(--accent);border-color:var(--accent)}
+.faq p{padding:0 0 28px;color:var(--mute);max-width:40em}
 
-/* contact */
-.contact{background:var(--panel);color:var(--on-panel)}
-.cgrid{display:grid;gap:40px}
-@media (min-width:980px){.cgrid{grid-template-columns:5fr 7fr;gap:clamp(40px,6vw,88px);align-items:start}}
-.contact h2{color:#fff}
-.assure{display:grid;gap:12px;margin-top:26px;color:var(--on-panel-mute);font-size:15px}
+/* ---------- contact over sunrise ---------- */
+.contact{position:relative;isolation:isolate;overflow:hidden}
+.contact-bg{position:absolute;inset:0;z-index:-2}
+.contact-bg img{width:100%;height:100%;object-fit:cover;object-position:50% 50%}
+.contact::before{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(180deg,var(--bg),rgba(5,10,20,.72) 28%,rgba(5,10,20,.82))}
+.cgrid{display:grid;gap:48px}
+@media (min-width:980px){.cgrid{grid-template-columns:5fr 7fr;gap:clamp(48px,6vw,96px);align-items:start}}
+.assure{display:grid;gap:14px;margin-top:30px;color:#D5DFF1}
 .assure li{display:flex;gap:12px;align-items:flex-start}
-.assure .ic{color:#fff;margin-top:6px}
-.cphoto{margin-top:34px;border-radius:var(--r-card);overflow:hidden;aspect-ratio:4/3;display:none}
-@media (min-width:980px){.cphoto{display:block}}
-.cphoto img{width:100%;height:100%;object-fit:cover}
-.form{background:var(--surface);color:var(--ink);padding:clamp(22px,3.4vw,44px);border-radius:var(--r-card);display:grid;gap:16px;box-shadow:var(--shadow)}
-.seg{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:5px;background:var(--bg);border-radius:999px;border:1px solid var(--line)}
-.seg button{border:0;background:none;padding:11px 8px;border-radius:999px;font-weight:700;font-size:14px;color:var(--mute);transition:background .3s,color .3s}
-.seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
-.row2{display:grid;gap:16px}
+.assure .ic{color:var(--accent-hi);margin-top:7px}
+.form{display:grid;gap:18px;padding:clamp(24px,3.4vw,44px);background:#0A1428;height:100%}
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:5px;background:rgba(255,255,255,.05);border-radius:999px;border:1px solid var(--hair)}
+.seg button{border:0;background:none;padding:12px 8px;border-radius:999px;font-weight:700;font-size:14px;color:var(--mute);transition:background .5s var(--spring),color .5s var(--spring)}
+.seg button[aria-pressed="true"]{background:#fff;color:#07101F}
+.row2{display:grid;gap:18px}
 @media (min-width:600px){.row2{grid-template-columns:1fr 1fr}}
-.fld{display:grid;gap:6px;min-width:0}
-.fld label,.fld .lab{font-size:14px;font-weight:700}
-.req{color:var(--red);font-size:12px;margin-inline-start:6px;font-weight:700}
-.fld input:not([type=checkbox]),.fld select,.fld textarea{width:100%;background:var(--bg);border:1.5px solid var(--line);border-radius:var(--r-field);padding:12px 14px;min-height:50px;color:var(--ink)}
+.fld{display:grid;gap:7px;min-width:0;align-content:start}
+.fld label{font-size:14px;font-weight:700;color:#E7EEFA}
+.req{color:var(--accent-hi);font-size:12px;margin-inline-start:6px}
+.fld input:not([type=checkbox]),.fld select,.fld textarea{width:100%;background:#111F3A;border:1.5px solid rgba(255,255,255,.16);border-radius:var(--r-field);padding:13px 16px;min-height:52px;color:#fff;transition:border-color .4s var(--spring),box-shadow .4s var(--spring)}
 .fld textarea{min-height:130px;resize:vertical}
-.fld input::placeholder,.fld textarea::placeholder{color:var(--mute);opacity:.85}
-.fld input:not([type=checkbox]):focus,.fld select:focus,.fld textarea:focus{outline:none;border-color:var(--red);box-shadow:0 0 0 3px color-mix(in srgb,var(--red) 22%,transparent)}
-.err{display:block;visibility:hidden;min-height:1.4em;margin-top:-2px;font-size:13px;line-height:1.4;color:var(--red);font-weight:700}
+.fld input::placeholder,.fld textarea::placeholder{color:#8A9BB9}
+.fld input:not([type=checkbox]):focus,.fld select:focus,.fld textarea:focus{outline:none;border-color:var(--accent-hi);box-shadow:0 0 0 4px rgba(232,34,47,.22)}
+.err{display:block;visibility:hidden;min-height:1.4em;margin-top:-2px;font-size:13px;line-height:1.4;color:#FF8791;font-weight:700}
 .fld.bad .err{visibility:visible}
-.fld.bad input:not([type=checkbox]),.fld.bad select,.fld.bad textarea{border-color:var(--red)}
-.agree{display:flex;gap:10px;align-items:flex-start;font-size:14px;color:var(--mute);font-weight:400!important}
-.agree input{width:20px;height:20px;margin-top:5px;accent-color:var(--red);flex:none}
-.form .btn{width:100%;min-height:58px;font-size:16px}
+.fld.bad input:not([type=checkbox]),.fld.bad select,.fld.bad textarea{border-color:#FF6B75}
+.agree{display:flex;gap:12px;align-items:flex-start;font-size:14px;color:var(--mute);font-weight:400!important}
+.agree input{width:20px;height:20px;margin-top:5px;accent-color:var(--accent);flex:none}
+.form .btn{justify-content:space-between;width:100%;min-height:62px;font-size:16px}
 .note{font-size:13px;color:var(--mute);text-align:center}
-.done{display:none;gap:14px}
+.done{display:none;gap:16px}
 .done.on{display:grid}
-.done h3{font:800 22px/1.5 var(--sans)}
-.done pre{margin:0;white-space:pre-wrap;word-break:break-word;background:var(--bg);border:1px solid var(--line);border-radius:var(--r-field);padding:14px;font:13.5px/1.8 var(--sans);max-height:260px;overflow:auto}
-.acts{display:flex;flex-wrap:wrap;gap:10px}
-.btn--line{background:transparent;color:var(--ink);box-shadow:inset 0 0 0 1.5px var(--ink)}
-.btn--line::before{background:var(--ink)}
-.btn--line:hover{color:var(--bg)}
+.done h3{font:800 24px/1.5 var(--sans)}
+.done pre{margin:0;white-space:pre-wrap;word-break:break-word;background:#111F3A;border:1px solid var(--line);border-radius:var(--r-field);padding:16px;font:13.5px/1.8 var(--sans);max-height:260px;overflow:auto;color:#E7EEFA}
+.acts{display:flex;flex-wrap:wrap;gap:12px}
 
-.ft{padding-block:44px calc(30px + env(safe-area-inset-bottom,0px));font-size:14px;color:var(--mute)}
-.ft-in{display:flex;flex-wrap:wrap;gap:12px 28px;align-items:center;justify-content:space-between}
-.ft .logo{color:var(--ink)}
+/* ---------- footer ---------- */
+.ft{padding-block:80px calc(36px + env(safe-area-inset-bottom,0px));overflow:hidden}
+.ft-word{font:900 clamp(80px,22vw,340px)/.9 var(--sans);letter-spacing:.02em;color:transparent;-webkit-text-stroke:1px rgba(255,255,255,.22);white-space:nowrap;margin-inline:-.04em;user-select:none}
+.ft-row{display:flex;flex-wrap:wrap;justify-content:space-between;gap:12px 28px;margin-top:36px;color:var(--mute);font-size:14px}
 
 /* sticky mobile bar */
-.bar{position:fixed;left:0;right:0;bottom:0;z-index:50;padding:10px var(--gut) calc(10px + env(safe-area-inset-bottom,0px));background:color-mix(in srgb,var(--bg) 94%,transparent);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-top:1px solid var(--line);transform:translateY(110%);transition:transform .45s var(--ease)}
+.bar{position:fixed;left:0;right:0;bottom:0;z-index:50;padding:12px var(--gut) calc(12px + env(safe-area-inset-bottom,0px));background:rgba(5,10,20,.72);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border-top:1px solid var(--hair);transform:translateY(110%);transition:transform .7s var(--spring)}
 .bar.on{transform:none}
-.bar .btn{width:100%}
+.bar .btn{width:100%;justify-content:space-between}
 @media (min-width:900px){.bar{display:none}}
-@media (max-width:899px){body{padding-bottom:78px}}
 
-/* reveal: content is visible unless JS can animate it */
-.js .rv:not(.in){opacity:0;transform:translateY(22px)}
-.rv{transition:opacity .9s var(--ease),transform .9s var(--ease)}
-@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}.hero-img img{animation:none}.js .rv:not(.in){opacity:1;transform:none}*{transition-duration:.01ms!important}}
+@media (max-width:899px){.scard{position:relative;top:auto!important}}
+@media (prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  .hero-bg img,.mq-t{animation:none}
+  .hero .fade,.hero h1 em{animation:none!important;opacity:1;transform:none}
+  .rv{opacity:1;transform:none;filter:none;transition:none}
+  *{transition-duration:.01ms!important}
+}
 </style>
 </head>
-<body>
+<body class="nojs">
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
-  <symbol id="i-arrow" viewBox="0 0 256 256"><path d="M221.66,133.66l-72,72a8,8,0,0,1-11.32-11.32L196.69,136H40a8,8,0,0,1,0-16H196.69L138.34,61.66a8,8,0,0,1,11.32-11.32l72,72A8,8,0,0,1,221.66,133.66Z"/></symbol>
+  <symbol id="i-arrow" viewBox="0 0 256 256"><path d="M200,64V168a8,8,0,0,1-16,0V83.31L69.66,197.66a8,8,0,0,1-11.32-11.32L172.69,72H88a8,8,0,0,1,0-16H192A8,8,0,0,1,200,64Z"/></symbol>
   <symbol id="i-check" viewBox="0 0 256 256"><path d="M229.66,77.66l-128,128a8,8,0,0,1-11.32,0l-56-56a8,8,0,0,1,11.32-11.32L96,188.69,218.34,66.34a8,8,0,0,1,11.32,11.32Z"/></symbol>
   <symbol id="i-plus" viewBox="0 0 256 256"><path d="M224,128a8,8,0,0,1-8,8H136v80a8,8,0,0,1-16,0V136H40a8,8,0,0,1,0-16h80V40a8,8,0,0,1,16,0v80h80A8,8,0,0,1,224,128Z"/></symbol>
-  <symbol id="i-down" viewBox="0 0 256 256"><path d="M205.66,149.66l-72,72a8,8,0,0,1-11.32,0l-72-72a8,8,0,0,1,11.32-11.32L120,196.69V40a8,8,0,0,1,16,0V196.69l58.34-58.35a8,8,0,0,1,11.32,11.32Z"/></symbol>
 </svg>
 <a class="skip" href="#contact">お問い合わせへ移動</a>
 
-<header class="hd">
-  <div class="wrap hd-in">
-    <a class="logo" href="#top" aria-label="H-LINK トップへ">H<b>-</b>LINK</a>
-    <nav class="nav" aria-label="メインメニュー">
-      <a href="#items">取扱品目</a>
-      <a href="#who">ご相談の内容</a>
-      <a href="#route">事業の流れ</a>
-      <a href="#why">選ばれる理由</a>
-      <a href="#faq">よくある質問</a>
-    </nav>
-    <a class="btn btn--sm" href="#contact">無料で相談する</a>
-  </div>
+<header class="nav" id="nav">
+  <a class="logo" href="#top" aria-label="H-LINK トップへ">H<b>-</b>LINK</a>
+  <nav class="links" aria-label="メインメニュー">
+    <a href="#items">取扱品目</a><a href="#who">ご相談の内容</a><a href="#route">事業の流れ</a><a href="#why">選ばれる理由</a><a href="#faq">よくある質問</a>
+  </nav>
+  <a class="btn btn--sm" href="#contact">無料で相談する<span class="isl"><svg class="ic"><use href="#i-arrow"/></svg></span></a>
+  <button class="burger" id="burger" type="button" aria-label="メニューを開く" aria-expanded="false" aria-controls="sheet"><i></i><i></i></button>
 </header>
+<div class="sheet" id="sheet" aria-hidden="true">
+  <a href="#items">取扱品目</a><a href="#who">ご相談の内容</a><a href="#route">事業の流れ</a><a href="#why">選ばれる理由</a><a href="#faq">よくある質問</a>
+</div>
 
 <main id="top">
   <section class="hero" aria-labelledby="h1">
-    <div class="hero-t">
-      <h1 id="h1">北海道の食を、<br>世界の食卓へ。</h1>
-      <p>生産者・メーカーと海外バイヤーを、輸出の実務までつなぐ会社です。</p>
-      <div class="hero-cta">
-        <a class="btn" href="#contact">無料で相談する<svg class="ic"><use href="#i-arrow"/></svg></a>
-        <a class="link" href="#items">取扱品目を見る<svg class="ic"><use href="#i-down"/></svg></a>
+    <div class="hero-bg" id="heroBg"><img src="img/hero.webp" width="1672" height="941" alt="夕暮れの海にのびる橋と、水平線に沈む太陽"></div>
+    <div class="hero-in">
+      <h1 id="h1"><span><em>北海道の食を、</em></span><span><em>世界の食卓へ。</em></span></h1>
+      <p class="fade" style="animation-delay:.7s">生産者・メーカーと海外バイヤーを、輸出の実務までつなぎます。</p>
+      <div class="hero-cta fade" style="animation-delay:.9s">
+        <a class="btn" href="#contact">無料で相談する<span class="isl"><svg class="ic"><use href="#i-arrow"/></svg></span></a>
+        <a class="btn btn--ghost" href="#items">取扱品目を見る</a>
       </div>
     </div>
-    <div class="hero-img"><img src="img/hero.webp" width="1672" height="941" alt="夕暮れの海にのびる橋と、水平線に沈む太陽"></div>
   </section>
+
+  <section class="state" aria-label="H-LINKについて">
+    <div class="wrap">
+      <p id="statement">北海道の生産者と<span class="pill" style="background-image:url(img/spread.webp)" role="img" aria-label="海の幸"></span>海外のバイヤー。そのあいだに立ち、書類も物流も契約も、ひとつの<span class="pill" style="background-image:url(img/seafood.webp)" role="img" aria-label="食材"></span>窓口で引き受けます。</p>
+    </div>
+  </section>
+
+  <div class="mq" aria-hidden="true">
+    <div class="mq-t">
+      <span>ホタテ</span><span>カニ</span><span>ウニ</span><span>いくら</span><span>サーモン</span><span>じゃがいも</span><span>かぼちゃ</span><span>とうもろこし</span><span>チーズ</span><span>牛乳</span><span>はちみつ</span>
+      <span>ホタテ</span><span>カニ</span><span>ウニ</span><span>いくら</span><span>サーモン</span><span>じゃがいも</span><span>かぼちゃ</span><span>とうもろこし</span><span>チーズ</span><span>牛乳</span><span>はちみつ</span>
+    </div>
+  </div>
 
   <section class="sec" id="items" aria-labelledby="items-h">
     <div class="wrap">
       <div class="rv">
-        <h2 id="items-h">北海道の海と大地から、世界の食卓へ。</h2>
+        <h2 id="items-h">北海道の海と大地を、<br>世界の食卓へ。</h2>
         <p class="lead">水産物、農産物、乳製品。産地とメーカーの顔が見える品目を、海外のバイヤーへお届けします。</p>
       </div>
       <div class="bento">
-        <figure class="cell b-a rv"><div class="img"><img src="img/spread.webp" width="1448" height="905" alt="カニ、ホタテ、サーモン、いくら、ウニなど北海道の海の幸と野菜、乳製品が並ぶ食卓" loading="lazy"></div><figcaption><b>水産物</b><span>カニ、ホタテ、ウニ、いくら、サーモン</span></figcaption></figure>
-        <figure class="cell b-b rv"><div class="img"><img src="img/veg.webp" width="640" height="600" alt="かぼちゃ、とうもろこし、じゃがいもなど北海道の野菜と、遠くの雪山" loading="lazy"></div><figcaption><b>農産物</b><span>じゃがいも、かぼちゃ、とうもろこし</span></figcaption></figure>
-        <figure class="cell b-c rv"><div class="img"><img src="img/dairy.webp" width="620" height="660" alt="牛乳、チーズ、はちみつ、お米、豆類" loading="lazy"></div><figcaption><b>乳製品と加工品</b><span>牛乳、チーズ、はちみつ、穀物</span></figcaption></figure>
-        <div class="cell b-d rv"><p>ここにない品目も、まずはご相談ください。</p><a class="btn" href="#contact" data-pick="producer">無料で相談する<svg class="ic"><use href="#i-arrow"/></svg></a></div>
+        <figure class="shell b-a rv"><div class="core"><div class="pic"><img data-scale src="img/spread.webp" width="1448" height="905" alt="カニ、ホタテ、サーモン、いくら、ウニなど北海道の海の幸と野菜、乳製品が並ぶ食卓" loading="lazy"></div><figcaption class="cap"><b>水産物</b><span>カニ、ホタテ、ウニ、いくら、サーモン</span></figcaption></div></figure>
+        <figure class="shell b-b rv"><div class="core"><div class="pic"><img data-scale src="img/veg.webp" width="640" height="600" alt="かぼちゃ、とうもろこし、じゃがいもなど北海道の野菜と、遠くの雪山" loading="lazy"></div><figcaption class="cap"><b>農産物</b><span>じゃがいも、かぼちゃ、とうもろこし</span></figcaption></div></figure>
+        <figure class="shell b-c rv"><div class="core"><div class="pic"><img data-scale src="img/dairy.webp" width="620" height="660" alt="牛乳、チーズ、はちみつ、お米、豆類" loading="lazy"></div><figcaption class="cap"><b>乳製品と加工品</b><span>牛乳、チーズ、はちみつ、穀物</span></figcaption></div></figure>
+        <div class="shell b-d rv"><div class="core cta-core"><p>ここにない品目も、まずはご相談ください。</p><a class="btn" href="#contact" data-pick="producer">無料で相談する<span class="isl"><svg class="ic"><use href="#i-arrow"/></svg></span></a></div></div>
       </div>
     </div>
   </section>
 
   <section class="sec" id="who" aria-labelledby="who-h" style="padding-top:0">
-    <div class="wrap">
-      <h2 id="who-h" class="rv">あなたの立場から、相談を始められます。</h2>
+    <div class="wrap split">
+      <div class="split-h rv"><h2 id="who-h">あなたの立場から、相談を始められます。</h2><p class="lead">生産者・メーカーの方も、海外バイヤーの方も、窓口は同じです。</p></div>
       <div class="doors">
-        <article class="door rv">
-          <div class="img"><img src="img/bay.webp" width="1672" height="501" alt="夕暮れの湾と港町、遠くに山並み" loading="lazy"></div>
-          <div class="door-b">
-            <h3>生産者・メーカーの方</h3>
-            <p>よい商品を、海外の買い手まで届けたい。輸出の入口から出荷まで、窓口になります。</p>
-            <ul>
-              <li><svg class="ic"><use href="#i-check"/></svg>商品に合う海外バイヤーのご紹介</li>
-              <li><svg class="ic"><use href="#i-check"/></svg>書類、通関、物流の手配</li>
-              <li><svg class="ic"><use href="#i-check"/></svg>輸出がはじめてでも順番に対応</li>
-            </ul>
-            <a class="btn" href="#contact" data-pick="producer">無料で相談する<svg class="ic"><use href="#i-arrow"/></svg></a>
-          </div>
-        </article>
-        <article class="door rv">
-          <div class="img"><img src="img/seafood.webp" width="900" height="640" alt="カニ、ホタテ、サーモン、ウニ、いくらの盛り合わせ" loading="lazy"></div>
-          <div class="door-b">
-            <h3>海外バイヤーの方</h3>
-            <p>北海道の食材を、安定して仕入れたい。条件に合う産地とメーカーをご提案します。</p>
-            <ul>
-              <li><svg class="ic"><use href="#i-check"/></svg>産地とメーカーへの窓口を一本化</li>
-              <li><svg class="ic"><use href="#i-check"/></svg>品目、数量、価格帯に合わせた提案</li>
-              <li><svg class="ic"><use href="#i-check"/></svg>サンプルと出荷までの調整</li>
-            </ul>
-            <a class="btn" href="#contact" data-pick="buyer">無料で相談する<svg class="ic"><use href="#i-arrow"/></svg></a>
-          </div>
-        </article>
+        <article class="shell door rv"><div class="core"><div class="pic"><img data-scale src="img/bay.webp" width="1672" height="501" alt="夕暮れの湾と港町、遠くに山並み" loading="lazy"></div>
+          <div class="door-b"><h3>生産者・メーカーの方</h3><p>よい商品を、海外の買い手まで届けたい。輸出の入口から出荷まで、窓口になります。</p>
+          <ul><li><svg class="ic"><use href="#i-check"/></svg>商品に合う海外バイヤーのご紹介</li><li><svg class="ic"><use href="#i-check"/></svg>書類、通関、物流の手配</li><li><svg class="ic"><use href="#i-check"/></svg>輸出がはじめてでも順番に対応</li></ul>
+          <a class="btn" href="#contact" data-pick="producer" style="justify-self:start">無料で相談する<span class="isl"><svg class="ic"><use href="#i-arrow"/></svg></span></a></div></div></article>
+        <article class="shell door rv"><div class="core"><div class="pic"><img data-scale src="img/seafood.webp" width="900" height="640" alt="カニ、ホタテ、サーモン、ウニ、いくらの盛り合わせ" loading="lazy"></div>
+          <div class="door-b"><h3>海外バイヤーの方</h3><p>北海道の食材を、安定して仕入れたい。条件に合う産地とメーカーをご提案します。</p>
+          <ul><li><svg class="ic"><use href="#i-check"/></svg>産地とメーカーへの窓口を一本化</li><li><svg class="ic"><use href="#i-check"/></svg>品目、数量、価格帯に合わせた提案</li><li><svg class="ic"><use href="#i-check"/></svg>サンプルと出荷までの調整</li></ul>
+          <a class="btn" href="#contact" data-pick="buyer" style="justify-self:start">無料で相談する<span class="isl"><svg class="ic"><use href="#i-arrow"/></svg></span></a></div></div></article>
       </div>
     </div>
   </section>
 
   <section class="sec route" id="route" aria-labelledby="route-h">
+    <div class="route-bg"><img src="img/bay.webp" alt="" loading="lazy"></div>
     <div class="wrap">
-      <h2 id="route-h" class="rv">産地から海外の食卓まで、途切れない流れに。</h2>
-      <p class="lead rv">生産、加工、物流、貿易、そして買い手。つなぎ目で起きる手間と不安を、H-LINKが引き受けます。</p>
-      <ol class="nodes rv">
-        <li class="node"><b>産地</b><span>北海道の生産者</span></li>
-        <li class="node"><b>加工・製造</b><span>メーカー、工場</span></li>
-        <li class="node"><b>物流</b><span>保管、輸送、温度管理</span></li>
-        <li class="node"><b>貿易実務</b><span>書類、通関、契約</span></li>
-        <li class="node"><b>海外バイヤー</b><span>輸入、販売</span></li>
-        <li class="bridge" style="list-style:none">H-LINK<span>これらの間に立ち、窓口を一つにまとめます。</span></li>
-      </ol>
+      <div class="rv"><h2 id="route-h">産地から海外の食卓まで、<br>途切れない流れに。</h2>
+      <p class="lead">生産、加工、物流、貿易、そして買い手。つなぎ目で起きる手間と不安を、H-LINKが引き受けます。</p></div>
+      <div class="track" id="track">
+        <ol class="nodes">
+          <div class="line" aria-hidden="true"><i></i></div>
+          <li class="node on"><b>産地</b><span>北海道の生産者</span></li>
+          <li class="node"><b>加工・製造</b><span>メーカー、工場</span></li>
+          <li class="node"><b>物流</b><span>保管、輸送、温度管理</span></li>
+          <li class="node"><b>貿易実務</b><span>書類、通関、契約</span></li>
+          <li class="node"><b>海外バイヤー</b><span>輸入、販売</span></li>
+        </ol>
+        <div class="bridge rv"><b>H-LINK</b><span>これらの間に立ち、窓口を一つにまとめます。</span></div>
+      </div>
     </div>
   </section>
 
   <section class="sec" id="why" aria-labelledby="why-h">
-    <div class="wrap why">
-      <div class="why-h rv"><h2 id="why-h">窓口は、H-LINKひとつ。</h2><p class="lead">複数の会社に分けて頼む手間を、減らします。</p></div>
-      <ul class="reasons">
-        <li class="rv"><h3>北海道の産地から調達</h3><p>産地とのつながりを活かし、商品の背景まで海外の買い手にお伝えします。</p></li>
-        <li class="rv"><h3>輸出実務をまとめて対応</h3><p>相手探しから書類、物流まで。別々の会社に頼む手間がなくなります。</p></li>
-        <li class="rv"><h3>両側の事情がわかる</h3><p>生産者の都合と、海外バイヤーの要望。それぞれに伝わる言葉で橋渡しします。</p></li>
-        <li class="rv"><h3>取引のあとも伴走</h3><p>一度きりで終わらせず、継続した取引になるよう支えます。</p></li>
-      </ul>
+    <div class="wrap">
+      <h2 id="why-h" class="rv">窓口は、H-LINKひとつ。</h2>
+      <div class="stack">
+        <article class="shell scard" style="--i:0"><div class="core"><span class="tick"></span><h3>北海道の産地から調達する</h3><p>産地とのつながりを活かし、商品の背景まで海外の買い手にお伝えします。</p></div></article>
+        <article class="shell scard" style="--i:1"><div class="core"><span class="tick"></span><h3>輸出実務をまとめて引き受ける</h3><p>相手探しから書類、物流まで。別々の会社に頼む手間がなくなります。</p></div></article>
+        <article class="shell scard" style="--i:2"><div class="core"><span class="tick"></span><h3>生産者と買い手、両側の事情がわかる</h3><p>生産者の都合と、海外バイヤーの要望。それぞれに伝わる言葉で橋渡しします。</p></div></article>
+        <article class="shell scard" style="--i:3"><div class="core"><span class="tick"></span><h3>取引のあとも、並んで走る</h3><p>一度きりで終わらせず、継続した取引になるよう支えます。</p></div></article>
+      </div>
     </div>
   </section>
 
-  <section class="sec flow" aria-labelledby="flow-h">
+  <section class="sec" aria-labelledby="flow-h" style="padding-top:0">
     <div class="wrap">
       <h2 id="flow-h" class="rv">相談から出荷までの流れ</h2>
       <ol class="rail">
@@ -343,32 +378,31 @@ h2{font:800 clamp(28px,3.5vw,46px)/1.35 var(--sans);letter-spacing:0;word-break:
     </div>
   </section>
 
-  <section class="sec" id="faq" aria-labelledby="faq-h">
+  <section class="sec" id="faq" aria-labelledby="faq-h" style="padding-top:0">
     <div class="wrap">
       <h2 id="faq-h" class="rv">よくあるご質問</h2>
       <div class="faq rv">
-        <details><summary>輸出の経験がなくても相談できますか。<svg class="ic"><use href="#i-plus"/></svg></summary><p>はい。経験がない方こそ、最初のご相談をおすすめします。何から始めるかを整理するところから、ご一緒します。</p></details>
-        <details><summary>商品や数量が決まっていなくても大丈夫ですか。<svg class="ic"><use href="#i-plus"/></svg></summary><p>大丈夫です。ご希望の方向性だけでも構いません。お話を聞きながら、決めることを一緒に整理します。</p></details>
-        <details><summary>海外バイヤーですが、日本語が話せません。<svg class="ic"><use href="#i-plus"/></svg></summary><p>英語でのお問い合わせを想定しています。フォームには英語で入力いただいて構いません。</p></details>
-        <details><summary>相談に費用はかかりますか。<svg class="ic"><use href="#i-plus"/></svg></summary><p>ご相談・お問い合わせは無料です。取引が具体的になる段階で、必要な条件を事前にご説明します。</p></details>
-        <details><summary>返信までにどのくらいかかりますか。<svg class="ic"><use href="#i-plus"/></svg></summary><p>内容を確認し、担当者から順次ご連絡します。お急ぎの場合は、その旨をメッセージにご記入ください。</p></details>
+        <details><summary>輸出の経験がなくても相談できますか。<span class="tg"><svg class="ic"><use href="#i-plus"/></svg></span></summary><p>はい。経験がない方こそ、最初のご相談をおすすめします。何から始めるかを整理するところから、ご一緒します。</p></details>
+        <details><summary>商品や数量が決まっていなくても大丈夫ですか。<span class="tg"><svg class="ic"><use href="#i-plus"/></svg></span></summary><p>大丈夫です。ご希望の方向性だけでも構いません。お話を聞きながら、決めることを一緒に整理します。</p></details>
+        <details><summary>海外バイヤーですが、日本語が話せません。<span class="tg"><svg class="ic"><use href="#i-plus"/></svg></span></summary><p>英語でのお問い合わせを想定しています。フォームには英語で入力いただいて構いません。</p></details>
+        <details><summary>相談に費用はかかりますか。<span class="tg"><svg class="ic"><use href="#i-plus"/></svg></span></summary><p>ご相談・お問い合わせは無料です。取引が具体的になる段階で、必要な条件を事前にご説明します。</p></details>
+        <details><summary>返信までにどのくらいかかりますか。<span class="tg"><svg class="ic"><use href="#i-plus"/></svg></span></summary><p>内容を確認し、担当者から順次ご連絡します。お急ぎの場合は、その旨をメッセージにご記入ください。</p></details>
       </div>
     </div>
   </section>
 
   <section class="sec contact" id="contact" aria-labelledby="c-h">
+    <div class="contact-bg"><img src="img/bridge.webp" alt="" loading="lazy"></div>
     <div class="wrap cgrid">
-      <div>
-        <h2 id="c-h">まずは、気軽にご相談ください。</h2>
+      <div class="rv">
+        <h2 id="c-h">まずは、<br>気軽にご相談ください。</h2>
         <ul class="assure">
           <li><svg class="ic"><use href="#i-check"/></svg>必須項目は4つだけです</li>
           <li><svg class="ic"><use href="#i-check"/></svg>商品や条件が決まっていなくても送れます</li>
           <li><svg class="ic"><use href="#i-check"/></svg>ご入力内容は、ご相談への対応にのみ使います</li>
         </ul>
-        <div class="cphoto"><img src="img/bridge.webp" width="912" height="941" alt="朝焼けの海を渡る橋" loading="lazy"></div>
       </div>
-
-      <div>
+      <div class="shell rv"><div class="core">
         <form class="form" id="form" novalidate>
           <div class="seg" role="group" aria-label="ご相談の種類">
             <button type="button" data-type="producer" aria-pressed="true">生産者・メーカー</button>
@@ -388,48 +422,62 @@ h2{font:800 clamp(28px,3.5vw,46px)/1.35 var(--sans);letter-spacing:0;word-break:
             <label class="agree"><input type="checkbox" id="agree"><span>ご入力内容を、ご相談への対応のために利用することに同意します。<span class="req">必須</span></span></label>
             <span class="err">同意にチェックを入れてください。</span>
           </div>
-          <button class="btn" type="submit">送信内容を確認する<svg class="ic"><use href="#i-arrow"/></svg></button>
+          <button class="btn" type="submit">送信内容を確認する<span class="isl"><svg class="ic"><use href="#i-arrow"/></svg></span></button>
           <p class="note">次の画面で内容を確認し、メールで送信できます。</p>
         </form>
-
         <div class="form done" id="done" role="status" aria-live="polite" hidden>
           <h3>内容をまとめました。メールで送ってください。</h3>
-          <p>下の内容でメールを作成します。送信はメールソフトから行います。</p>
+          <p style="color:var(--mute)">下の内容でメールを作成します。送信はメールソフトから行います。</p>
           <pre id="summary"></pre>
           <div class="acts">
-            <a class="btn" id="mail" href="#">メールを作成する</a>
-            <button class="btn btn--line" type="button" id="copy">内容をコピー</button>
-            <button class="btn btn--line" type="button" id="back">入力に戻る</button>
+            <a class="btn" id="mail" href="#">メールを作成する<span class="isl"><svg class="ic"><use href="#i-arrow"/></svg></span></a>
+            <button class="btn btn--ghost" type="button" id="copy">内容をコピー</button>
+            <button class="btn btn--ghost" type="button" id="back">入力に戻る</button>
           </div>
           <p class="note" id="mailaddr"></p>
         </div>
-      </div>
+      </div></div>
     </div>
   </section>
 </main>
 
 <footer class="ft">
-  <div class="wrap ft-in">
-    <span class="logo">H<b>-</b>LINK</span>
-    <span>北海道を起点に、食をつなぐ。</span>
-    <span>&copy; H-LINK</span>
+  <div class="wrap">
+    <div class="ft-word" aria-hidden="true">H-LINK</div>
+    <div class="ft-row"><span>北海道を起点に、食をつなぐ。</span><span>&copy; H-LINK</span></div>
   </div>
 </footer>
 
-<div class="bar" id="bar"><a class="btn" href="#contact">無料で相談する</a></div>
+<div class="bar" id="bar"><a class="btn" href="#contact">無料で相談する<span class="isl"><svg class="ic"><use href="#i-arrow"/></svg></span></a></div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
 <script>
 /* 送信先メールアドレス(実際の窓口に変更してください) */
 const CONTACT_EMAIL = "hello@example.com";
 
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+/* ---- mobile menu ---- */
+const burger = $("#burger"), sheet = $("#sheet");
+function menu(open) {
+  document.body.classList.toggle("menu-open", open);
+  burger.setAttribute("aria-expanded", String(open));
+  burger.setAttribute("aria-label", open ? "メニューを閉じる" : "メニューを開く");
+  sheet.setAttribute("aria-hidden", String(!open));
+}
+burger.addEventListener("click", () => menu(!document.body.classList.contains("menu-open")));
+$$("#sheet a").forEach((a) => a.addEventListener("click", () => menu(false)));
+addEventListener("keydown", (e) => { if (e.key === "Escape") menu(false); });
+
+/* ---- form ---- */
 const TOPICS = {
   producer: ["輸出について相談したい", "海外バイヤーを紹介してほしい", "商品の海外展開を相談したい", "その他"],
   buyer: ["北海道の商品を仕入れたい", "サンプルを取り寄せたい", "継続取引について相談したい", "その他 (English OK)"]
 };
 let type = "producer";
-
 function setType(t) {
   type = t;
   $$(".seg button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.type === t)));
@@ -448,14 +496,11 @@ const rules = {
 const mark = (id, ok) => { $("#" + id).closest(".fld").classList.toggle("bad", !ok); return ok; };
 for (const id of Object.keys(rules)) $("#" + id).addEventListener("blur", () => mark(id, rules[id]($("#" + id).value)));
 $("#agree").addEventListener("change", () => $("#agree-f").classList.toggle("bad", !$("#agree").checked));
-
 function compose() {
   const who = type === "producer" ? "生産者・メーカー" : "海外バイヤー";
   const g = (id) => $("#" + id).value.trim() || "(未入力)";
-  const body = [
-    `【ご相談の種類】${who}`, `【会社名・屋号】${g("company")}`, `【お名前】${g("name")}`, `【メール】${g("email")}`,
-    `【ご相談の内容】${$("#topic").value}`, `【品目】${g("item")}`, "", "【メッセージ】", g("msg"),
-  ].join("\n");
+  const body = [`【ご相談の種類】${who}`, `【会社名・屋号】${g("company")}`, `【お名前】${g("name")}`, `【メール】${g("email")}`,
+    `【ご相談の内容】${$("#topic").value}`, `【品目】${g("item")}`, "", "【メッセージ】", g("msg")].join("\n");
   return { subject: `[H-LINK] ${who}からのお問い合わせ`, body };
 }
 form.addEventListener("submit", (e) => {
@@ -479,17 +524,73 @@ $("#copy").addEventListener("click", async () => {
   setTimeout(() => (b.textContent = "内容をコピー"), 2400);
 });
 
-/* motion: section content rises in once as it enters the viewport (guides the reading order) */
+/* ---- scroll motion ---- */
+document.body.classList.remove("nojs");
+if ("IntersectionObserver" in window && !reduce) {
+  /* entrance: content lifts out of blur once, in reading order */
+  const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); } }), { rootMargin: "0px 0px -6% 0px", threshold: .1 });
+  $$(".rv").forEach((el, i) => { el.style.transitionDelay = (i % 3) * 90 + "ms"; io.observe(el); });
+} else {
+  $$(".rv").forEach((el) => el.classList.add("in"));
+}
+/* sticky CTA bar: after the hero, hidden while the form is on screen */
 if ("IntersectionObserver" in window) {
-  document.documentElement.classList.add("js");
-  const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); } }), { rootMargin: "0px 0px -8% 0px", threshold: .08 });
-  $$(".rv").forEach((el, i) => { el.style.transitionDelay = (i % 4) * 70 + "ms"; io.observe(el); });
-
-  /* sticky CTA: visible after the hero, hidden while the hero or the form is on screen */
   const bar = $("#bar"); let heroIn = true, formIn = false;
   const upd = () => bar.classList.toggle("on", !heroIn && !formIn);
   new IntersectionObserver((es) => { heroIn = es[0].isIntersecting; upd(); }).observe($(".hero"));
-  new IntersectionObserver((es) => { formIn = es[0].isIntersecting; upd(); }, { threshold: .15 }).observe($("#contact"));
+  new IntersectionObserver((es) => { formIn = es[0].isIntersecting; upd(); }, { threshold: .1 }).observe($("#contact"));
+}
+
+if (window.gsap && window.ScrollTrigger && !reduce) {
+  gsap.registerPlugin(ScrollTrigger);
+  const mm = gsap.matchMedia();
+
+  /* hero: the photograph drifts slower than the page, so the sunrise stays with you a little longer */
+  gsap.to("#heroBg", { yPercent: 12, ease: "none", scrollTrigger: { trigger: ".hero", start: "top top", end: "bottom top", scrub: true } });
+
+  /* statement: each word lights up as it is read */
+  const st = $("#statement");
+  const walk = (node, out) => {
+    [...node.childNodes].forEach((n) => {
+      if (n.nodeType === 3) {
+        const frag = document.createDocumentFragment();
+        n.textContent.split(/(?<=、|。)/).forEach((chunk) => {
+          [...chunk].forEach((ch) => { const s = document.createElement("span"); s.className = "w"; s.textContent = ch; frag.append(s); out.push(s); });
+        });
+        n.replaceWith(frag);
+      } else if (n.nodeType === 1 && n.classList.contains("pill")) out.push(n);
+    });
+  };
+  const words = []; walk(st, words);
+  gsap.set(words, { opacity: .14 });
+  gsap.to(words, { opacity: 1, stagger: .5, ease: "none", scrollTrigger: { trigger: st, start: "top 78%", end: "bottom 45%", scrub: true } });
+
+  /* photographs grow into their frames as they arrive */
+  $$("img[data-scale]").forEach((img) => {
+    gsap.fromTo(img, { scale: 1.22 }, { scale: 1.02, ease: "none", scrollTrigger: { trigger: img.closest(".pic"), start: "top bottom", end: "bottom 30%", scrub: true } });
+  });
+
+  /* route: the line is drawn by scrolling and each stage lights up when reached */
+  const track = $("#track"), nodes = $$(".node");
+  ScrollTrigger.create({
+    trigger: track, start: "top 75%", end: "bottom 60%", scrub: true,
+    onUpdate: (self) => {
+      track.style.setProperty("--p", self.progress.toFixed(3));
+      nodes.forEach((n, i) => n.classList.toggle("on", self.progress >= i / (nodes.length - 1) - .02));
+    }
+  });
+
+  /* reasons: each card steps back as the next one lands on top */
+  mm.add("(min-width: 900px)", () => {
+    const cards = $$(".scard");
+    cards.forEach((c, i) => {
+      if (i === cards.length - 1) return;
+      const dim = document.createElement("div"); dim.className = "dim"; c.firstElementChild.append(dim);
+      const tl = { ease: "none", scrollTrigger: { trigger: cards[i + 1], start: "top 85%", end: "top 25%", scrub: true } };
+      gsap.to(c, { scale: .94, ...tl });
+      gsap.to(dim, { opacity: .6, ...tl });
+    });
+  });
 }
 </script>
 </body>
