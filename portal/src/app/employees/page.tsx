@@ -3,11 +3,12 @@
 import { Pager, usePaged } from "@/components/Pager";
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Check, Copy, FileSpreadsheet, KeyRound, Lock, Pencil, Plus, ShieldCheck, X } from "lucide-react";
+import { Check, Copy, Download, FileSpreadsheet, KeyRound, Lock, Pencil, Plus, ShieldCheck, X } from "lucide-react";
 import { EMPLOYMENT_TYPES, JOBS, PRESIDENT_ID, ROLES, ROLE_DESC, ROLE_LABEL, defaultRole, type Employee, type Role } from "@/lib/data";
 import { can, PERMISSION_MATRIX } from "@/lib/perm";
 import { STATIC, adminResetApi, type ResetReq } from "@/lib/auth";
 import { useStore } from "@/lib/store";
+import { download } from "@/lib/csv";
 import { Badge, Empty, PageHeader } from "@/components/ui";
 
 type Imported = { id: string; name: string; kana: string; employment: string; job: string; wageType: string; scheduled: number; joined?: string; left?: string; paidGranted?: number };
@@ -37,12 +38,17 @@ export default function Employees() {
     } catch (e) { setErr(e instanceof Error ? e.message : "読み取れませんでした。賃金計算ブック（④従業員マスタ）を選んでください。"); }
     if (file.current) file.current.value = "";
   };
+  /** 営業CRM（別URL）が従業員名簿を一致させるための書き出し。賃金・生年月日・マイナンバー等は含めない */
+  const exportRoster = () => {
+    const out = { type: "hlink-roster", version: 1, exportedAt: new Date().toISOString(), employees: s.employees.filter((e) => !e.left).map((e) => ({ id: e.id, name: e.name, kana: e.kana ?? "", employment: e.employment, job: e.job, dept: e.dept ?? "", role: e.role, email: e.email ?? "", bossId: e.bossId ?? "" })) };
+    download("hlink-roster.json", JSON.stringify(out, null, 2), "application/json");
+  };
   const setRole = (id: string, r: Role) => d({ t: "emp-update", id, patch: { role: r }, by: meId });
 
   return (
     <div>
       <PageHeader title="従業員・権限" sub="従業員マスタ（賃金計算ブックの④従業員マスタ）と連携します。権限は「管理者／役員／従業員」の3区分で、閲覧・編集できる範囲が異なります。"
-        actions={admin && <div className="flex gap-2"><input ref={file} type="file" accept=".xlsx" className="sr-only" id="emp-file" onChange={(e) => onFile(e.target.files?.[0])} /><label htmlFor="emp-file" className="btn cursor-pointer"><FileSpreadsheet size={15} />Excelから取り込む</label><button className="btn btn-primary" onClick={() => setAdding(true)}><Plus size={15} />従業員を追加</button></div>} />
+        actions={admin && <div className="flex gap-2"><input ref={file} type="file" accept=".xlsx" className="sr-only" id="emp-file" onChange={(e) => onFile(e.target.files?.[0])} /><label htmlFor="emp-file" className="btn cursor-pointer"><FileSpreadsheet size={15} />Excelから取り込む</label><button className="btn" onClick={exportRoster} title="営業CRMに取り込む従業員名簿（JSON）"><Download size={15} />CRM用に書き出し</button><button className="btn btn-primary" onClick={() => setAdding(true)}><Plus size={15} />従業員を追加</button></div>} />
 
       {err && <p role="alert" className="mb-3 rounded-lg bg-bad-soft px-3 py-2 text-[13px] text-bad">{err}</p>}
       {!admin && <p className="mb-3 flex items-center gap-2 rounded-lg bg-surface-2 px-3 py-2 text-[12.5px]"><Lock size={14} aria-hidden />役員は閲覧のみです。取込・編集・権限の変更は管理者が行います。</p>}

@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { AlertTriangle, ArrowUpRight, Bell, CalendarClock, CheckCircle2, Flame, TrendingUp } from "lucide-react";
+import { AlertTriangle, ArrowUpRight, Bell, CalendarClock, CheckCircle2, ExternalLink, Flame, Megaphone, TrendingUp } from "lucide-react";
 import { useMe, useStore } from "@/lib/store";
 import { dashboardStats, dealJPY, FOLLOW_LABEL, nextActionOf, openDeals, weighted } from "@/lib/selectors";
 import { OPEN_STAGES, flag } from "@/lib/constants";
@@ -9,11 +9,13 @@ import { fmtDate, monthKey, todayStr } from "@/lib/dates";
 import { yenShort } from "@/lib/format";
 import { Avatar, PageHeader, Segmented, StageChip, stageColor, Empty } from "@/components/ui";
 import { TaskRow } from "@/components/TaskRow";
+import { canSeeBoard } from "@/components/Shell";
+import { PORTAL_URL } from "@/lib/asset";
 
 const NEWS = [
-  { tag: "お知らせ", title: "11月 Food Expo（シンガポール）の出展申込を開始しました", date: "10/1", href: "../portal/" },
-  { tag: "社内", title: "輸出書類テンプレート（PI/CI/PL）を更新しました", date: "9/28", href: "../portal/" },
-  { tag: "研修", title: "【必須】輸出管理・コンプライアンス研修（10月分）", date: "9/25", href: "../portal/" },
+  { tag: "お知らせ", title: "11月 Food Expo（シンガポール）の出展申込を開始しました", date: "10/1", href: PORTAL_URL },
+  { tag: "社内", title: "輸出書類テンプレート（PI/CI/PL）を更新しました", date: "9/28", href: PORTAL_URL },
+  { tag: "研修", title: "【必須】輸出管理・コンプライアンス研修（10月分）", date: "9/25", href: PORTAL_URL },
 ];
 
 export default function Dashboard() {
@@ -43,7 +45,7 @@ export default function Dashboard() {
   return (
     <div className="mx-auto max-w-[1280px]">
       <PageHeader
-        title={`${hour < 11 ? "おはようございます" : "お疲れさまです"}、${me.name.split(" ")[0]}さん`}
+        title={`${hour < 11 ? "おはようございます" : "お疲れさまです"}、${me.name}さん`}
         sub={`${fmtDate(t, true)}　今日やること ${todayList.length}件`}
         actions={<>
           {me.role !== "sales" && <Segmented value={scope} onChange={setScope} options={[{ id: "team", label: "チーム全体" }, { id: "me", label: "自分" }]} />}
@@ -136,14 +138,21 @@ export default function Dashboard() {
               <h2 className="card-t mb-3">担当別の状況</h2>
               <table className="tbl"><thead><tr><th>担当</th><th className="text-right">案件</th><th className="text-right">金額</th><th className="text-right">期限超過</th><th className="text-right">NA未設定</th></tr></thead>
                 <tbody>{team.map(({ u, n, amt, od, noNext }) => (
-                  <tr key={u.id}><td><span className="inline-flex items-center gap-2"><Avatar user={u} size={20} />{u.name.split(" ")[0]}</span></td><td className="num text-right">{n}</td><td className="num text-right">{yenShort(amt)}</td>
+                  <tr key={u.id}><td><span className="inline-flex items-center gap-2"><Avatar user={u} size={20} />{u.name}</span></td><td className="num text-right">{n}</td><td className="num text-right">{yenShort(amt)}</td>
                     <td className="text-right">{od ? <span className="chip chip-bad num">{od}</span> : <span className="text-ink-3">0</span>}</td><td className="text-right">{noNext ? <span className="chip chip-warn num">{noNext}</span> : <span className="text-ink-3">0</span>}</td></tr>
                 ))}</tbody></table>
             </section>
           )}
 
+          {canSeeBoard(me) && (
+            <section className="card anim-rise p-4" style={{ animationDelay: ".1s" }}>
+              <div className="mb-2 flex items-center justify-between"><h2 className="card-t inline-flex items-center gap-1.5"><Megaphone size={14} />営業部のお知らせ<span className="chip chip-accent ml-1">営業部限定</span></h2><Link href="/board/" className="text-xs text-ink-3 hover:text-ink">すべて →</Link></div>
+              <ul className="divide-y divide-line">{[...d.notices].sort((a, b) => Number(b.pinned) - Number(a.pinned) || b.date.localeCompare(a.date)).slice(0, 3).map((n) => <li key={n.id} className="py-2"><Link href="/board/" className="flex items-start gap-2 hover:text-accent-2"><span className="flex-1 text-[12.5px] font-medium leading-snug">{n.title}</span><span className="num text-[11px] text-ink-3">{n.date.slice(5).replace("-", "/")}</span></Link><div className="mt-0.5 flex flex-wrap gap-x-3">{n.urls.slice(0, 2).map((u) => <a key={u.url} href={u.url} target={u.url.startsWith("http") ? "_blank" : undefined} rel="noreferrer noopener" className="inline-flex items-center gap-1 text-[11px] text-accent-2 hover:underline"><ExternalLink size={10} />{u.label}</a>)}</div></li>)}</ul>
+            </section>
+          )}
+
           <section className="card anim-rise p-4" style={{ animationDelay: ".12s" }}>
-            <div className="mb-2 flex items-center justify-between"><h2 className="card-t inline-flex items-center gap-1.5"><Bell size={14} />社内ポータルからのお知らせ</h2><a href="../portal/" className="text-xs text-ink-3 hover:text-ink">ポータルへ →</a></div>
+            <div className="mb-2 flex items-center justify-between"><h2 className="card-t inline-flex items-center gap-1.5"><Bell size={14} />社内ポータルからのお知らせ</h2><a href={PORTAL_URL} className="text-xs text-ink-3 hover:text-ink">ポータルへ →</a></div>
             <ul className="divide-y divide-line">
               {NEWS.map((n) => <li key={n.title}><a href={n.href} className="flex items-start gap-2.5 py-2 hover:text-accent-2"><span className="chip chip-accent mt-0.5">{n.tag}</span><span className="flex-1 text-[12.5px] leading-snug">{n.title}</span><span className="num text-[11px] text-ink-3">{n.date}</span></a></li>)}
             </ul>

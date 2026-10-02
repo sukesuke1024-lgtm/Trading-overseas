@@ -11,22 +11,22 @@
   --ink: #15161a;
   --ink-2: #54565e;
   --ink-3: #8a8c95;
-  --accent: #1f3a5f;
+  --accent: #17171a; /* H-LINK ブラック */
   --accent-ink: #ffffff;
-  --accent-2: #2f6fd0;
-  --accent-soft: #e8eef7;
+  --accent-2: #c8102e; /* H-LINK レッド（リンク・フォーカス） */
+  --accent-soft: #f6ecec;
   --good: #17784a; --good-soft: #e3f3ea;
   --warn: #9a5a00; --warn-soft: #fbf0db;
   --bad: #c0362c; --bad-soft: #fbe6e3;
-  --side: #101217; --side-ink: #c4c6cf; --side-ink-2: #858893; --side-hover: #1b1e26; --side-active: #242833;
+  --side: #0d0d10; --side-ink: #c4c6cf; --side-ink-2: #858893; --side-hover: #1b1e26; --side-active: #242833;
   --shadow: 0 1px 2px rgb(16 18 23 / 6%), 0 0 0 1px rgb(16 18 23 / 3%);
   --shadow-pop: 0 12px 32px rgb(16 18 23 / 16%), 0 0 0 1px rgb(16 18 23 / 6%);
-  --ring: 0 0 0 3px rgb(47 111 208 / 28%);
+  --ring: 0 0 0 3px rgb(200 16 46 / 24%);
 }
 :root[data-theme="dark"] {
   --bg: #0e1014; --surface: #15181e; --surface-2: #1b1f27; --surface-3: #242934;
   --line: #262b35; --line-strong: #363c49; --ink: #eceef3; --ink-2: #aab0bd; --ink-3: #747b8a;
-  --accent: #7ea7e6; --accent-ink: #0b1422; --accent-2: #6aa0f0; --accent-soft: #1b2638;
+  --accent: #f2f2f2; --accent-ink: #111111; --accent-2: #ff6b78; --accent-soft: #2a1b1e;
   --good: #4cc38a; --good-soft: #14281f; --warn: #e0a23f; --warn-soft: #2c2312; --bad: #f0786d; --bad-soft: #301816;
   --side: #0a0c10; --side-hover: #14171d; --side-active: #1d212b;
   --shadow: 0 1px 2px rgb(0 0 0 / 40%), 0 0 0 1px rgb(255 255 255 / 4%);
@@ -37,7 +37,7 @@
   --color-bg: var(--bg); --color-surface: var(--surface); --color-surface-2: var(--surface-2); --color-surface-3: var(--surface-3);
   --color-line: var(--line); --color-line-strong: var(--line-strong);
   --color-ink: var(--ink); --color-ink-2: var(--ink-2); --color-ink-3: var(--ink-3);
-  --color-accent: var(--accent); --color-accent-2: var(--accent-2); --color-accent-soft: var(--accent-soft);
+  --color-accent: var(--accent); --color-accent-ink: var(--accent-ink); --color-accent-2: var(--accent-2); --color-accent-soft: var(--accent-soft);
   --color-good: var(--good); --color-good-soft: var(--good-soft); --color-warn: var(--warn); --color-warn-soft: var(--warn-soft);
   --color-bad: var(--bad); --color-bad-soft: var(--bad-soft);
   --font-sans: "Inter", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Yu Gothic UI", "Meiryo", system-ui, sans-serif;

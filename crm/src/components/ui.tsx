@@ -2,13 +2,13 @@
 import Link from "next/link";
 import { useEffect, useRef, type ReactNode } from "react";
 import { X } from "lucide-react";
-import type { ActivityType, Currency, Role, StageId, User } from "@/lib/types";
+import type { ActivityType, Currency, Role, StageId } from "@/lib/types";
 import { stageOf } from "@/lib/constants";
 import { dueInfo } from "@/lib/dates";
 import { money, yenShort } from "@/lib/format";
 import { ACTIVITY_ICON } from "./icons";
 
-export function Avatar({ user, size = 24 }: { user?: User | null; size?: number }) {
+export function Avatar({ user, size = 24 }: { user?: { name: string; hue: number } | null; size?: number }) {
   if (!user) return <span className="inline-block rounded-full bg-surface-3" style={{ width: size, height: size }} />;
   return (
     <span title={user.name} className="inline-flex shrink-0 items-center justify-center rounded-full font-semibold text-white"
@@ -18,7 +18,7 @@ export function Avatar({ user, size = 24 }: { user?: User | null; size?: number 
   );
 }
 
-export function UserCell({ user }: { user?: User | null }) {
+export function UserCell({ user }: { user?: { name: string; hue: number } | null }) {
   return <span className="inline-flex items-center gap-2"><Avatar user={user} size={20} /><span className="truncate">{user?.name ?? "未割当"}</span></span>;
 }
 

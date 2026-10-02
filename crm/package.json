@@ -1,8 +1,8 @@
 {
-  "name": "aitrek-crm",
+  "name": "hlink-crm",
   "version": "0.1.0",
   "private": true,
-  "description": "AITREK 営業CRM（顧客 × 案件 × 活動 × Next Action）。Phase 1 モックデータ版",
+  "description": "H-LINK 営業CRM（顧客 × 案件 × 活動 × Next Action）。Phase 1 モックデータ版",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -10,6 +10,7 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "next typegen && tsc --noEmit",
+    "test": "node --test test/*.test.ts",
     "docs": "node scripts/build-docs.mjs"
   },
   "dependencies": {

@@ -23,14 +23,14 @@ export default function Contacts() {
   return (
     <div>
       <PageHeader title="担当者" sub={`${rows.length}名　主要連絡先・意思決定者はワンクリックで切り替えできます`}
-        actions={<><button className="btn" onClick={() => downloadCsv("contacts.csv", [["氏名", "顧客", "部署", "役職", "Email", "電話", "主要連絡先", "意思決定者", "備考"], ...rows.map((c) => [c.name, d.organizations.find((o) => o.id === c.orgId)?.name, c.department, c.title, c.email, c.phone, c.isPrimary ? "○" : "", c.isDecisionMaker ? "○" : "", c.note])])}><Download size={14} />CSV</button><button className="btn btn-primary" onClick={() => setAdding(true)}><Plus size={15} />担当者を追加</button></>} />
+        actions={<><button className="btn" onClick={() => downloadCsv("contacts.csv", [["氏名", "顧客", "部署", "役職", "Email", "電話", "主要連絡先", "意思決定者", "配信停止", "言語", "備考"], ...rows.map((c) => [c.name, d.organizations.find((o) => o.id === c.orgId)?.name, c.department, c.title, c.email, c.phone, c.isPrimary ? "○" : "", c.isDecisionMaker ? "○" : "", c.optOut ? "停止" : "", c.lang, c.note])])}><Download size={14} />CSV</button><button className="btn btn-primary" onClick={() => setAdding(true)}><Plus size={15} />担当者を追加</button></>} />
       <div className="mb-3 flex flex-wrap gap-2">
         <div className="relative"><Search size={14} className="pointer-events-none absolute left-2.5 top-[10px] text-ink-3" /><input className="input !w-64 !pl-8" placeholder="氏名・会社・Email で検索" value={q} onChange={(e) => setQ(e.target.value)} /></div>
         <select className="select !w-auto" value={flagOnly} onChange={(e) => setFlagOnly(e.target.value)}><option value="all">すべて</option><option value="dm">意思決定者のみ</option><option value="primary">主要連絡先のみ</option></select>
       </div>
       <div className="card overflow-x-auto">
-        <table className="tbl min-w-[900px]">
-          <thead><tr><th>氏名</th><th>顧客</th><th>部署・役職</th><th>連絡先</th><th className="text-center">主要</th><th className="text-center">決裁者</th><th>備考</th></tr></thead>
+        <table className="tbl min-w-[980px]">
+          <thead><tr><th>氏名</th><th>顧客</th><th>部署・役職</th><th>連絡先</th><th className="text-center">主要</th><th className="text-center">決裁者</th><th className="text-center" title="メール配信の停止を希望している相手">配信停止</th><th>備考</th></tr></thead>
           <tbody>
             {rows.map((c) => { const o = d.organizations.find((x) => x.id === c.orgId); const ed = perms.canEdit(o?.ownerId); return (
               <tr key={c.id}>
@@ -40,9 +40,10 @@ export default function Contacts() {
                 <td className="text-[12px] text-ink-2"><a className="flex items-center gap-1 hover:text-accent-2" href={`mailto:${c.email}`}><Mail size={11} />{c.email}</a><a className="flex items-center gap-1 hover:text-accent-2" href={`tel:${c.phone}`}><Phone size={11} />{c.phone}</a></td>
                 <td className="text-center"><button disabled={!ed} aria-label="主要連絡先" onClick={() => updateContact(c.id, { isPrimary: !c.isPrimary })} className={c.isPrimary ? "text-accent-2" : "text-ink-3/40 hover:text-ink-2"}><Star size={16} fill={c.isPrimary ? "currentColor" : "none"} /></button></td>
                 <td className="text-center"><button disabled={!ed} aria-label="意思決定者" onClick={() => updateContact(c.id, { isDecisionMaker: !c.isDecisionMaker })} className={c.isDecisionMaker ? "text-warn" : "text-ink-3/40 hover:text-ink-2"}><Crown size={16} fill={c.isDecisionMaker ? "currentColor" : "none"} /></button></td>
+                <td className="text-center"><button disabled={!ed} aria-label="配信停止" aria-pressed={c.optOut} onClick={() => updateContact(c.id, { optOut: !c.optOut })} className={`chip ${c.optOut ? "chip-bad" : "hover:bg-surface-3"}`}>{c.optOut ? "停止中" : "配信OK"}</button></td>
                 <td className="max-w-[260px] truncate text-[12px] text-ink-3">{c.note}</td>
               </tr>); })}
-            {rows.length === 0 && <tr><td colSpan={7}><Empty title="該当する担当者がいません" /></td></tr>}
+            {rows.length === 0 && <tr><td colSpan={8}><Empty title="該当する担当者がいません" /></td></tr>}
           </tbody>
         </table>
       </div>
