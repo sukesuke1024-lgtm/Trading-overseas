@@ -15,6 +15,7 @@ import { Avatar, Empty, Field, PageHeader, StageChip, stageColor } from "@/compo
 import { NextActionBox, Timeline, useStageMove } from "@/components/forms";
 import { TaskRow } from "@/components/TaskRow";
 import { Suspended } from "@/components/Suspended";
+import { CreditStrip } from "@/components/CreditStrip";
 
 export default function Page() { return <Suspended><DealView /></Suspended>; }
 
@@ -126,6 +127,7 @@ function DealView() {
             </div>
           </section>
 
+          {org && <CreditStrip d={d} org={org} compact />}
           <DecisionCard deal={x} />
           <SaleCard d={d} deal={x} canSee={perms.isManager} />
 

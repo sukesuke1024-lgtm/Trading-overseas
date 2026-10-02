@@ -68,3 +68,24 @@ export const permsFor = (me: User | null): Perm => ({
 });
 
 export type { Activity, Contact };
+
+
+// ---- 与信 ----
+import { usage } from "./credit";
+import type { CreditReview } from "./types";
+/** 顧客の現在有効な与信審査（承認済みで、期限内） */
+export const activeReview = (d: Data, orgId: string): CreditReview | undefined => {
+  const today = new Date().toISOString().slice(0, 10);
+  return d.creditReviews.find((r) => r.orgId === orgId && r.status === "approved" && r.validUntil >= today);
+};
+export const reviewOf = (d: Data, orgId: string): CreditReview | undefined => d.creditReviews.find((r) => r.orgId === orgId);
+/** 顧客のエクスポージャー：未入金の売掛金（確定）と、進行中案件の見込み（確度ステージが提案以降のものを、確度で加重） */
+export function exposureOf(d: Data, orgId: string) {
+  const ar = d.sales.filter((s) => s.orgId === orgId && s.status !== "入金済").reduce((a, s) => a + s.amountJPY, 0);
+  const pipe = d.deals.filter((x) => x.orgId === orgId && isOpen(x.stage) && x.probability >= 50).reduce((a, x) => a + weighted(x), 0);
+  return { arJPY: ar, pipelineJPY: Math.round(pipe) };
+}
+export function creditUsage(d: Data, orgId: string) {
+  const r = activeReview(d, orgId);
+  return { review: r, usage: usage(r?.result.totalLimitJPY ?? 0, exposureOf(d, orgId)) };
+}

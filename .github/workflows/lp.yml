@@ -7,6 +7,9 @@ on:
   pull_request:
     paths: ['lp/**', 'recruit-video/out/**', '.github/workflows/lp.yml']
   workflow_dispatch:
+  # 毎時17分に自動実行：CRM の公的データ（為替・制裁リスト・公式ニュース）を取り込み直して再公開する（24時間365日の自動更新）
+  schedule:
+    - cron: '17 * * * *'
 
 permissions:
   contents: read
@@ -17,6 +20,7 @@ concurrency:
 
 jobs:
   test:
+    if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -35,7 +39,7 @@ jobs:
 
   deploy:
     # GitHub Pages を「Source: GitHub Actions」で有効にすると公開されます
-    if: github.event_name != 'pull_request'
+    if: always() && github.event_name != 'pull_request' && (needs.test.result == 'success' || github.event_name == 'schedule')
     needs: test
     runs-on: ubuntu-latest
     permissions:
@@ -68,6 +72,23 @@ jobs:
           mkdir -p ../lp/dist/portal
           cp -r out/. ../lp/dist/portal/
           touch ../lp/dist/.nojekyll
+      # 公的データの自動取り込み（為替・OFAC 制裁リスト・官公庁の RSS/Atom）。失敗しても公開は続け、前回の値を残す
+      - name: Restore previous public data
+        uses: actions/cache/restore@v4
+        with:
+          path: crm/public/data
+          key: crm-data-never-matches
+          restore-keys: crm-data-
+      - name: Refresh public data (FX / sanctions / official feeds)
+        working-directory: crm
+        continue-on-error: true
+        run: node scripts/refresh-data.mjs
+      - name: Save public data for the next run
+        uses: actions/cache/save@v4
+        if: always()
+        with:
+          path: crm/public/data
+          key: crm-data-${{ github.run_id }}
       # 営業CRM（Phase 1 デモ版・静的書き出し）を /crm/ 配下に同梱して公開する
       - name: Build CRM demo
         working-directory: crm

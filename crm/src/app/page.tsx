@@ -10,6 +10,8 @@ import { yenShort } from "@/lib/format";
 import { Avatar, PageHeader, Segmented, StageChip, stageColor, Empty } from "@/components/ui";
 import { TaskRow } from "@/components/TaskRow";
 import { canSeeBoard } from "@/components/Shell";
+import { creditUsage, reviewOf } from "@/lib/selectors";
+import { ShieldAlert } from "lucide-react";
 import { PORTAL_URL } from "@/lib/asset";
 
 const NEWS = [
@@ -34,6 +36,17 @@ export default function Dashboard() {
   const maxAmt = Math.max(1, ...byStage.map((x) => x.amt));
   const monthDeals = st.deals.filter((x) => x.expectedCloseDate && monthKey(x.expectedCloseDate) === monthKey(t));
   const monthWon = d.deals.filter((x) => x.stage === "won" && x.closedAt && monthKey(x.closedAt) === monthKey(t) && (scope === "team" || x.ownerId === me.id));
+
+  const today2 = todayStr();
+  const creditAlerts = d.organizations.flatMap((o) => {
+    const rv = reviewOf(d, o.id); const open2 = d.deals.filter((x) => x.orgId === o.id && openDeals(d).some((y) => y.id === x.id) && (scope === "team" || x.ownerId === me.id)).length;
+    const out: { o: typeof o; msg: string; tone: "bad" | "warn" }[] = [];
+    if (!rv && open2 > 0) out.push({ o, msg: `与信審査なしで進行中の案件 ${open2}件`, tone: "bad" });
+    else if (rv && rv.status === "approved" && rv.validUntil < today2) out.push({ o, msg: "与信審査の期限切れ", tone: "bad" });
+    else if (rv && rv.status === "submitted") out.push({ o, msg: "与信審査が承認待ち", tone: "warn" });
+    const cu = creditUsage(d, o.id); if (cu.usage.level === "over") out.push({ o, msg: "与信限度額を超過", tone: "bad" }); else if (cu.usage.level === "future-over") out.push({ o, msg: "進行中を含めると限度額を超過の見込み", tone: "warn" });
+    return out;
+  });
 
   const team = d.users.map((u) => {
     const ds = openDeals(d).filter((x) => x.ownerId === u.id);
@@ -141,6 +154,13 @@ export default function Dashboard() {
                   <tr key={u.id}><td><span className="inline-flex items-center gap-2"><Avatar user={u} size={20} />{u.name}</span></td><td className="num text-right">{n}</td><td className="num text-right">{yenShort(amt)}</td>
                     <td className="text-right">{od ? <span className="chip chip-bad num">{od}</span> : <span className="text-ink-3">0</span>}</td><td className="text-right">{noNext ? <span className="chip chip-warn num">{noNext}</span> : <span className="text-ink-3">0</span>}</td></tr>
                 ))}</tbody></table>
+            </section>
+          )}
+
+          {creditAlerts.length > 0 && (
+            <section className="card anim-rise p-4" style={{ animationDelay: ".08s" }}>
+              <div className="mb-2 flex items-center justify-between"><h2 className="card-t inline-flex items-center gap-1.5"><ShieldAlert size={14} />与信のアラート<span className="chip chip-bad ml-1">{creditAlerts.length}</span></h2><Link href="/credit/" className="text-xs text-ink-3 hover:text-ink">与信管理 →</Link></div>
+              <ul className="divide-y divide-line">{creditAlerts.slice(0, 5).map((a, i) => <li key={i}><Link href={`/credit/?org=${a.o.id}`} className="flex items-center gap-2 py-2 hover:text-accent-2"><span className="min-w-0 flex-1 truncate text-[12.5px] font-medium">{flag(a.o.country)} {a.o.name}</span><span className={`chip ${a.tone === "bad" ? "chip-bad" : "chip-warn"}`}>{a.msg}</span></Link></li>)}</ul>
             </section>
           )}
 

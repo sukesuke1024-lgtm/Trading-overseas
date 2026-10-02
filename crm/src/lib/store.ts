@@ -1,17 +1,19 @@
 "use client";
 import { useSyncExternalStore } from "react";
-import type { Activity, ActivityType, Contact, Data, Deal, DealLine, Decision, FxForward, MailLog, Notice, Organization, Product, Sale, StageId, Task, User } from "./types";
+import type { Activity, ActivityType, Contact, CreditReview, Data, Deal, DealLine, Decision, FxForward, MailLog, Notice, Organization, Product, Sale, Screening, StageId, Task, User } from "./types";
+import { evaluate, validUntil, type CreditInput, type Policy } from "./credit";
 import { nextSaleNo, paymentJournal, saleAmounts, salesJournal } from "./journal";
 import { rateNow } from "./fx";
 import { DATA_VERSION, makeSeed } from "./seed";
 import { stageOf } from "./constants";
 
 // モック段階の永続化はブラウザの localStorage。Phase 実装時は同じ関数シグネチャのまま Supabase 呼び出しに差し替える。
-const KEY = "hlink-crm.v2";
+const KEY = "hlink-crm.v3";
 const SESSION = "hlink-crm.session";
+const ACTIVE = "hlink-crm.lastActive", LOGOUT = "hlink-crm.logout", SECURITY = "hlink-crm.security";
 
-interface State { data: Data | null; meId: string | null; theme: "light" | "dark" }
-let state: State = { data: null, meId: null, theme: "light" };
+interface State { data: Data | null; meId: string | null; theme: "light" | "dark"; notice: string }
+let state: State = { data: null, meId: null, theme: "light", notice: "" };
 const listeners = new Set<() => void>();
 const emit = () => listeners.forEach((l) => l());
 const set = (patch: Partial<State>) => { state = { ...state, ...patch }; emit(); };
@@ -31,6 +33,10 @@ export function initStore() {
   const theme = (read("hlink-crm.theme", ls()) as "light" | "dark" | null) ?? (window.matchMedia?.("(prefers-color-scheme: dark)").matches ? "dark" : "light");
   document.documentElement.dataset.theme = theme;
   set({ data, meId: meId && data.users.some((u) => u.id === meId) ? meId : null, theme });
+  // 別のタブでログアウトしたら、このタブもログアウトする
+  window.addEventListener("storage", (e) => {
+    if (e.key === LOGOUT && e.newValue && state.meId) { try { ss()?.removeItem(SESSION); } catch { /* noop */ } let reason = "manual"; try { reason = JSON.parse(e.newValue).reason; } catch { /* noop */ } set({ meId: null, notice: reason === "idle" ? "しばらく操作がなかったため、自動でログアウトしました。" : "別の画面でログアウトしたため、ログアウトしました。" }); }
+  });
 }
 
 export const getSnapshot = () => state;
@@ -59,8 +65,24 @@ function commit(mut: (d: Data) => Data, audit?: { action: string; entity: string
 }
 
 // ---- 認証（モック。実装時は Supabase Auth）----
-export const login = (userId: string) => { write(SESSION, userId, ss()); set({ meId: userId }); };
-export const logout = () => { try { ss()?.removeItem(SESSION); } catch { /* noop */ } set({ meId: null }); };
+export const login = (userId: string) => { write(SESSION, userId, ss()); write(ACTIVE, String(Date.now()), ls()); set({ meId: userId, notice: "" }); };
+/** ログアウト。理由つき（手動／無操作）。ほかのタブにも伝わる（同じブラウザで開いているすべての画面からログアウト） */
+export const logout = (reason: "manual" | "idle" = "manual") => {
+  try { ss()?.removeItem(SESSION); } catch { /* noop */ }
+  write(LOGOUT, JSON.stringify({ at: Date.now(), reason }), ls());
+  set({ meId: null, notice: reason === "idle" ? "しばらく操作がなかったため、自動でログアウトしました。" : "ログアウトしました。" });
+};
+export const clearNotice = () => set({ notice: "" });
+export const useNotice = () => useStore().notice;
+export const touchActive = () => write(ACTIVE, String(Date.now()), ls());
+export const lastActive = () => Number(read(ACTIVE, ls()) ?? 0);
+
+// ---- セキュリティ設定（この端末のブラウザごと）----
+export interface SecurityCfg { idleMinutes: number; twoFactor: boolean }
+export const loadSecurity = (): SecurityCfg => { try { return { idleMinutes: 30, twoFactor: false, ...JSON.parse(read(SECURITY, ls()) ?? "{}") }; } catch { return { idleMinutes: 30, twoFactor: false }; } };
+export const saveSecurity = (c: SecurityCfg) => write(SECURITY, JSON.stringify(c), ls());
+/** 二段階認証（デモ）の確認コード。本番は認証アプリ（TOTP）で発行する。デモでは画面に表示して流れを確認する */
+export const demoCode = (userId: string, d = new Date()) => { let h = 0; for (const c of `${userId}-${d.getFullYear()}${d.getMonth()}${d.getDate()}`) h = (h * 131 + c.charCodeAt(0)) % 1_000_000; return String(h).padStart(6, "0"); };
 export const switchUser = login;
 export function toggleTheme() {
   const theme = state.theme === "dark" ? "light" : "dark";
@@ -278,3 +300,33 @@ export function applyRoster(users: User[], removeMissing: boolean) {
   // 自分が名簿から外れた場合はログアウトさせる
   if (state.meId && !state.data?.users.some((u) => u.id === state.meId)) logout();
 }
+
+
+// ---- 与信審査 ----
+const snap = (input: CreditInput, policy: Policy) => { const r = evaluate(input, policy); return { score: r.score, rating: r.rating, limitJPY: r.limitJPY, coveredJPY: r.coveredJPY, totalLimitJPY: r.totalLimitJPY, completeness: r.completeness, expectedLossRate: r.expectedLossRate, needsApproval: r.needsApproval }; };
+/** 審査を保存（下書き）。同じ顧客の審査は1件を更新していく（履歴は監査ログに残る） */
+export function saveCreditReview(orgId: string, input: CreditInput, comment: string, submit: boolean) {
+  const meId = state.meId ?? "";
+  commit((d) => {
+    const today = new Date().toISOString().slice(0, 10);
+    const ex = d.creditReviews.find((r) => r.orgId === orgId);
+    const result = snap(input, d.creditPolicy);
+    const next: CreditReview = { id: ex?.id ?? uid("cr"), orgId, createdAt: new Date().toISOString(), createdBy: meId, input, result, status: submit ? "submitted" : "draft", approverId: "", decidedAt: null, comment, validUntil: validUntil(today, d.creditPolicy.reviewMonths) };
+    return { ...d, creditReviews: ex ? d.creditReviews.map((r) => (r.id === ex.id ? next : r)) : [next, ...d.creditReviews] };
+  }, { action: submit ? "与信審査を申請" : "与信審査を保存", entity: "与信審査", label: state.data?.organizations.find((o) => o.id === orgId)?.name ?? orgId });
+}
+/** 承認／否認（Manager 以上）。承認すると、その格付け・限度額が有効になる */
+export function decideCreditReview(id: string, approve: boolean, comment: string) {
+  const meId = state.meId ?? "";
+  commit((d) => ({ ...d, creditReviews: d.creditReviews.map((r) => (r.id === id ? { ...r, status: approve ? "approved" : "rejected", approverId: meId, decidedAt: new Date().toISOString(), comment: comment || r.comment } : r)) }),
+    { action: approve ? "与信審査を承認" : "与信審査を否認", entity: "与信審査", label: state.data?.organizations.find((o) => o.id === state.data?.creditReviews.find((r) => r.id === id)?.orgId)?.name ?? id });
+}
+export const deleteCreditReview = (id: string) => commit((d) => ({ ...d, creditReviews: d.creditReviews.filter((r) => r.id !== id) }), { action: "削除", entity: "与信審査", label: id });
+export const setCreditPolicy = (p: Policy) => commit((d) => ({ ...d, creditPolicy: p }), { action: "与信方針を更新", entity: "与信審査", label: "格付け・限度額・承認基準" });
+
+// ---- 制裁照会の結果を顧客に記録 ----
+export const setOrgScreening = (orgId: string, s: Omit<Screening, "at" | "by">) =>
+  commit((d) => ({ ...d, organizations: d.organizations.map((o) => (o.id === orgId ? { ...o, screening: { ...s, at: new Date().toISOString(), by: state.meId ?? "" } } : o)) }), { action: "制裁リスト照会", entity: "顧客", label: `${state.data?.organizations.find((o) => o.id === orgId)?.name}：${s.result === "clear" ? "該当なし" : s.result === "hit" ? "該当の疑い（要確認）" : "類似あり（要確認）"}` });
+
+// ---- 監査ログだけを残す（資料の追加・削除など、データ本体の外で行った操作）----
+export function recordAudit(action: string, entity: string, label: string) { commit((d) => d, { action, entity, label }); }

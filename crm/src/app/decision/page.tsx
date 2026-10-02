@@ -9,6 +9,7 @@ import { dealJPY } from "@/lib/selectors";
 import { yenShort } from "@/lib/format";
 import { PageHeader } from "@/components/ui";
 import { Suspended } from "@/components/Suspended";
+import { CreditStrip } from "@/components/CreditStrip";
 import type { Deal } from "@/lib/types";
 
 export default function Page() { return <Suspended><Decision /></Suspended>; }
@@ -64,6 +65,8 @@ function Decision() {
           : <label className="flex items-center gap-2 text-[12.5px] text-ink-2">取引金額（万円）<input className="input num !h-8 !w-28" inputMode="numeric" value={manualAmount} onChange={(e) => setManualAmount(e.target.value)} placeholder="例 300" /></label>}
         <span className="ml-auto text-[12px] text-ink-3">金額が 500万円以上のときは、役員承認が条件に付きます</span>
       </div>
+
+      {deal && d.organizations.find((o) => o.id === deal.orgId) && <div className="mb-5"><CreditStrip d={d} org={d.organizations.find((o) => o.id === deal.orgId)!} /></div>}
 
       <div className="grid gap-5 xl:grid-cols-[400px_minmax(0,1fr)]">
         <div className="space-y-4">

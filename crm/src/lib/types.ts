@@ -1,5 +1,6 @@
 // データモデル（仕様書 §5：users / teams / organizations / contacts / deals / activities / tasks ＋ deal_stages / audit）
 // 最終接触・次回予定・Next Action は「入力させず」活動／Task から導出する。
+import type { CreditInput, Policy, Rating } from "./credit.ts";
 // 追加（海外事業向け）：products（カタログ）/ deal lines（明細）/ sales・journals（売上と仕訳）/ fx_forwards（為替予約）/ notices（営業部のお知らせ）/ mail_logs（一斉送信の記録）
 
 export type Role = "admin" | "manager" | "sales";
@@ -17,9 +18,12 @@ export interface Stage { id: StageId; label: string; en: string; probability: nu
 export type Segment = "importer" | "distributor" | "retailer" | "restaurant" | "ecommerce" | "trading" | "other";
 export type Source = "展示会" | "紹介" | "Web問い合わせ" | "既存顧客" | "アウトバウンド" | "商談会" | "その他";
 
+export interface Screening { at: string; by: string; query: string; result: "clear" | "review" | "hit"; matches: number; dataDate: string | null }
 export interface Organization {
   id: string; name: string; url: string; country: string; city: string; address: string;
   industry: string; segment: Segment; source: Source; ownerId: string; memo: string; createdAt: string;
+  /** 制裁リストの照会結果（最新） */
+  screening: Screening | null;
 }
 
 export type Lang = "ja" | "en";
@@ -90,7 +94,14 @@ export interface FxForward {
 export interface NoticeUrl { label: string; url: string }
 export interface Notice { id: string; title: string; body: string; urls: NoticeUrl[]; pinned: boolean; date: string; authorId: string }
 
-export interface MailLog { id: string; at: string; userId: string; subject: string; count: number; filter: string; via: string; flyer: boolean }
+export interface MailLog { id: string; at: string; userId: string; subject: string; count: number; filter: string; via: string; attachments: number }
+
+// ---- 与信審査 ----
+export interface CreditResultSnap { score: number; rating: Rating; limitJPY: number; coveredJPY: number; totalLimitJPY: number; completeness: number; expectedLossRate: number; needsApproval: boolean }
+export interface CreditReview {
+  id: string; orgId: string; createdAt: string; createdBy: string; input: CreditInput; result: CreditResultSnap;
+  status: "draft" | "submitted" | "approved" | "rejected"; approverId: string; decidedAt: string | null; comment: string; validUntil: string;
+}
 
 export interface AuditEntry { id: string; at: string; userId: string; action: string; entity: string; label: string }
 
@@ -99,4 +110,5 @@ export interface Data {
   teams: Team[]; users: User[]; organizations: Organization[]; contacts: Contact[];
   deals: Deal[]; activities: Activity[]; tasks: Task[]; audit: AuditEntry[];
   products: Product[]; sales: Sale[]; journals: Journal[]; forwards: FxForward[]; notices: Notice[]; mailLogs: MailLog[];
+  creditReviews: CreditReview[]; creditPolicy: Policy;
 }

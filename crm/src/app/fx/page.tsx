@@ -3,7 +3,9 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { AlertTriangle, RefreshCw, Trash2 } from "lucide-react";
 import { addForward, deleteForward, updateForward, useMe, useStore } from "@/lib/store";
-import { DEFAULT_INTEREST, FX_CURRENCIES, bankRates, cachedSnapshot, fetchHistory, fetchRates, forwardEstimate, forwardMtm, type HistPoint, type RateSnapshot } from "@/lib/fx";
+import { DEFAULT_INTEREST, FALLBACK_RATES, FX_CURRENCIES, bankRates, fetchHistory, forwardEstimate, forwardMtm, type HistPoint, type RateSnapshot } from "@/lib/fx";
+import { useLiveRates } from "@/lib/useLiveRates";
+import { useNow } from "@/lib/useNow";
 import type { Currency, Deal } from "@/lib/types";
 import { isOpen } from "@/lib/constants";
 import { diffFromToday, fmtDate, todayStr, addDays } from "@/lib/dates";
@@ -16,15 +18,12 @@ const num = (s: string) => Number(s.replace(/[^\d.]/g, "")) || 0;
 export default function Fx() {
   const d = useStore().data!;
   const perms = permsFor(useMe());
-  const [snap, setSnap] = useState<RateSnapshot>(cachedSnapshot);
-  const [loading, setLoading] = useState(false);
+  const live = useLiveRates();
   const [cur, setCur] = useState<Currency>("USD");
   const [hist, setHist] = useState<HistPoint[]>([]);
   const [adding, setAdding] = useState(false);
-
-  const refresh = async (force = false) => { setLoading(true); setSnap(await fetchRates(force)); setLoading(false); };
-  useEffect(() => { let live = true; fetchRates().then((r) => { if (live) setSnap(r); }); return () => { live = false; }; }, []);
-  useEffect(() => { let live = true; fetchHistory(cur, 60).then((h) => { if (live) setHist(h); }); return () => { live = false; }; }, [cur]);
+  const snap: RateSnapshot = live.tick ? { rates: live.tick.rates, asOf: live.tick.asOf ?? "—", source: live.tick.source === "fallback" ? "fallback" : "live", fetchedAt: live.tick.fetchedAt } : { rates: FALLBACK_RATES, asOf: "—", source: "fallback", fetchedAt: 0 };
+  useEffect(() => { let on = true; fetchHistory(cur, 60).then((h) => { if (on) setHist(h); }); return () => { on = false; }; }, [cur]);
 
   const spot = snap.rates[cur];
   const open = d.forwards.filter((f) => f.status === "open").sort((a, b) => a.settleDate.localeCompare(b.settleDate));
@@ -39,18 +38,16 @@ export default function Fx() {
   return (
     <div className="mx-auto max-w-[1180px]">
       <PageHeader title="為替レートと為替予約" sub="現在のレート、銀行レートの目安、予約レートの試算、予約の登録と評価損益。レートは参考値です（実際の取引は取引銀行の提示に従います）。"
-        actions={<button className="btn" onClick={() => refresh(true)} disabled={loading}><RefreshCw size={14} className={loading ? "animate-spin" : ""} />更新</button>} />
+        actions={<button className="btn" onClick={() => live.pull()} disabled={live.loading}><RefreshCw size={14} className={live.loading ? "animate-spin" : ""} />今すぐ更新</button>} />
 
-      <div className={`mb-4 rounded-xl px-4 py-2.5 text-[12.5px] ${snap.source === "fallback" ? "bg-warn-soft text-warn" : "bg-surface-2 text-ink-2"}`}>
-        {snap.source === "fallback" ? "レートを取得できなかったため、参考値を表示しています（オフラインの可能性）。更新ボタンで再取得できます。" : <>参考レート：欧州中央銀行（ECB）の公表レート／<b>{snap.asOf}</b> 時点（営業日に1回更新）。</>}
-      </div>
+      <LiveBar live={live} />
 
       <div className="grid gap-5 lg:grid-cols-[1fr_1.1fr]">
         <section className="card overflow-x-auto">
           <div className="card-h"><h2 className="card-t">現在のレート（円／外貨）</h2></div>
-          <table className="tbl mt-2 min-w-[420px]"><thead><tr><th>通貨</th><th className="text-right">TTM（仲値）</th><th className="text-right" title="円→外貨（銀行が外貨を売る）">TTS</th><th className="text-right" title="外貨→円（銀行が外貨を買う。輸出の入金）">TTB</th></tr></thead>
+          <table className="tbl mt-2 min-w-[480px]"><thead><tr><th>通貨</th><th className="text-right">TTM（仲値）</th><th className="text-right" title="直前の取得からの変化">変化</th><th className="text-right" title="円→外貨（銀行が外貨を売る）">TTS</th><th className="text-right" title="外貨→円（銀行が外貨を買う。輸出の入金）">TTB</th></tr></thead>
             <tbody>{FX_CURRENCIES.map((c) => { const b = bankRates(snap.rates[c], c); return (
-              <tr key={c} className={`cursor-pointer ${c === cur ? "bg-accent-soft" : ""}`} onClick={() => setCur(c)}><td className="font-semibold">{c}</td><td className="num text-right font-semibold">{snap.rates[c].toFixed(2)}</td><td className="num text-right text-ink-2">{b.tts.toFixed(2)}</td><td className="num text-right text-ink-2">{b.ttb.toFixed(2)}</td></tr>); })}</tbody></table>
+              <tr key={c} className={`cursor-pointer ${c === cur ? "bg-accent-soft" : ""}`} onClick={() => setCur(c)}><td className="font-semibold">{c}</td><td className="num text-right font-semibold">{snap.rates[c].toFixed(2)}</td><td className={`num text-right text-[12px] ${live.change(c) > 0 ? "text-good" : live.change(c) < 0 ? "text-bad" : "text-ink-3"}`}>{live.change(c) === 0 ? "—" : `${live.change(c) > 0 ? "▲" : "▼"} ${Math.abs(live.change(c)).toFixed(3)}`}</td><td className="num text-right text-ink-2">{b.tts.toFixed(2)}</td><td className="num text-right text-ink-2">{b.ttb.toFixed(2)}</td></tr>); })}</tbody></table>
           <p className="border-t border-line px-4 py-2.5 text-[11.5px] leading-relaxed text-ink-3">TTS／TTB は銀行が顧客に適用するレートの目安（TTM ± スプレッド）。輸出代金（外貨）を円に替えるときは TTB が適用され、仲値より少し不利になります。</p>
         </section>
 
@@ -153,5 +150,42 @@ function ForwardDrawer({ d, snap, onClose }: { d: ReturnType<typeof useStore>["d
         <Field label="メモ"><textarea className="textarea" rows={2} value={note} onChange={(e) => setNote(e.target.value)} /></Field>
       </div>
     </Drawer>
+  );
+}
+
+
+function LiveBar({ live }: { live: ReturnType<typeof useLiveRates> }) {
+  const t = live.tick;
+  const [open, setOpen] = useState(false);
+  const now = useNow();
+  const rt = !!t?.realtime;
+  const bad = !t || t.source === "fallback";
+  const asOfAgeH = t?.asOf ? (now - Date.parse(t.asOf.length === 10 ? t.asOf + "T00:00:00Z" : t.asOf)) / 3600000 : null;
+  return (
+    <section className={`mb-4 rounded-xl px-4 py-3 text-[12.5px] ${bad ? "bg-warn-soft text-warn" : "bg-surface-2 text-ink-2"}`}>
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+        <span className={`inline-flex items-center gap-1.5 font-bold ${bad ? "" : rt ? "text-good" : "text-ink"}`}><i className={`h-2 w-2 rounded-full ${bad ? "bg-warn" : rt ? "animate-pulse bg-good" : "bg-ink-3"}`} />{bad ? "取得できません（参考値を表示）" : rt ? "LIVE（リアルタイム）" : "自動更新中（提供元は日次）"}</span>
+        {t && <><span>提供元：<b>{t.sourceLabel}</b></span><span>提供元の更新：<b>{t.asOf ? (t.asOf.length === 10 ? t.asOf : new Date(t.asOf).toLocaleString("ja-JP")) : "—"}</b></span><span className="num">最終取得：{new Date(t.fetchedAt).toLocaleTimeString("ja-JP")}（{live.secondsAgo}秒前）</span></>}
+        <button className="ml-auto text-accent-2 hover:underline" onClick={() => setOpen((v) => !v)}>{open ? "閉じる" : "リアルタイム提供元の設定"}</button>
+      </div>
+      {!rt && !bad && <p className="mt-1.5 text-[11.5px] leading-relaxed">無料で公開されている為替データは<b>1日1回</b>の更新です{asOfAgeH !== null && asOfAgeH > 36 ? "（最終更新から1日以上たっています）" : ""}。秒〜分単位のリアルタイムにするには、為替データ提供会社の API キーが必要です（下の設定）。サーバー側では毎時、最新のスナップショットも保存しています。</p>}
+      {open && <LiveConfigForm live={live} />}
+    </section>
+  );
+}
+function LiveConfigForm({ live }: { live: ReturnType<typeof useLiveRates> }) {
+  const [key, setKey] = useState(live.cfg.apiKey);
+  const [provider, setProvider] = useState(live.cfg.provider);
+  const [sec, setSec] = useState(String(live.cfg.intervalSec));
+  return (
+    <div className="mt-3 rounded-xl bg-surface p-3.5 text-ink">
+      <div className="grid gap-3 md:grid-cols-[1fr_1.4fr_120px_auto]">
+        <Field label="提供元"><select className="select" value={provider} onChange={(e) => setProvider(e.target.value as typeof provider)}><option value="none">無料（日次更新）</option><option value="twelvedata">Twelve Data（リアルタイム・要APIキー）</option></select></Field>
+        <Field label="API キー"><input className="input" type="password" autoComplete="off" disabled={provider === "none"} value={key} onChange={(e) => setKey(e.target.value)} placeholder="Twelve Data の API キー" /></Field>
+        <Field label="更新間隔（秒）"><input className="input num" value={sec} onChange={(e) => setSec(e.target.value.replace(/\D/g, ""))} /></Field>
+        <div className="flex items-end"><button className="btn btn-primary" onClick={() => live.setCfg({ provider, apiKey: key.trim(), intervalSec: Math.max(15, Number(sec) || 60) })}>保存して取得</button></div>
+      </div>
+      <p className="mt-2 text-[11.5px] leading-relaxed text-ink-3">API キーは<b>この端末のブラウザにだけ</b>保存されます（共有のパソコンでは入れないでください）。本番では、サーバー側で管理し、全員が同じリアルタイムのレートを見られるようにします。無料プランには回数の上限があるため、更新間隔は 60 秒以上をおすすめします。提供元と契約内容は、利用規約に従ってください。</p>
+    </div>
   );
 }

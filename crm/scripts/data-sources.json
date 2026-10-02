@@ -1,0 +1,20 @@
+{
+  "note": "公式が配信している RSS/Atom と、公開データだけを取り込みます。URL が変わると取得に失敗します（画面の『情報源の状態』に表示）。verified=false は、URL を確認できていない候補です。",
+  "feeds": [
+    { "id": "boj", "name": "日本銀行 新着情報", "category": "為替・金融", "url": "https://www.boj.or.jp/rss/whatsnew.xml", "site": "https://www.boj.or.jp/", "verified": false },
+    { "id": "fsa", "name": "金融庁 新着情報", "category": "為替・金融", "url": "https://www.fsa.go.jp/fsaNewsListAll_rss2.xml", "site": "https://www.fsa.go.jp/", "verified": false },
+    { "id": "meti", "name": "経済産業省 ニュースリリース", "category": "貿易・輸出", "url": "https://www.meti.go.jp/ml_index_release_atom.xml", "site": "https://www.meti.go.jp/", "verified": false },
+    { "id": "jetro", "name": "JETRO 新着情報", "category": "貿易・輸出", "url": "https://www.jetro.go.jp/rss/whatsnew.xml", "site": "https://www.jetro.go.jp/", "verified": false },
+    { "id": "maff", "name": "農林水産省 新着情報（輸出）", "category": "貿易・輸出", "url": "https://www.maff.go.jp/j/rss/new.xml", "site": "https://www.maff.go.jp/j/shokusan/export/", "verified": false },
+    { "id": "nexi", "name": "日本貿易保険（NEXI） お知らせ", "category": "与信・保険", "url": "https://www.nexi.go.jp/rss.xml", "site": "https://www.nexi.go.jp/", "verified": false },
+    { "id": "mofa", "name": "外務省 海外安全情報", "category": "海外安全", "url": "https://www.anzen.mofa.go.jp/rss/new.xml", "site": "https://www.anzen.mofa.go.jp/", "verified": false }
+  ],
+  "sanctions": {
+    "ofac": { "name": "OFAC SDN リスト（米国財務省）", "urls": ["https://www.treasury.gov/ofac/downloads/sdn.csv", "https://sanctionslistservice.ofac.treas.gov/api/PublicationPreview/exports/SDN.CSV"], "site": "https://sanctionssearch.ofac.treas.gov/" }
+  },
+  "fx": {
+    "currencies": ["USD", "SGD", "HKD", "EUR", "AUD", "THB"],
+    "frankfurter": "https://api.frankfurter.app/latest?from=JPY",
+    "erApi": "https://open.er-api.com/v6/latest/JPY"
+  }
+}
