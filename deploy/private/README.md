@@ -42,6 +42,8 @@ Mac / Windows では Docker Desktop を入れます（無料。従業員250人�
 3. Zero Trust → Access → Applications で両ホスト名を登録し、ポリシーを「**許可する社員のメールアドレスのみ**」＋ ワンタイムPIN（または Google 認証）に。
 4. `docker compose --profile cloudflare up -d`
 
+> Google / Microsoft アカウントでのログイン統一、カレンダー・メール連携、勤怠のSaaS化は [MIX.md](MIX.md) を参照。
+
 ## 4. 情報漏洩対策チェックリスト
 - [ ] **GitHub リポジトリを非公開（Private）にする**（Settings → General → Danger Zone）。現在は公開で、コードと社長名などが誰でも読めます。履歴に実データを入れたことがあれば、そのデータは**漏えい済みとして扱い**、パスワード/PIN を変更する。
 - [ ] GitHub Pages の公開を止める（Settings → Pages → Unpublish）。このブランチをマージすると、ポータル/CRM の公開ビルドは**行われなくなります**が、既に公開済みのページは手動で止める必要があります。
