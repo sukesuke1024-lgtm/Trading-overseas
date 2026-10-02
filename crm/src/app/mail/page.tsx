@@ -95,6 +95,16 @@ export default function MailPage() {
     setPendingVia("メールソフト（BCC）");
     setMsg({ tone: "warn", text: `メールソフトを開きます（${chunks.length}通・30件ずつBCC）。${attached.length ? "この方法ではファイルを添付できません。添付するファイルは「資料ライブラリ」からダウンロードして貼り付けるか、「メール下書き（.eml）」を使ってください。" : ""}送信が終わったら「送信した記録を残す」を押してください。` });
   };
+  /** Gmail / Outlook（ブラウザ版）の作成画面を開く。会社のアカウントで送信でき、送信済みに残る。添付はできないので手で追加する */
+  const openWebMail = (kind: "gmail" | "outlook") => {
+    const to = encodeURIComponent(me.email), bcc = targets.map((c) => c.email).join(","), su = encodeURIComponent(fill(subject)), body = encodeURIComponent(textFor());
+    const url = kind === "gmail"
+      ? `https://mail.google.com/mail/?view=cm&fs=1&to=${to}&bcc=${encodeURIComponent(bcc)}&su=${su}&body=${body}`
+      : `https://outlook.office.com/mail/deeplink/compose?to=${to}&bcc=${encodeURIComponent(bcc)}&subject=${su}&body=${body}`;
+    window.open(url, "_blank", "noopener,noreferrer");
+    setPendingVia(kind === "gmail" ? "Gmail（BCC）" : "Outlook（BCC）");
+    setMsg({ tone: "warn", text: `${kind === "gmail" ? "Gmail" : "Outlook"}の作成画面を開きました（BCC ${targets.length}件）。${attached.length ? "この方法ではファイルを添付できません。添付は作成画面で追加してください。" : ""}送信が終わったら「送信した記録を残す」を押してください。` });
+  };
   const copyHtml = async () => {
     try { await navigator.clipboard.write([new ClipboardItem({ "text/html": new Blob([htmlFor()], { type: "text/html" }), "text/plain": new Blob([textFor()], { type: "text/plain" }) })]); setMsg({ tone: "ok", text: "本文をコピーしました。メールの本文欄に貼り付けてください。添付は、メールソフトで別途追加するか「.eml 下書き」を使います。" }); }
     catch { await navigator.clipboard.writeText(textFor()).catch(() => undefined); setMsg({ tone: "warn", text: "文章をコピーしました（リッチ形式のコピーに未対応のブラウザです）。" }); }
@@ -173,6 +183,8 @@ export default function MailPage() {
             <div className="grid gap-2 sm:grid-cols-2">
               <button className="btn btn-primary !h-10" disabled={targets.length === 0 || busy || tooBig} onClick={downloadEml}><Download size={15} />メール下書き（.eml・添付つき）</button>
               <button className="btn !h-10" disabled={targets.length === 0} onClick={openMailer}><Mail size={15} />メールソフトで開く（BCC）</button>
+              <button className="btn" disabled={targets.length === 0 || targets.length > 30} title={targets.length > 30 ? "30件以下に絞ると使えます" : undefined} onClick={() => openWebMail("gmail")}><Mail size={15} />Gmailで開く（BCC）</button>
+              <button className="btn" disabled={targets.length === 0 || targets.length > 30} title={targets.length > 30 ? "30件以下に絞ると使えます" : undefined} onClick={() => openWebMail("outlook")}><Mail size={15} />Outlookで開く（BCC）</button>
               <button className="btn" disabled={targets.length === 0} onClick={copyHtml}><ClipboardCopy size={15} />本文をコピー</button>
               <button className="btn" disabled={targets.length === 0} onClick={() => { navigator.clipboard.writeText(targets.map((c) => c.email).join(", ")).then(() => setMsg({ tone: "ok", text: `${targets.length}件の宛先をコピーしました。` })); }}>宛先をコピー</button>
               <button className="btn sm:col-span-2" disabled={targets.length === 0} onClick={() => downloadCsv("mail-merge.csv", [["email", "name", "company", "language", "subject", "body"], ...targets.map((c) => [c.email, c.name, orgOf(c.orgId)?.name, c.lang, fill(subject, c), textFor(c)])])}><Download size={14} />差し込みCSV（配信サービス用）</button>

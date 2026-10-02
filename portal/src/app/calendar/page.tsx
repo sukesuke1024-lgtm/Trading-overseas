@@ -7,6 +7,7 @@ import { SCHED_KINDS, SCHED_VIS, busyAttendees, deptOf, maskSched, roomConflict,
 import { can } from "@/lib/perm";
 import { useStore, ymd } from "@/lib/store";
 import { holidayName } from "@/lib/work";
+import { googleCalendarUrl, icsOf, outlookCalendarUrl, type CalItem } from "@/lib/calendar-links";
 import { Pager, usePaged } from "@/components/Pager";
 import { Badge, PageHeader } from "@/components/ui";
 
@@ -126,10 +127,19 @@ function DayCard({ iso, items, today, hol, compact = false, paged = false, onOpe
   );
 }
 
+/** Google / Outlook のカレンダーに追加、または .ics をダウンロード */
+function CalAdd({ item, id }: { item: CalItem; id: string }) {
+  const dl = () => { const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([icsOf([{ ...item, id }])], { type: "text/calendar;charset=utf-8" })); a.download = `${item.title.slice(0, 20)}.ics`; a.click(); URL.revokeObjectURL(a.href); };
+  const cls = "rounded px-1.5 py-0.5 text-[11px] underline hover:bg-white/50";
+  return <span className="flex items-center" aria-label={`${item.title}をカレンダーに追加`}><a className={cls} href={googleCalendarUrl(item)} target="_blank" rel="noopener noreferrer">Google</a><a className={cls} href={outlookCalendarUrl(item)} target="_blank" rel="noopener noreferrer">Outlook</a><button type="button" className={cls} onClick={dl}>.ics</button></span>;
+}
+
 function ItemRow({ it, ctx, compact }: { it: Item; ctx: Ctx; compact: boolean }) {
   const [show, setShow] = useState(false); // 備考は「確認する」を押したときだけ表示
   const { ev, sc } = it, { roomName, nameOf, meId, role, editable, setEdit, setSched, d } = ctx;
   const note = ev?.note ?? sc?.note;
+  // 内容が伏せられた予定（鍵・マスク）は、カレンダーへ書き出さない
+  const cal: CalItem | null = ev ? { title: ev.title, date: ev.date, endDate: ev.endDate, start: ev.start, end: ev.end, note: ev.note } : sc && !sc.masked ? { title: sc.title, date: sc.date, start: sc.start, end: sc.end, note: sc.note, location: sc.roomId ? roomName(sc.roomId) : undefined } : null;
   const own = !!sc && sc.ownerId === meId, canDel = own || (!!sc && role === "admin");
   return (
     <li className={`rounded-lg p-2 text-[13px] ${TONE[it.tone] ?? TONE["その他"]}`}>
@@ -142,6 +152,7 @@ function ItemRow({ it, ctx, compact }: { it: Item; ctx: Ctx; compact: boolean })
           {note && <div className="mt-1">{show ? <p className="whitespace-pre-wrap rounded bg-white/60 px-2 py-1 text-[12px] text-ink">{note}</p> : null}<button type="button" className="mt-0.5 inline-flex items-center gap-1 text-[11.5px] underline" aria-expanded={show} onClick={() => setShow(!show)}>{show ? <EyeOff size={11} /> : <Eye size={11} />}{show ? "備考を閉じる" : "備考を確認する"}</button></div>}
         </div>
         <div className="flex shrink-0 gap-1">
+          {cal && !compact && <CalAdd item={cal} id={it.key} />}
           {ev && editable && <><button className="rounded p-1 hover:bg-white/50" aria-label={`${ev.title}を編集`} onClick={() => setEdit(ev)}><Pencil size={13} /></button><button className="rounded p-1 hover:bg-white/50" aria-label={`${ev.title}を削除`} onClick={() => confirm(`「${ev.title}」を削除しますか？`) && d({ t: "ev-del", id: ev.id, by: meId })}><Trash2 size={13} /></button></>}
           {sc && own && <button className="rounded p-1 hover:bg-white/50" aria-label={`${sc.title}を編集`} onClick={() => setSched(sc)}><Pencil size={13} /></button>}
           {sc && canDel && <button className="rounded p-1 hover:bg-white/50" aria-label={`${it.title}を削除`} onClick={() => confirm(`「${it.title}」を削除しますか？`) && d({ t: "sched-del", id: sc.id, by: meId })}><Trash2 size={13} /></button>}
