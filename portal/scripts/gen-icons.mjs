@@ -25,15 +25,26 @@ async function icon(size, { rounded = true, fill = 0.8, border = true } = {}) {
   return bg.composite([{ input: logo, gravity: "center" }]).png().toBuffer();
 }
 
+/** 小さいサイズ(16〜48px)：角丸の枠を省き、ロゴを端いっぱいまで大きくして、アーチと H を潰さない */
+async function small(size) {
+  const pad = Math.max(0, Math.round(size * 0.04));
+  const w = size - pad * 2;
+  const logo = await sharp(mark).resize({ width: w, kernel: "lanczos3" }).sharpen({ sigma: 0.6, m1: 1.2, m2: 2 }).png().toBuffer();
+  return sharp({ create: { width: size, height: size, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } }).composite([{ input: logo, gravity: "center" }]).png().toBuffer();
+}
+
+/** 16〜48px は縮小せず、太い柱と太い赤いアーチをピクセルに合わせて描く（縮小すると細い線が消えるため） */
+const bold = (px) => sharp(Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" shape-rendering="crispEdges"><rect x="1" y="2" width="4" height="12" fill="#0b0b0d"/><rect x="11" y="2" width="4" height="12" fill="#0b0b0d"/><path d="M0 11 L2 9 L4 7.5 L6 6.5 L8 6 L10 6.5 L12 7.5 L14 9 L16 11 L16 12 L14 10.5 L12 9.5 L10 8.7 L8 8.5 L6 8.7 L4 9.5 L2 10.5 L0 12Z" fill="#e60012" shape-rendering="geometricPrecision"/></svg>`), { density: 72 * (px / 16) }).png().toBuffer();
+
 const sizes = {
   "app-icon-1024.png": await icon(1024),
   "icon-512.png": await icon(512),
   "icon-192.png": await icon(192),
   "icon-maskable-512.png": await icon(512, { rounded: false, fill: 0.56 }), // 端末が角を切り取っても欠けない余白つき
   "apple-touch-icon.png": await icon(180, { rounded: false, fill: 0.74 }), // iOS が角丸を付ける
-  "favicon-16.png": await icon(16, { fill: 0.9 }),
-  "favicon-32.png": await icon(32, { fill: 0.9 }),
-  "favicon-48.png": await icon(48, { fill: 0.9 }),
+  "favicon-16.png": await bold(16),
+  "favicon-32.png": await bold(32),
+  "favicon-48.png": await bold(48),
 };
 
 // favicon.ico（16/32/48 の PNG を格納）
