@@ -2,13 +2,17 @@
 import { useState } from "react";
 import { ArrowLeft, ShieldCheck } from "lucide-react";
 import { asset } from "@/lib/asset";
-import { login, useStore } from "@/lib/store";
+import { clearNotice, demoCode, loadSecurity, login, useNotice, useStore } from "@/lib/store";
 import { Avatar, ROLE_LABEL } from "./ui";
 
 /** モック認証画面。本番では Supabase Auth（Email+パスワード／パスワード再設定／ログイン試行制御）に置き換える。 */
 export function LoginScreen() {
   const s = useStore();
-  const [mode, setMode] = useState<"login" | "reset" | "sent">("login");
+  const [mode, setMode] = useState<"login" | "reset" | "sent" | "code">("login");
+  const [pending, setPending] = useState("");
+  const [code, setCode] = useState("");
+  const notice = useNotice();
+  const enter = (id: string) => { if (loadSecurity().twoFactor) { setPending(id); setCode(""); setErr(""); clearNotice(); setMode("code"); } else login(id); };
   const [email, setEmail] = useState("");
   const [pw, setPw] = useState("");
   const [err, setErr] = useState("");
@@ -18,7 +22,7 @@ export function LoginScreen() {
     e.preventDefault();
     const u = users.find((x) => x.email === email.trim());
     if (!u) { setErr("メールアドレスまたはパスワードが正しくありません。（デモ：右の一覧から選択できます）"); return; }
-    login(u.id);
+    enter(u.id);
   };
 
   return (
@@ -40,6 +44,18 @@ export function LoginScreen() {
         <div className="anim-rise w-full max-w-[400px]">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={asset("/brand/logo-horizontal.png")} alt="H-LINK" className="mb-8 h-10 w-auto lg:hidden" />
+          {notice && mode === "login" && <p role="status" className="mb-4 rounded-lg bg-warn-soft px-3 py-2 text-[12.5px] text-warn">{notice}</p>}
+          {mode === "code" && (
+            <form onSubmit={(e) => { e.preventDefault(); if (code === demoCode(pending)) login(pending); else setErr("確認コードが違います。"); }}>
+              <button type="button" onClick={() => setMode("login")} className="mb-4 inline-flex items-center gap-1 text-xs text-ink-2 hover:text-ink"><ArrowLeft size={13} />ログインへ戻る</button>
+              <h2 className="text-2xl font-bold tracking-tight">二段階認証</h2>
+              <p className="mt-1 text-[13px] text-ink-2">{users.find((u) => u.id === pending)?.name} さんの確認コード（6桁）を入力してください。</p>
+              <input className="input !h-12 mt-6 text-center text-[22px] tracking-[.4em]" inputMode="numeric" maxLength={6} autoFocus value={code} onChange={(e) => { setCode(e.target.value.replace(/\D/g, "")); setErr(""); }} placeholder="000000" aria-label="確認コード" />
+              {err && <p role="alert" className="mt-3 rounded-lg bg-bad-soft px-3 py-2 text-xs text-bad">{err}</p>}
+              <button className="btn btn-primary mt-5 !h-10 w-full" type="submit" disabled={code.length !== 6}>確認してログイン</button>
+              <p className="mt-4 rounded-lg bg-surface-2 px-3 py-2 text-[11.5px] text-ink-3">デモ：本番では認証アプリ（Authenticator）が発行するコードです。今日のコードは <b className="num text-ink">{demoCode(pending)}</b> です。</p>
+            </form>
+          )}
           {mode === "login" && (
             <form onSubmit={submit}>
               <h2 className="text-2xl font-bold tracking-tight">ログイン</h2>
@@ -56,7 +72,7 @@ export function LoginScreen() {
                 <div className="mb-2 flex items-center gap-1.5 text-[11.5px] font-semibold text-ink-2"><ShieldCheck size={13} />デモ：ユーザーを選んでログイン（権限の違いを確認できます）</div>
                 <div className="space-y-1">
                   {users.map((u) => (
-                    <button key={u.id} type="button" onClick={() => login(u.id)} className="flex w-full items-center gap-2.5 rounded-lg bg-surface px-2.5 py-1.5 text-left shadow-[var(--shadow)] hover:bg-bg">
+                    <button key={u.id} type="button" onClick={() => enter(u.id)} className="flex w-full items-center gap-2.5 rounded-lg bg-surface px-2.5 py-1.5 text-left shadow-[var(--shadow)] hover:bg-bg">
                       <Avatar user={u} size={24} /><span className="min-w-0 flex-1"><span className="block truncate text-[13px] font-semibold">{u.name}</span><span className="block truncate text-[11px] text-ink-3">{u.title}</span></span>
                       <span className="chip chip-accent">{ROLE_LABEL[u.role]}</span>
                     </button>

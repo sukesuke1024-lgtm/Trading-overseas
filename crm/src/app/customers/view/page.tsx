@@ -12,6 +12,7 @@ import { Avatar, DueChip, Empty, Field, PageHeader, StageChip } from "@/componen
 import { NewContactDrawer, NewDealDrawer, Timeline } from "@/components/forms";
 import { TaskRow } from "@/components/TaskRow";
 import { Suspended } from "@/components/Suspended";
+import { CreditStrip } from "@/components/CreditStrip";
 import type { ActivityType } from "@/lib/types";
 
 export default function Page() { return <Suspended><C360 /></Suspended>; }
@@ -61,6 +62,8 @@ function C360() {
         <Stat label="最終接触" value={last ? relativeDays(last) : "なし"} tone={ds !== null && ds >= 30 ? "warn" : undefined} sub={ds !== null && ds >= 30 ? "30日以上あいています" : undefined} />
         <Stat label="次回予定" value={next ? <DueChip due={next.dueDate} /> : <span className="text-bad">未設定</span>} sub={next?.title} />
       </div>
+
+      <div className="mb-5"><CreditStrip d={d} org={org} /></div>
 
       <div className="grid gap-5 xl:grid-cols-[320px_1fr_330px]">
         {/* 左：進行案件・Task */}

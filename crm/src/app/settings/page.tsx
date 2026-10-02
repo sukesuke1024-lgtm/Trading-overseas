@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { Check, Download, Minus, RotateCcw } from "lucide-react";
-import { applyRoster, resetDemo, updateUser, useMe, useStore } from "@/lib/store";
+import { applyRoster, loadSecurity, logout, resetDemo, saveSecurity, updateUser, useMe, useStore } from "@/lib/store";
 import { PORTAL_DEMO_ROSTER, SALES_DEPT, diffRoster, parseRoster, roleFromPortal, toUser, type PortalEmployee } from "@/lib/roster";
 import { PORTAL_URL } from "@/lib/asset";
 import { FX, ROLES, STAGES } from "@/lib/constants";
@@ -26,10 +26,10 @@ export default function Settings() {
   const d = useStore().data!;
   const me = useMe()!;
   const perms = permsFor(me);
-  const [tab, setTab] = useState<"users" | "roster" | "stages" | "audit" | "data">("users");
+  const [tab, setTab] = useState<"users" | "roster" | "security" | "stages" | "audit" | "data">("users");
   return (
     <div className="mx-auto max-w-[1000px]">
-      <PageHeader title="設定・監査ログ" sub="ユーザーと権限、営業ステージの設計、操作履歴" actions={<Segmented value={tab} onChange={setTab} options={[{ id: "users", label: "ユーザーと権限" }, { id: "roster", label: "従業員名簿" }, { id: "stages", label: "営業ステージ" }, { id: "audit", label: "監査ログ" }, { id: "data", label: "データ" }]} />} />
+      <PageHeader title="設定・監査ログ" sub="ユーザーと権限、営業ステージの設計、操作履歴" actions={<Segmented value={tab} onChange={setTab} options={[{ id: "users", label: "ユーザーと権限" }, { id: "roster", label: "従業員名簿" }, { id: "security", label: "セキュリティ" }, { id: "stages", label: "営業ステージ" }, { id: "audit", label: "監査ログ" }, { id: "data", label: "データ" }]} />} />
 
       {tab === "users" && (
         <div className="space-y-5">
@@ -52,6 +52,7 @@ export default function Settings() {
       )}
 
       {tab === "roster" && <RosterTab />}
+      {tab === "security" && <SecurityTab />}
 
       {tab === "stages" && (
         <section className="card overflow-x-auto">
@@ -124,6 +125,27 @@ function RosterTab() {
           {done && <p className="rounded-lg bg-good-soft px-3 py-2 text-xs text-good">{done}</p>}
         </section>
       ) : <section className="card p-5 text-[12.5px] text-ink-2">名簿の取込は Admin が行います。</section>}
+    </div>
+  );
+}
+
+/** セキュリティ：無操作の自動ログアウト・二段階認証（デモ）・全画面からのログアウト（この端末のブラウザの設定） */
+function SecurityTab() {
+  const [cfg, setCfg] = useState(loadSecurity);
+  const [msg, setMsg] = useState("");
+  const save = (c: typeof cfg) => { setCfg(c); saveSecurity(c); setMsg("保存しました"); };
+  return (
+    <div className="space-y-5">
+      <section className="card space-y-5 p-5">
+        <div><h2 className="card-t mb-1">ログアウトの2つの方法</h2>
+          <p className="text-[12.5px] leading-relaxed text-ink-2"><b>① 手動：</b>画面右上のドア印、または左下のユーザーメニューから、いつでもログアウトできます。<br /><b>② 自動：</b>しばらく操作がないと、終了の1分前に予告を出し、自動でログアウトします。どちらも、同じブラウザで開いている<b>ほかのタブ・画面にも反映</b>されます。</p></div>
+        <div className="grid gap-4 md:grid-cols-2">
+          <div><label className="label">無操作で自動ログアウトするまでの時間</label><select className="select" value={cfg.idleMinutes} onChange={(e) => save({ ...cfg, idleMinutes: Number(e.target.value) })}>{[5, 10, 15, 30, 60, 120].map((m) => <option key={m} value={m}>{m}分</option>)}</select><p className="mt-1 text-[11.5px] text-ink-3">金額・信用情報を扱うため、共有パソコンや外出先では短め（5〜15分）をおすすめします。</p></div>
+          <div><label className="label">二段階認証（デモ）</label><label className="flex items-center gap-2 rounded-lg bg-surface-2 px-3 py-2.5 text-[13px]"><input type="checkbox" checked={cfg.twoFactor} onChange={(e) => save({ ...cfg, twoFactor: e.target.checked })} />ログイン時に確認コード（6桁）を求める</label><p className="mt-1 text-[11.5px] text-ink-3">デモでは確認コードを画面に表示して流れを確認します。本番では認証アプリ（Authenticator）のコードを使い、Supabase Auth の多要素認証に切り替えます。</p></div>
+        </div>
+        <div className="flex flex-wrap items-center gap-3 border-t border-line pt-4"><button className="btn" onClick={() => { if (confirm("ログアウトしますか？（ほかのタブも、ログアウトされます）")) logout(); }}>今すぐログアウト（すべてのタブ）</button>{msg && <span role="status" className="text-xs text-good">{msg}</span>}</div>
+      </section>
+      <p className="px-1 text-[11.5px] text-ink-3">この設定は、お使いのブラウザごとに保存されます。本番では、管理者が全員に同じ基準（自動ログアウトの時間・二段階認証の必須化）を設定します。</p>
     </div>
   );
 }

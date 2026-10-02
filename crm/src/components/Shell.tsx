@@ -4,12 +4,13 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   Activity as ActivityIcon, BarChart3, Building2, CheckSquare, ChevronsUpDown, Contact as ContactIcon, ExternalLink, Handshake, KanbanSquare, LogOut,
-  Menu, Moon, Plus, Search, Settings, Sun, X, BookOpen, Plane, Calculator, GitBranch, Landmark, LifeBuoy, Mail, Megaphone, Package, Receipt,
+  Menu, Moon, Plus, Search, Settings, Sun, X, BookOpen, Plane, Calculator, GitBranch, Landmark, LifeBuoy, Mail, Megaphone, Network, Package, Paperclip, Radar, Receipt, ScanSearch, ShieldCheck,
 } from "lucide-react";
 import { getSnapshot, initStore, logout, openQuickLog, switchUser, toggleTheme, useMe, useStore } from "@/lib/store";
 import { Avatar, ROLE_LABEL } from "./ui";
 import { LoginScreen } from "./LoginScreen";
 import { QuickLog } from "./QuickLog";
+import { IdleGuard } from "./IdleGuard";
 import { flag } from "@/lib/constants";
 import { dashboardStats, permsFor } from "@/lib/selectors";
 import { AITREK_OS_URL, PORTAL_URL, asset } from "@/lib/asset";
@@ -33,11 +34,16 @@ const NAV: { href: string; label: string; icon: typeof BarChart3; group: string;
   { href: "/customers/", label: "顧客", icon: Building2, group: "営業" },
   { href: "/contacts/", label: "担当者", icon: ContactIcon, group: "営業" },
   { href: "/activities/", label: "活動履歴", icon: ActivityIcon, group: "営業" },
+  { href: "/credit/", label: "与信管理", icon: ShieldCheck, group: "与信・リスク" },
+  { href: "/screening/", label: "制裁リスト照会", icon: ScanSearch, group: "与信・リスク" },
+  { href: "/schemes/", label: "海外事業スキーム集", icon: Network, group: "与信・リスク" },
+  { href: "/intel/", label: "公的情報（自動更新）", icon: Radar, group: "与信・リスク" },
   { href: "/calculator/", label: "見積・粗利の計算", icon: Calculator, group: "営業ツール" },
   { href: "/decision/", label: "契約可否の判定", icon: GitBranch, group: "営業ツール" },
   { href: "/fx/", label: "為替・為替予約", icon: Landmark, group: "営業ツール" },
-  { href: "/catalog/", label: "商品カタログ", icon: Package, group: "営業ツール" },
-  { href: "/mail/", label: "メール配信・チラシ", icon: Mail, group: "営業ツール" },
+  { href: "/catalog/", label: "商品マスタ", icon: Package, group: "営業ツール" },
+  { href: "/library/", label: "資料ライブラリ", icon: Paperclip, group: "営業ツール" },
+  { href: "/mail/", label: "メール配信", icon: Mail, group: "営業ツール" },
   { href: "/board/", label: "営業部のお知らせ", icon: Megaphone, group: "情報", only: "salesBoard" },
   { href: "/help/", label: "困った時は（逆引き）", icon: LifeBuoy, group: "情報" },
   { href: "/accounting/", label: "売上と仕訳", icon: Receipt, group: "管理", only: "manager" },
@@ -73,7 +79,7 @@ export function Shell({ children }: { children: ReactNode }) {
   if (!me) return <LoginScreen />;
 
   const active = (href: string) => (href === "/" ? path === "/" : path.startsWith(href.replace(/\/$/, "")));
-  const groups = ["ホーム", "営業", "営業ツール", "情報", "管理"];
+  const groups = ["ホーム", "営業", "与信・リスク", "営業ツール", "情報", "管理"];
   const perms = permsFor(me);
   const visibleNav = NAV.filter((n) => (n.only === "manager" ? perms.isManager : n.only === "salesBoard" ? canSeeBoard(me) : true));
 
@@ -129,11 +135,13 @@ export function Shell({ children }: { children: ReactNode }) {
           </button>
           <div className="flex-1" />
           <button className="btn btn-primary" onClick={() => openQuickLog(contextPreset())} title="活動を記録（N）"><Plus size={15} /><span className="hidden sm:inline">活動を記録</span></button>
+          <button className="btn btn-ghost btn-sm" onClick={() => { if (confirm("ログアウトしますか？")) logout(); }} aria-label="ログアウト" title="ログアウト"><LogOut size={16} /></button>
           <button className="btn btn-ghost btn-sm" onClick={toggleTheme} aria-label="テーマ切替">{s.theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}</button>
         </header>
         <main className="px-4 py-6 lg:px-8">{children}</main>
       </div>
       <QuickLog />
+      <IdleGuard />
       {palette && <Palette onClose={() => setPalette(false)} />}
     </div>
   );
@@ -153,7 +161,7 @@ function UserMenu() {
               <Avatar user={u} size={20} /><span className="flex-1 truncate">{u.name}</span><span className="text-[10.5px] text-[var(--side-ink-2)]">{ROLE_LABEL[u.role]}</span>
             </button>
           ))}
-          <button onClick={logout} className="mt-1 flex w-full items-center gap-2 rounded-lg border-t border-white/10 px-2.5 py-2 text-left text-[12.5px] hover:bg-white/10"><LogOut size={14} />ログアウト</button>
+          <button onClick={() => logout()} className="mt-1 flex w-full items-center gap-2 rounded-lg border-t border-white/10 px-2.5 py-2 text-left text-[12.5px] hover:bg-white/10"><LogOut size={14} />ログアウト</button>
         </div>
       )}
       <button onClick={() => setOpen((v) => !v)} className="flex w-full items-center gap-2.5 rounded-lg px-2 py-1.5 text-left hover:bg-white/10">
@@ -186,8 +194,13 @@ function Palette({ onClose }: { onClose: () => void }) {
       { key: "a-calc", group: "移動", label: "見積・粗利の自動計算", sub: "", href: "/calculator/" },
       { key: "a-flow", group: "移動", label: "契約可否の判定フロー", sub: "", href: "/decision/" },
       { key: "a-fx", group: "移動", label: "為替レート・為替予約", sub: "", href: "/fx/" },
-      { key: "a-cat", group: "移動", label: "商品カタログ", sub: "", href: "/catalog/" },
-      { key: "a-mail", group: "移動", label: "メール配信・電子チラシ", sub: "", href: "/mail/" },
+      { key: "a-cat", group: "移動", label: "商品マスタ", sub: "", href: "/catalog/" },
+      { key: "a-lib", group: "移動", label: "資料ライブラリ（マイソク・カタログ・チラシ）", sub: "", href: "/library/" },
+      { key: "a-credit", group: "移動", label: "与信管理", sub: "取引先の格付け・限度額・決済条件", href: "/credit/" },
+      { key: "a-scr", group: "移動", label: "制裁リスト照会", sub: "", href: "/screening/" },
+      { key: "a-sch", group: "移動", label: "海外事業スキーム集", sub: "", href: "/schemes/" },
+      { key: "a-intel", group: "移動", label: "公的情報（自動更新）", sub: "", href: "/intel/" },
+      { key: "a-mail", group: "移動", label: "メール配信", sub: "", href: "/mail/" },
       { key: "a-help", group: "移動", label: "困った時は（逆引き辞典）", sub: "", href: "/help/" },
     ];
     if (!n) return actions;

@@ -5,8 +5,9 @@ import { PRODUCT_SEED } from "./products";
 import { PORTAL_DEMO_ROSTER, toUser } from "./roster";
 import { FALLBACK_RATES } from "./fx";
 import { linesTotal, nextSaleNo, paymentJournal, salesJournal, saleAmounts } from "./journal";
+import { DEFAULT_POLICY, EMPTY_INPUT, evaluate, rankOf, validUntil, type CreditInput } from "./credit";
 
-export const DATA_VERSION = 2;
+export const DATA_VERSION = 3;
 
 // 海外事業（日本産食品の輸出）を題材にしたデモデータ。社名・氏名はすべて架空。日付は「今日」基準で毎回新鮮に見えるよう生成する。
 export function makeSeed(): Data {
@@ -18,7 +19,7 @@ export function makeSeed(): Data {
   const users: Data["users"] = PORTAL_DEMO_ROSTER.map((e) => toUser(e));
 
   const org = (id: string, name: string, country: string, city: string, segment: Organization["segment"], industry: string, source: Organization["source"], ownerId: string, url: string, memo: string, created: number): Organization =>
-    ({ id, name, country, city, address: `${city}, ${country}`, segment, industry, source, ownerId, url, memo, createdAt: isoAt(created) });
+    ({ id, name, country, city, address: `${city}, ${country}`, segment, industry, source, ownerId, url, memo, createdAt: isoAt(created), screening: null });
 
   const organizations: Organization[] = [
     org("o1", "Lion City Fine Foods Pte. Ltd.", "シンガポール", "Singapore", "importer", "高級食材の輸入・卸", "展示会", "902", "https://example.com/lioncity", "ホテル・高級レストラン向けに和牛を月次で輸入。コンテナ単位の定期取引を検討。", 160),
@@ -203,5 +204,21 @@ export function makeSeed(): Data {
     notice("n5", "営業部の新機能：契約可否の判定フロー・見積自動計算・メール配信", "判定フロー（決済条件・保証・L/C・前払いなどで自動分岐）、見積・粗利の自動計算、商品カタログ（電子）と電子チラシ入りのメール一斉配信を追加しました。使い方は社内ポータルのマニュアルをご覧ください。", [{ label: "H-LINK 社内ポータル", url: "../portal/" }], 1, "901"),
   ];
 
-  return { version: DATA_VERSION, teams, users, organizations, contacts, deals, activities, tasks, audit: [], products: PRODUCT_SEED, sales, journals, forwards, notices, mailLogs: [] };
+  // 与信審査のサンプル（架空の数値。審査の見え方を確認するためのもの）
+  const inp = (o: Partial<CreditInput>, country: string): CreditInput => ({ ...EMPTY_INPUT, countryRank: rankOf(country), ...o });
+  const rev = (orgId: string, o: Partial<CreditInput>, status: "approved" | "submitted" | "draft", monthsAgo: number, by: string, approver: string, comment: string) => {
+    const org = organizations.find((x) => x.id === orgId)!; const input = inp(o, org.country);
+    const r = evaluate(input, DEFAULT_POLICY); const created = new Date(); created.setMonth(created.getMonth() - monthsAgo);
+    const cd = `${created.getFullYear()}-${String(created.getMonth() + 1).padStart(2, "0")}-${String(created.getDate()).padStart(2, "0")}`;
+    return { id: `cr-${orgId}`, orgId, createdAt: created.toISOString(), createdBy: by, input, result: { score: r.score, rating: r.rating, limitJPY: r.limitJPY, coveredJPY: r.coveredJPY, totalLimitJPY: r.totalLimitJPY, completeness: r.completeness, expectedLossRate: r.expectedLossRate, needsApproval: r.needsApproval }, status, approverId: status === "approved" ? approver : "", decidedAt: status === "approved" ? created.toISOString() : null, comment, validUntil: validUntil(cd, DEFAULT_POLICY.reviewMonths) };
+  };
+  const creditReviews = [
+    rev("o1", { equityRatio: 34, currentRatio: 128, ordinaryMargin: 3.8, revenueGrowth: 5, debtToSalesMonths: 2.6, netWorthJPY: 380_000_000, annualRevenueJPY: 2_400_000_000, paymentRecord: "good", externalScore: 66, yearsInBusiness: 14, history: "1to3", management: 4, industryRisk: 2, registryVerified: true, ownerVerified: true, sanctions: "clear", antiSocial: "clear", adverseNews: "none", insuredJPY: 20_000_000, insuredRate: 90 }, "approved", 3, "902", "901", "決算書（直近2期）と信用調査レポートで確認。L/C 条件を基本とし、実績が積み上がれば D/A を検討。"),
+    rev("o2", { equityRatio: 28, currentRatio: 118, ordinaryMargin: 3.2, revenueGrowth: 4, debtToSalesMonths: 3.1, netWorthJPY: 90_000_000, annualRevenueJPY: 1_300_000_000, paymentRecord: "good", externalScore: 58, yearsInBusiness: 9, history: "under1", management: 3, industryRisk: 3, registryVerified: true, ownerVerified: true, sanctions: "clear", antiSocial: "clear", adverseNews: "none" }, "approved", 5, "902", "901", "水産の冷凍帯に強い。自己資本比率がやや低く、L/C（確認なし）または一部前払いに限定。"),
+    rev("o5", { equityRatio: 46, currentRatio: 170, ordinaryMargin: 5.5, revenueGrowth: 6, debtToSalesMonths: 1.8, netWorthJPY: 1_100_000_000, annualRevenueJPY: 9_800_000_000, paymentRecord: "good", externalScore: 74, yearsInBusiness: 27, history: "none", management: 4, industryRisk: 2, registryVerified: true, ownerVerified: true, sanctions: "clear", antiSocial: "clear", adverseNews: "none" }, "approved", 2, "001", "901", "財務は良好。初回のため、初回は L/C か一部前払いで開始。"),
+    rev("o3", { equityRatio: 33, currentRatio: 135, ordinaryMargin: 4.1, revenueGrowth: 11, debtToSalesMonths: 2.4, netWorthJPY: 210_000_000, annualRevenueJPY: 3_000_000_000, paymentRecord: "good", externalScore: 61, yearsInBusiness: 11, history: "under1", management: 4, industryRisk: 2, registryVerified: true, ownerVerified: false, sanctions: "clear", antiSocial: "clear", adverseNews: "none" }, "submitted", 0, "902", "", "実質的支配者の確認が未了。承認前に確認する。"),
+    rev("o6", { equityRatio: null, currentRatio: null, ordinaryMargin: null, paymentRecord: "unknown", externalScore: null, yearsInBusiness: 6, history: "none", management: 3, industryRisk: 3, registryVerified: true, sanctions: "notDone", antiSocial: "notDone", adverseNews: "notChecked" }, "draft", 0, "901", "", "決算書が取れていない。制裁照会も未実施。"),
+  ];
+
+  return { version: DATA_VERSION, teams, users, organizations, contacts, deals, activities, tasks, audit: [], products: PRODUCT_SEED, sales, journals, forwards, notices, mailLogs: [], creditReviews, creditPolicy: DEFAULT_POLICY };
 }

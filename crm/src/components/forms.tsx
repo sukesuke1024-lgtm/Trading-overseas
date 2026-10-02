@@ -67,7 +67,7 @@ export function NewOrgDrawer({ d, open, onClose, onCreated }: { d: Data; open: b
   const set = (k: string, v: string) => setF((x) => ({ ...x, [k]: v }));
   const dup = d.organizations.find((o) => f.name.trim().length > 2 && o.name.toLowerCase().includes(f.name.trim().toLowerCase()));
   const save = () => {
-    const id = addOrg({ name: f.name.trim(), country: f.country, city: f.city, address: `${f.city}, ${f.country}`, url: f.url, segment: f.segment as never, source: f.source as never, industry: f.industry, ownerId: f.ownerId, memo: "" });
+    const id = addOrg({ name: f.name.trim(), country: f.country, city: f.city, address: `${f.city}, ${f.country}`, url: f.url, segment: f.segment as never, source: f.source as never, industry: f.industry, ownerId: f.ownerId, memo: "", screening: null });
     if (cName.trim()) addContact({ orgId: id, name: cName.trim(), department: "", title: cTitle, email: cEmail, phone: "", isPrimary: true, isDecisionMaker: false, note: "", optOut: false, lang: f.country === "日本" ? "ja" : "en" });
     onCreated?.(id);
     onClose();
