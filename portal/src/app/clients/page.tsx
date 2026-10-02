@@ -1,5 +1,6 @@
 "use client";
 
+import { Pager, usePaged } from "@/components/Pager";
 import { NumInput } from "@/components/NumInput";
 import { useMemo, useState } from "react";
 import { ExternalLink, Pencil, Plus, ShieldCheck, Trash2 } from "lucide-react";
@@ -22,6 +23,7 @@ export default function ClientsPage() {
   const dept = deptOf(me);
   const clients = role === "employee" ? s.clients.filter((c) => c.dept === dept) : s.clients; // 事業部ごと（従業員は自事業部のみ）
   const depts = useMemo(() => [...new Set(s.employees.map((e) => deptOf(e)))].sort(), [s.employees]);
+  const pg = usePaged(clients, 10, tab);
 
   return (
     <div>
@@ -34,7 +36,7 @@ export default function ClientsPage() {
       {tab === "clients" && (
         <div className="card overflow-x-auto">
           <table className="w-full min-w-[820px] text-[13px]"><thead><tr><th className="th">コード</th><th className="th">関与先名</th><th className="th">事業部</th><th className="th">与信</th><th className="th">反社</th><th className="th"><span className="sr-only">操作</span></th></tr></thead>
-            <tbody>{clients.map((c) => { const cr = latestCheck(s.checks, c.code, "与信"), an = latestCheck(s.checks, c.code, "反社"); return (
+            <tbody>{pg.items.map((c) => { const cr = latestCheck(s.checks, c.code, "与信"), an = latestCheck(s.checks, c.code, "反社"); return (
               <tr key={c.code} className={c.active ? "" : "opacity-50"}>
                 <td className="td tabular font-medium">{c.code}</td>
                 <td className="td"><div className="font-medium">{c.name}{!c.active && <span className="ml-2 text-[11px] text-ink-3">（停止中）</span>}</div><div className="text-[11.5px] text-ink-3">{c.corpNo ? `法人番号 ${c.corpNo}` : ""}{c.contact ? `　${c.contact}` : ""}</div></td>
@@ -43,6 +45,7 @@ export default function ClientsPage() {
                 <td className="td"><Badge tone={tone(an?.result)}>{an ? an.result : "未確認"}</Badge>{an && <div className="tabular text-[11px] text-ink-3">{an.at.slice(0, 10)}</div>}</td>
                 <td className="td"><div className="flex gap-1 whitespace-nowrap"><button className="btn !h-8" onClick={() => setCheck(c)}><ShieldCheck size={13} />確認する</button>{manage && <><button className="btn !h-8 !w-8 !p-0" aria-label={`${c.name}を編集`} onClick={() => setEdit(c)}><Pencil size={13} /></button><DelClient c={c} /></>}</div></td>
               </tr>); })}</tbody></table>
+          <Pager pg={pg} />
           {clients.length === 0 && <Empty>{manage ? "関与先がまだありません。「関与先を登録」から追加してください（日報の関与先コードに使われます）。" : "あなたの事業部の関与先はまだ登録されていません。"}</Empty>}
         </div>
       )}
@@ -63,11 +66,13 @@ function Checks({ clients }: { clients: Client[] }) {
   const { s, nameOf } = useStore();
   const codes = new Set(clients.map((c) => c.code));
   const list = s.checks.filter((c) => codes.has(c.clientCode));
+  const pg = usePaged(list, 10, list.length);
   const cn = (code: string) => s.clients.find((c) => c.code === code)?.name ?? code;
   return (
     <div className="card overflow-x-auto">
       <table className="w-full min-w-[760px] text-[13px]"><thead><tr><th className="th">日時</th><th className="th">関与先</th><th className="th">種別</th><th className="th">結果</th><th className="th">確認に使った情報源</th><th className="th">確認者</th><th className="th">メモ</th></tr></thead>
-        <tbody>{list.map((c) => <tr key={c.id}><td className="td tabular whitespace-nowrap">{when(c.at)}</td><td className="td"><span className="tabular text-ink-3">{c.clientCode}</span> {cn(c.clientCode)}</td><td className="td">{c.kind}</td><td className="td"><Badge tone={tone(c.result)}>{c.result}</Badge></td><td className="td">{c.source}</td><td className="td">{nameOf(c.checkedBy)}</td><td className="td">{c.note}{c.limit != null ? `（与信限度 ${c.limit.toLocaleString("ja-JP")}円）` : ""}</td></tr>)}</tbody></table>
+        <tbody>{pg.items.map((c) => <tr key={c.id}><td className="td tabular whitespace-nowrap">{when(c.at)}</td><td className="td"><span className="tabular text-ink-3">{c.clientCode}</span> {cn(c.clientCode)}</td><td className="td">{c.kind}</td><td className="td"><Badge tone={tone(c.result)}>{c.result}</Badge></td><td className="td">{c.source}</td><td className="td">{nameOf(c.checkedBy)}</td><td className="td">{c.note}{c.limit != null ? `（与信限度 ${c.limit.toLocaleString("ja-JP")}円）` : ""}</td></tr>)}</tbody></table>
+      <Pager pg={pg} />
       {list.length === 0 && <Empty>確認の記録はまだありません。「関与先」から「確認する」で記録します。</Empty>}
       <p className="border-t border-line px-4 py-2 text-[12px] text-ink-3">確認の記録は追記のみで、後から書き換えられません。結果は法令・社内規程に沿って、担当者の判断で記録してください。</p>
     </div>
@@ -171,7 +176,7 @@ function CheckForm({ client, onClose }: { client: Client; onClose: () => void })
         {f.kind === "与信" && (
           <div className="rounded-lg border border-line p-3">
             <div className="mb-1 flex items-center justify-between gap-2"><div className="label !mb-0">② 決算書（直近{STMT_PERIODS_REQUIRED}期分）をいただく</div><Badge tone={periods.length >= STMT_PERIODS_REQUIRED ? "good" : "warn"}>{periods.length}／{STMT_PERIODS_REQUIRED}期</Badge></div>
-            <p className="mb-2 text-[12px] text-ink-3">帝国データバンク・G-Search等の調査報告書だけでなく、取引先から<b>直近3期分の決算書（貸借対照表・損益計算書）</b>を受け取り、決算期ごとに添付します。</p>
+            <p className="mb-2 text-[12px] text-ink-3">帝国データバンク・G-Search・法務局（登記情報）は有料のため、上のURLから契約のあるIDで各自確認します。そのうえで取引先から<b>直近3期分の決算書（貸借対照表・損益計算書）</b>をいただき、決算期ごとに添付します。</p>
             {stmts.length > 0 && <ul className="mb-2 space-y-1 text-[12.5px]">{stmts.map((x) => <li key={x.id} className="flex items-center gap-2"><Badge tone="good">{x.period?.replace("-", "年")}月期</Badge><FileDownload rec={x}>{x.name}</FileDownload></li>)}</ul>}
             <div className="grid items-end gap-2 sm:grid-cols-[10rem_1fr]">
               <div><label className="label" htmlFor="kp">決算期（期末の年月）</label><input id="kp" type="month" className="input" value={f.period} onChange={(e) => setF({ ...f, period: e.target.value })} /></div>

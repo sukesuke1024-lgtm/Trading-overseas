@@ -84,7 +84,7 @@ export const resetApi = {
     if (STATIC) {
       const all = lsGet<Record<string, { id: string; exp: number }>>(RESETS_KEY, {}), r = all[token];
       if (!r || r.exp < Date.now()) return "このリンクは無効か、有効期限が切れています。もう一度再設定をお申し込みください。";
-      lsSet(PINS_KEY, { ...lsGet<Record<string, string>>(PINS_KEY, {}), [r.id]: pin });
+      lsSet(PINS_KEY, { ...lsGet<Record<string, string>>(PINS_KEY, {}), [r.id]: pin }); acctLog(r.id, "本人", "pin_reset_done");
       delete all[token]; lsSet(RESETS_KEY, all);
       return null;
     }
@@ -93,9 +93,25 @@ export const resetApi = {
   },
 };
 
+export type AcctRow = { id: string; name: string; role: string; dept: string; left: string; pin: string; pinChangedAt: string; lastLoginAt: string; enrolled: boolean; locked: boolean; urlIssued: number; lastUrlAt: string; lastUrlBy: string; history: { at: string; by: string; kind: string }[] };
+const ACCT_LOG = "hlink-demo-acctlog";
+const acctLog = (id: string, by: string, kind: string) => lsSet(ACCT_LOG, [...lsGet<{ id: string; at: string; by: string; kind: string }[]>(ACCT_LOG, []), { id, at: new Date().toISOString(), by, kind }].slice(-500));
 export type ResetReq = { id: string; name: string; note: string; at: string };
 /** 管理者：PINリセット申請への対応 */
 export const adminResetApi = {
+  /** ID・PIN状態・再設定URL発行履歴の台帳（PINそのものは含まない） */
+  async ledger(): Promise<AcctRow[]> {
+    if (STATIC) {
+      const pins = lsGet<Record<string, string>>(PINS_KEY, {}), log = lsGet<{ id: string; at: string; by: string; kind: string }[]>(ACCT_LOG, []);
+      return DEMO_ACCOUNTS.map((e) => {
+        const mine = log.filter((x) => x.id === e.id), issued = mine.filter((x) => x.kind === "pin_reset_link_issued");
+        const changed = [...mine].reverse().find((x) => x.kind === "pin_reset_done" || x.kind === "pin_changed");
+        return { id: e.id, name: e.name, role: e.role, dept: e.dept ?? "", left: "", pin: pins[e.id] ? "本人設定済" : "初期PIN（未変更）", pinChangedAt: changed?.at ?? "", lastLoginAt: "", enrolled: true, locked: false, urlIssued: issued.length, lastUrlAt: issued[issued.length - 1]?.at ?? "", lastUrlBy: issued[issued.length - 1]?.by ?? "", history: [...mine].reverse().slice(0, 20).map((x) => ({ at: x.at, by: x.by, kind: x.kind })) };
+      });
+    }
+    const r = await fetch(`${BASE}/api/auth/accounts`, { credentials: "same-origin", cache: "no-store" });
+    return r.ok ? ((await r.json()) as { rows: AcctRow[] }).rows : [];
+  },
   async list(): Promise<{ requests: ResetReq[]; mailConfigured: boolean }> {
     if (STATIC) return { requests: lsGet<{ id: string; note: string; at: string }[]>(REQS_KEY, []).map((r) => ({ ...r, name: DEMO_ACCOUNTS.find((e) => e.id === r.id)?.name ?? "" })), mailConfigured: false };
     const r = await fetch(`${BASE}/api/auth/admin-reset`, { credentials: "same-origin", cache: "no-store" });
@@ -106,13 +122,14 @@ export const adminResetApi = {
       const token = newToken(), all = lsGet<Record<string, { id: string; exp: number }>>(RESETS_KEY, {});
       all[token] = { id, exp: Date.now() + RESET_MIN * 60000 }; lsSet(RESETS_KEY, all);
       lsSet(REQS_KEY, lsGet<{ id: string }[]>(REQS_KEY, []).filter((r) => r.id !== id));
+      acctLog(id, "管理者", "pin_reset_link_issued");
       return { url: `${location.origin}${BASE}/reset/?t=${token}` };
     }
     const { data } = await post<{ url?: string; error?: string }>("/api/auth/admin-reset", { action: "link", id });
     return data;
   },
   async initial(id: string): Promise<string | null> {
-    if (STATIC) { const p = lsGet<Record<string, string>>(PINS_KEY, {}); delete p[id]; lsSet(PINS_KEY, p); lsSet(REQS_KEY, lsGet<{ id: string }[]>(REQS_KEY, []).filter((r) => r.id !== id)); return null; }
+    if (STATIC) { const p = lsGet<Record<string, string>>(PINS_KEY, {}); delete p[id]; lsSet(PINS_KEY, p); acctLog(id, "管理者", "pin_reset_to_initial"); lsSet(REQS_KEY, lsGet<{ id: string }[]>(REQS_KEY, []).filter((r) => r.id !== id)); return null; }
     const { status, data } = await post<{ error?: string }>("/api/auth/admin-reset", { action: "initial", id });
     return status === 200 ? null : data.error ?? "失敗しました";
   },

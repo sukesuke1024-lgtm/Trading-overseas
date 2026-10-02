@@ -103,3 +103,24 @@ test("retention: exports CSV for old rows, removes them, keeps audit chain, runs
   assert.ok(!archiveDue(r.next, "2026-10-01") && archiveDue(r.next, "2026-10-02"));
   assert.equal(runRetention(r.next, "2026-10-01", DEFAULT_RETENTION).exports.length, 0); // 同じデータを二重に書き出さない
 });
+
+test("予定の並び順（時刻順・終日は下）・重なり判定・参加者の空き", async () => {
+  const { schedOrder, overlaps, busyAttendees, roomConflict } = await import("../src/lib/ops.ts");
+  const L = [{ title: "終日", start: undefined }, { title: "午後", start: "14:00" }, { title: "朝", start: "09:00" }, { title: "昼", start: "12:00" }];
+  assert.deepEqual([...L].sort(schedOrder).map((x) => x.title), ["朝", "昼", "午後", "終日"]);
+  assert.equal(overlaps({ start: "10:00", end: "11:00" }, { start: "11:00", end: "12:00" }), false);
+  assert.equal(overlaps({ start: "10:00", end: "11:00" }, { start: "10:59", end: "12:00" }), true);
+  assert.equal(overlaps({}, { start: "10:00", end: "11:00" }), true); // 終日は全時間帯と重なる
+  const a = { id: "1", title: "t", date: "2026-10-05", start: "10:00", end: "11:00", ownerId: "A", attendees: ["B"], kind: "会議", vis: "全社", at: "", roomId: "r" } as never;
+  assert.deepEqual(busyAttendees([a], { id: "2", date: "2026-10-05", start: "10:30", end: "11:30", ownerId: "C", attendees: ["B", "D"] }), ["B"]);
+  assert.ok(roomConflict([a], { id: "2", date: "2026-10-05", start: "10:30", end: "11:30", roomId: "r" }));
+  assert.equal(roomConflict([a], { id: "1", date: "2026-10-05", start: "10:30", end: "11:30", roomId: "r" }), undefined); // 自分自身は除く
+});
+
+test("ページ送りの番号: 少ないときは全部、多いときは省略記号でつなぐ", async () => {
+  const { pageList } = await import("../src/lib/paging.ts");
+  assert.deepEqual(pageList(1, 3), [1, 2, 3]);
+  assert.deepEqual(pageList(1, 10), [1, 2, "…", 9, 10].slice(0, 2).concat(["…", 9, 10]));
+  assert.deepEqual(pageList(5, 10), [1, 2, "…", 4, 5, 6, "…", 9, 10]);
+  assert.deepEqual(pageList(10, 10), [1, 2, "…", 9, 10]);
+});

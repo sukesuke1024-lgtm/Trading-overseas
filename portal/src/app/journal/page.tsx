@@ -1,5 +1,6 @@
 "use client";
 
+import { Pager, usePaged } from "@/components/Pager";
 import { NumInput } from "@/components/NumInput";
 import { useMemo, useState } from "react";
 import { Check, Download, Plus, RotateCcw, Trash2 } from "lucide-react";
@@ -25,6 +26,7 @@ export default function Journal() {
       && (!q.min || amt >= Number(q.min)) && (!q.max || amt <= Number(q.max)) && (!q.partner || (j.partner ?? "").includes(q.partner))
       && (!q.state || (q.state === "承認待ち") === !isPosted(j, s.jApprovals));
   }), [s.journal, s.jApprovals, q]);
+  const pg = usePaged(rows, 10, rows.length);
   const chain = useMemo(() => verifyChain(s.journal), [s.journal]);
   const pending = s.journal.filter((j) => !isPosted(j, s.jApprovals)).length;
 
@@ -52,7 +54,7 @@ export default function Journal() {
       <div className="card overflow-x-auto">
         <table className="w-full min-w-[820px] text-[13px]"><thead><tr><th className="th">番号</th><th className="th">日付</th><th className="th">摘要 / 取引先</th><th className="th">借方</th><th className="th">貸方</th><th className="th text-right">金額</th><th className="th">状態</th><th className="th w-24 print:hidden"><span className="sr-only">操作</span></th></tr></thead>
           <tbody>
-            {rows.slice(0, 300).map((j) => {
+            {pg.items.map((j) => {
               const posted = isPosted(j, s.jApprovals), amt = j.lines.filter((l) => l.side === "D").reduce((a, l) => a + l.amount, 0);
               const reversed = s.journal.some((x) => x.reverses === j.id), canAct = w && j.createdBy !== meId;
               return (
@@ -72,6 +74,7 @@ export default function Journal() {
               );
             })}
           </tbody></table>
+          <div className="print:hidden"><Pager pg={pg} /></div>
         {rows.length === 0 && <Empty>該当する仕訳がありません</Empty>}
         {rows.length > 300 && <p className="px-4 py-2 text-[12px] text-ink-3">先頭300件を表示しています（CSVには全件が含まれます）。</p>}
       </div>

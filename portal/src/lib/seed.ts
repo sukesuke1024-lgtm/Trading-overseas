@@ -2,7 +2,7 @@
 // デモ版（GitHub Pages）だけ、権限の違いを試せるサンプル従業員と今月の勤怠サンプルを含む。
 import { NEWS_SEED, PRESIDENT, SAMPLE_EMPLOYEES } from "./data";
 import type { CalEvent, Doc, Kpi, Remote } from "./biz";
-import { BENEFIT_TEMPLATES, DEFAULT_EXT_LINKS, DEFAULT_RETENTION, type Asset, type Client } from "./ops";
+import { DEFAULT_ROOMS, BENEFIT_TEMPLATES, DEFAULT_EXT_LINKS, DEFAULT_RETENTION, type Asset, type Client, type Sched } from "./ops";
 import { DEFAULT_AUTHORITY } from "./authority";
 import { DEFAULT_CONDITIONS, holidaySet, isHoliday, pad2, ymd, type DayInput } from "./work";
 import type { State } from "./store";
@@ -60,6 +60,16 @@ function demoClients(): Client[] {
     { code: "C002", name: "サンプル物産株式会社", dept: "営業部", active: true, note: "デモ用の架空データ" },
   ];
 }
+function demoSched(): Sched[] {
+  const day = (n: number) => { const d = new Date(); d.setDate(d.getDate() + n); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
+  const at = new Date().toISOString();
+  return [
+    { id: "sd1", title: "サンプル商事 商談", date: day(1), start: "10:00", end: "11:00", ownerId: "902", attendees: ["901"], roomId: "room-o", kind: "商談", vis: "全社", note: "見積条件の確認（デモ用の架空データ）", at },
+    { id: "sd2", title: "週次ミーティング", date: day(1), start: "14:00", end: "15:00", ownerId: "903", attendees: ["902"], roomId: "room-a", kind: "会議", vis: "事業部", note: "議題：今月の進捗", at },
+    { id: "sd3", title: "社外打合せ（非公開）", date: day(2), start: "13:00", end: "14:30", ownerId: "901", attendees: [], kind: "外出", vis: "鍵", note: "役員のみ", at },
+    { id: "sd4", title: "出張（終日）", date: day(2), ownerId: "902", attendees: [], kind: "外出", vis: "全社", at },
+  ];
+}
 function demoAssets(): Asset[] {
   return [
     { id: "PC-0001", name: "ノートPC（営業用）", category: "PC", maker: "サンプル", model: "SAMPLE-14", serial: "SN-DEMO-0001", purchaseDate: "2024-04-01", cost: 180000, usefulLife: 4, assigneeId: "902", dept: "営業部", location: "本社", status: "使用中", note: "デモ用の架空データ" },
@@ -95,6 +105,9 @@ export function seedState(demo: boolean): State {
     mails: [],
     assets: demo ? demoAssets() : [],
     orders: [],
+    sched: demo ? demoSched() : [],
+    schedDel: [],
+    rooms: DEFAULT_ROOMS,
     authority: DEFAULT_AUTHORITY,
     benefits: demo ? BENEFIT_TEMPLATES.map((b, i) => ({ ...b, id: `b${i + 1}`, updatedAt: TODAY(), updatedBy: "管理者" })) : [],
     retention: DEFAULT_RETENTION,

@@ -92,7 +92,7 @@ export function StepUpGate({ userId, label, children }: { userId: string; label:
     </div>
   );
 }
-export const pathNeedsPin = (path: string) => /^\/(accounting|journal|audit|ipo|employees|excel|admin|security|payslips|archive)(\/|$)/.test(path);
+export const pathNeedsPin = (path: string) => /^\/(accounting|journal|audit|ipo|employees|excel|admin|security|payslips|archive|accounts)(\/|$)/.test(path);
 export const pinLabel = (path: string) => ({ accounting: "決算書・販管費", journal: "仕訳帳", audit: "監査・税務調査出力", ipo: "上場準備", employees: "従業員・権限", excel: "Excel連携", admin: "監査ログ", security: "セキュリティ", payslips: "給与明細・源泉徴収票", archive: "履歴アーカイブ" } as Record<string, string>)[path.split("/")[1]] ?? "このページ";
 
 // ---------- 通知（ベル）：対応が必要なものを一か所に ----------
