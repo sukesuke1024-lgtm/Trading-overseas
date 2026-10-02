@@ -14,7 +14,7 @@
     "docs": "node scripts/build-docs.mjs",
     "refresh-data": "node scripts/refresh-data.mjs",
     "serve": "node scripts/serve.mjs",
-    "build:server": "NEXT_PUBLIC_MODE=server next build"
+    "build:server": "node scripts/build-server.mjs"
   },
   "dependencies": {
     "lucide-react": "^1.48.0",
