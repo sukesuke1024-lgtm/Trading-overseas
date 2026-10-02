@@ -104,7 +104,7 @@ async function getJson(url: string, ms = 12000): Promise<unknown> {
 /** サーバー側で毎時更新しているスナップショット（ブラウザから外部に出られない場合のバックアップ） */
 export async function fetchSnapshot(base = ""): Promise<LiveTick | null> {
   try {
-    const j = (await getJson(`${base}/data/fx.json?t=${Math.floor(Date.now() / 60000)}`)) as { updatedAt: string | null; sources: { id: string; asOf: string | null; rates?: Partial<Record<Currency, number>> }[] };
+    const j = (await getJson(`${process.env.NEXT_PUBLIC_MODE === "server" ? "/api/data/fx" : `${base}/data/fx.json`}?t=${Math.floor(Date.now() / 60000)}`)) as { updatedAt: string | null; sources: { id: string; asOf: string | null; rates?: Partial<Record<Currency, number>> }[] };
     const s = j.sources?.find((x) => x.rates && Object.keys(x.rates).length);
     return s?.rates ? { rates: toRates(s.rates), source: "snapshot", sourceLabel: `サーバー更新（${s.id === "ecb" ? "ECB" : "ExchangeRate-API"}）`, asOf: s.asOf ?? j.updatedAt, fetchedAt: Date.now(), realtime: false } : null;
   } catch { return null; }

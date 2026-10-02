@@ -1,0 +1,19 @@
+# H-LINK CRM サーバー版（従業員番号＋PIN＋認証アプリ／全員で共有するデータ）。
+#   docker build -f Dockerfile.server -t hlink-crm-server .
+#   docker run -d -p 3000:3000 -v hlink-crm-data:/data -e CRM_INITIAL_PIN=<初期PIN> hlink-crm-server
+# データ（db.json・資料ファイル・認証ログ）は /data に保存されます。毎日バックアップしてください。
+# 社内ネットワーク（またはVPN）内で使い、インターネットへ直接公開しないでください（https はリバースプロキシで）。
+FROM node:22-alpine
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci
+COPY . .
+ARG NEXT_PUBLIC_PORTAL_URL=""
+ARG NEXT_PUBLIC_OS_URL=""
+ENV NEXT_PUBLIC_MODE=server NEXT_PUBLIC_PORTAL_URL=$NEXT_PUBLIC_PORTAL_URL NEXT_PUBLIC_OS_URL=$NEXT_PUBLIC_OS_URL
+RUN npx next build
+ENV NODE_ENV=production PORT=3000 CRM_DATA_DIR=/data
+VOLUME /data
+EXPOSE 3000
+# 画面・API の起動と、公的情報（為替・制裁リスト・官公庁ニュース）の毎時の自動更新
+CMD ["node", "scripts/serve.mjs"]

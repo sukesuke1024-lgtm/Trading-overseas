@@ -1,5 +1,5 @@
-import type { ActivityType, Currency, Role, Segment, Source, Stage, StageId } from "./types";
-import { FALLBACK_RATES, rateNow } from "./fx";
+import type { ActivityType, Currency, Role, Segment, Source, Stage, StageId } from "./types.ts";
+import { FALLBACK_RATES, rateNow } from "./fx.ts";
 
 /**
  * 営業ステージ。仕様書の初期案（Lead→First Contact→Qualification→Hearing→Proposal→Quotation→Negotiation→Won/Lost/On Hold）から

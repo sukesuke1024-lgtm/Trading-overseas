@@ -21,6 +21,38 @@
 
 設計判断（ステージを6段階に統合、最終接触・次回予定・Next Action を導出、明細単価の固定、など）は [`docs/`](docs) の設計書にまとめています。
 
+## 2つの動かし方（社内ポータルと同じ）
+
+| モード | 認証 | データ | 用途 |
+|---|---|---|---|
+| **デモ（static）** | ユーザーを選ぶだけ（確認コードは画面表示） | 各端末のブラウザ内 | GitHub Pages `/crm/` で公開・見せる用 |
+| **サーバー（server）** | 従業員番号 + PIN（scrypt）+ 認証アプリ（TOTP）。5回失敗で15分ロック、12時間セッション、PIN変更・管理者リセットで他端末を失効 | サーバー上の `db.json`（全員で共有）。資料ファイルもサーバーに保存 | 社内で実際に使う |
+
+サーバー版は、**権限をサーバー側でも強制**します（`src/server/ops.ts`）。Sales は自分の担当の顧客・案件・Task・活動だけ変更でき、他人の分・名簿・与信方針・承認は変更できません（Sales には仕入原価・売上・仕訳をそもそも配信しません）。操作は「変更されたレコードだけ」を送るため、同時に別のレコードを編集しても上書きし合いません（10秒ごとに他の人の変更を取り込みます）。監査ログの操作者はサーバーが確定します。
+
+```bash
+cd crm
+npm install
+npm run build:server
+CRM_INITIAL_PIN=<初期PIN> npm run serve     # 画面・API の起動と、公的情報の毎時の自動更新（LAN内の端末からも開けます）
+```
+
+1. 表示されたURLをブラウザで開く。従業員番号（社長は `001`）と初期PIN（既定 `000000`。`CRM_INITIAL_PIN` で変更）でログイン
+2. 初回のみ、QR を認証アプリ（Google/Microsoft Authenticator 等）で読み取り、6桁コードを入力
+3. 続けて、自分のPIN（4〜8桁）に変更
+4. Admin が「設定 → 従業員名簿」でポータルの `hlink-roster.json` を取り込む（全員のログインアカウントが作られます）。PINを忘れた・端末を紛失した人は、Admin が「PINをリセット」
+
+| 環境変数 | 内容 |
+|---|---|
+| `CRM_DATA_DIR` | データ保存先（既定 `./data`）。**毎日バックアップ**してください（`db.json`・`files/`・`authlog.jsonl`・`secret.key`） |
+| `CRM_INITIAL_PIN` | 初期PIN（初回ログイン時に必ず変更） |
+| `CRM_SESSION_SECRET` | セッション署名・認証アプリ秘密鍵の暗号化に使う鍵（未設定時は `secret.key` を自動生成） |
+| `CRM_SEED` | `demo` にすると、サンプルデータ入りで初期化（既定は名簿と与信方針だけの空の状態） |
+| `CRM_REFRESH_MINUTES` | 公的情報の更新間隔（既定60分。0で停止） |
+
+コンテナ：`docker build -f Dockerfile.server -t hlink-crm-server . && docker run -d -p 3000:3000 -v hlink-crm-data:/data hlink-crm-server`（タグ `crm-v*` を付けると、GitHub Actions が `ghcr.io/<owner>/hlink-crm` に公開します）。
+**社内ネットワーク（またはVPN）内で使い、インターネットへ直接公開しないでください。** https はリバースプロキシで。メール配信の Webhook 送信は、サーバー版では外部接続を許可していないため使えません（`.eml` 下書きは使えます）。
+
 ## 社内ポータルとの関係・別URL
 
 - **従業員名簿**：CRM のユーザーは、H-LINK 社内ポータルの従業員名簿と同じ番号・氏名・部署（権限：管理者→Admin／役員→Manager／従業員→Sales）。ポータルの「従業員・権限」→「CRM用に書き出し」で作った `hlink-roster.json` を、CRM の「設定 → 従業員名簿」で取り込みます。

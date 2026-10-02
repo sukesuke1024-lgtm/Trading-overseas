@@ -1,7 +1,8 @@
 "use client";
 import { useState } from "react";
 import { Check, Download, Minus, RotateCcw } from "lucide-react";
-import { applyRoster, loadSecurity, logout, resetDemo, saveSecurity, updateUser, useMe, useStore } from "@/lib/store";
+import { SERVER } from "@/lib/mode";
+import { serverAdminReset, applyRoster, loadSecurity, logout, resetDemo, saveSecurity, updateUser, useMe, useStore } from "@/lib/store";
 import { PORTAL_DEMO_ROSTER, SALES_DEPT, diffRoster, parseRoster, roleFromPortal, toUser, type PortalEmployee } from "@/lib/roster";
 import { PORTAL_URL } from "@/lib/asset";
 import { FX, ROLES, STAGES } from "@/lib/constants";
@@ -78,8 +79,8 @@ export default function Settings() {
 
       {tab === "data" && (
         <section className="card space-y-4 p-5 text-[13px]">
-          <p className="text-ink-2">このデモ版のデータはお使いのブラウザ内（localStorage）にだけ保存されます。他の端末や他のユーザーとは共有されません。本番では Supabase（PostgreSQL）に保存し、日次バックアップを取得します。</p>
-          <button className="btn btn-danger" onClick={() => { if (confirm("デモデータを初期状態に戻します。入力した内容は失われます。よろしいですか？")) resetDemo(); }}><RotateCcw size={14} />デモデータを初期状態に戻す</button>
+          {SERVER ? <p className="text-ink-2">サーバー版です。データはサーバー（データ領域の db.json）に保存され、全員で共有されます。バックアップは、データ領域（CRM_DATA_DIR）のフォルダごと、毎日コピーしてください。</p> : <><p className="text-ink-2">このデモ版のデータはお使いのブラウザ内（localStorage）にだけ保存されます。他の端末や他のユーザーとは共有されません。本番では Supabase（PostgreSQL）に保存し、日次バックアップを取得します。</p>
+          <button className="btn btn-danger" onClick={() => { if (confirm("デモデータを初期状態に戻します。入力した内容は失われます。よろしいですか？")) resetDemo(); }}><RotateCcw size={14} />デモデータを初期状態に戻す</button></>}
         </section>
       )}
     </div>
@@ -105,7 +106,7 @@ function RosterTab() {
       <section className="card p-5">
         <div className="flex flex-wrap items-center gap-3"><h2 className="card-t">社内ポータルとの名簿の一致</h2>{inSync ? <span className="chip chip-good">ポータルのデモ名簿と一致</span> : <span className="chip chip-warn">取込済みの名簿に差し替え済み</span>}</div>
         <p className="mt-2 text-[12.5px] leading-relaxed text-ink-2">CRM のユーザーは、<a className="text-accent-2 hover:underline" href={PORTAL_URL}>H-LINK 社内ポータル</a>の従業員名簿（従業員番号・氏名・部署・権限）と同じです。入社・異動・退職があったら、ポータルで名簿を書き出して、ここで取り込みます。営業部のお知らせは、名簿の部署が「{SALES_DEPT}」の人と Manager 以上に表示されます。</p>
-        <table className="tbl mt-3"><thead><tr><th>番号</th><th>氏名</th><th>部署</th><th>職種</th><th>CRMのロール</th></tr></thead><tbody>{d.users.map((u) => <tr key={u.id}><td className="num">{u.employeeNo}</td><td className="font-semibold">{u.name}</td><td>{u.dept}{u.dept === SALES_DEPT && <span className="chip chip-accent ml-1.5">営業部</span>}</td><td className="text-ink-2">{u.title}</td><td><span className="chip">{ROLE_LABEL[u.role]}</span></td></tr>)}</tbody></table>
+        <table className="tbl mt-3"><thead><tr><th>番号</th><th>氏名</th><th>部署</th><th>職種</th><th>CRMのロール</th>{SERVER && perms.isAdmin && <th>ログイン</th>}</tr></thead><tbody>{d.users.map((u) => <tr key={u.id}><td className="num">{u.employeeNo}</td><td className="font-semibold">{u.name}</td><td>{u.dept}{u.dept === SALES_DEPT && <span className="chip chip-accent ml-1.5">営業部</span>}</td><td className="text-ink-2">{u.title}</td><td><span className="chip">{ROLE_LABEL[u.role]}</span></td>{SERVER && perms.isAdmin && <td><button className="btn btn-sm" onClick={async () => { if (confirm(`${u.name} さんのPINを初期PINに戻し、認証アプリの登録もやり直させます。本人確認は済んでいますか？`)) { const r = await serverAdminReset(u.id); alert(r.status === 200 ? "リセットしました。次回ログイン時に、初期PINでログインしてもらい、PINの変更と認証アプリの再登録を行ってもらいます。" : String(r.body.error ?? "リセットできませんでした")); } }}>PINをリセット</button></td>}</tr>)}</tbody></table>
       </section>
       {perms.isAdmin ? (
         <section className="card space-y-3 p-5">
@@ -141,7 +142,7 @@ function SecurityTab() {
           <p className="text-[12.5px] leading-relaxed text-ink-2"><b>① 手動：</b>画面右上のドア印、または左下のユーザーメニューから、いつでもログアウトできます。<br /><b>② 自動：</b>しばらく操作がないと、終了の1分前に予告を出し、自動でログアウトします。どちらも、同じブラウザで開いている<b>ほかのタブ・画面にも反映</b>されます。</p></div>
         <div className="grid gap-4 md:grid-cols-2">
           <div><label className="label">無操作で自動ログアウトするまでの時間</label><select className="select" value={cfg.idleMinutes} onChange={(e) => save({ ...cfg, idleMinutes: Number(e.target.value) })}>{[5, 10, 15, 30, 60, 120].map((m) => <option key={m} value={m}>{m}分</option>)}</select><p className="mt-1 text-[11.5px] text-ink-3">金額・信用情報を扱うため、共有パソコンや外出先では短め（5〜15分）をおすすめします。</p></div>
-          <div><label className="label">二段階認証（デモ）</label><label className="flex items-center gap-2 rounded-lg bg-surface-2 px-3 py-2.5 text-[13px]"><input type="checkbox" checked={cfg.twoFactor} onChange={(e) => save({ ...cfg, twoFactor: e.target.checked })} />ログイン時に確認コード（6桁）を求める</label><p className="mt-1 text-[11.5px] text-ink-3">デモでは確認コードを画面に表示して流れを確認します。本番では認証アプリ（Authenticator）のコードを使い、Supabase Auth の多要素認証に切り替えます。</p></div>
+          {SERVER ? <div><label className="label">二段階認証</label><p className="rounded-lg bg-surface-2 px-3 py-2.5 text-[13px]">サーバー版では常に有効です（従業員番号＋PIN＋認証アプリのコード）。</p><p className="mt-1 text-[11.5px] text-ink-3">PINを忘れた・端末を紛失した人は、管理者が「従業員名簿」から PIN をリセットします。</p></div> : <div><label className="label">二段階認証（デモ）</label><label className="flex items-center gap-2 rounded-lg bg-surface-2 px-3 py-2.5 text-[13px]"><input type="checkbox" checked={cfg.twoFactor} onChange={(e) => save({ ...cfg, twoFactor: e.target.checked })} />ログイン時に確認コード（6桁）を求める</label><p className="mt-1 text-[11.5px] text-ink-3">デモでは確認コードを画面に表示して流れを確認します。本番では認証アプリ（Authenticator）のコードを使い、Supabase Auth の多要素認証に切り替えます。</p></div>}
         </div>
         <div className="flex flex-wrap items-center gap-3 border-t border-line pt-4"><button className="btn" onClick={() => { if (confirm("ログアウトしますか？（ほかのタブも、ログアウトされます）")) logout(); }}>今すぐログアウト（すべてのタブ）</button>{msg && <span role="status" className="text-xs text-good">{msg}</span>}</div>
       </section>

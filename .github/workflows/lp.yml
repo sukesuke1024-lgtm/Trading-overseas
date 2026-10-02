@@ -93,11 +93,10 @@ jobs:
       - name: Build CRM demo
         working-directory: crm
         env:
-          STATIC: '1'
           NEXT_PUBLIC_BASE_PATH: ${{ steps.pages.outputs.base_path }}/crm
         run: |
           npm ci
-          npx next build
+          npm run build:static
           mkdir -p ../lp/dist/crm
           cp -r out/. ../lp/dist/crm/
       # 前の版（Mirai HD 版ポータル）も /portal-v1/ で引き続き使えるように同梱する（固定コミットから別途ビルド）
