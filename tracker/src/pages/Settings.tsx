@@ -38,6 +38,7 @@ export function Settings({ server, list, merge, say, setTheme }: Props) {
             <h2>パスワードの変更</h2>
             <p>定期的に、または他の人に知られた可能性があるときに変更してください。変更すると、他の端末のログインは解除されます。</p>
             <PasswordForm />
+            <p className="muted hint" style={{ marginTop: 12 }}>二段階認証：登録済み（スマートフォンを替えるときは管理者に解除を依頼してください）。</p>
           </section>
         )}
         <section className="card">

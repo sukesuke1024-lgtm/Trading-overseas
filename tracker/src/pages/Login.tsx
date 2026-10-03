@@ -3,7 +3,9 @@ import { Eye, EyeOff, LogIn } from 'lucide-react';
 import { useAuth } from '../lib/auth.tsx';
 
 export function Login({ notice }: { notice?: string }) {
-  const { login } = useAuth();
+  const { login, loginTotp } = useAuth();
+  const [step, setStep] = useState<'pw' | 'code'>('pw');
+  const [code, setCode] = useState('');
   const [id, setId] = useState('');
   const [pw, setPw] = useState('');
   const [show, setShow] = useState(false);
@@ -22,11 +24,13 @@ export function Login({ notice }: { notice?: string }) {
         </ul>
       </aside>
       <main className="login-main">
+        {step === 'pw' ? (
         <form className="login-card" onSubmit={async (e) => {
           e.preventDefault(); if (busy) return;
           setBusy(true); setErr('');
-          const m = await login(id.trim(), pw);
-          if (m) { setErr(m); setPw(''); setBusy(false); }
+          const r = await login(id.trim(), pw);
+          if ('totp' in r) { setStep('code'); setBusy(false); setPw(''); return; }
+          if ('error' in r) { setErr(r.error); setPw(''); setBusy(false); }
         }}>
           <h1>ログイン</h1>
           {notice && !err && <div className="alert warn" role="status">{notice}</div>}
@@ -43,6 +47,24 @@ export function Login({ notice }: { notice?: string }) {
           <button className="btn primary wide" type="submit" disabled={busy}><LogIn size={16} />{busy ? '確認中…' : 'ログイン'}</button>
           <p className="muted hint">IDまたはパスワードを忘れた場合は管理者に再発行を依頼してください。5回続けて間違えると15分間ロックされます。</p>
         </form>
+        ) : (
+        <form className="login-card" onSubmit={async (e) => {
+          e.preventDefault(); if (busy) return;
+          setBusy(true); setErr('');
+          const m = await loginTotp(code);
+          if (m) { setErr(m); setCode(''); setBusy(false); if (/最初から|時間切れ/.test(m)) setStep('pw'); }
+        }}>
+          <h1>認証コードの入力</h1>
+          <p className="muted" style={{ margin: 0 }}>スマートフォンの認証アプリ（Google Authenticator、Microsoft Authenticator など）に表示されている6桁の数字を入力してください。</p>
+          {err && <div className="alert danger" role="alert">{err}</div>}
+          <label className="field">認証コード（6桁）
+            <input className="input mono code" value={code} onChange={(e) => setCode(e.target.value.replace(/[^0-9 ]/g, '').slice(0, 7))} autoComplete="one-time-code" inputMode="numeric" pattern="[0-9 ]{6,7}" autoFocus required />
+          </label>
+          <button className="btn primary wide" type="submit" disabled={busy}><LogIn size={16} />{busy ? '確認中…' : '確認してログイン'}</button>
+          <button type="button" className="btn wide" onClick={() => { setStep('pw'); setErr(''); setCode(''); }}>最初に戻る</button>
+          <p className="muted hint">スマートフォンを紛失した・機種変更した場合は、管理者に二段階認証の解除を依頼してください。</p>
+        </form>
+        )}
       </main>
     </div>
   );

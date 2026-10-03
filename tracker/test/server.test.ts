@@ -6,24 +6,27 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { AddressInfo } from 'node:net';
 
-const { createApp } = createRequire(import.meta.url)('../server/app.cjs');
+const { createApp, hotp, b32dec } = createRequire(import.meta.url)('../server/app.cjs');
 
-async function boot() {
+async function boot(extra: Record<string, unknown> = {}) {
   const dir = mkdtempSync(join(tmpdir(), 'trk-'));
-  const app = createApp({ dataDir: dir, distDir: dir, adminId: 'admin', adminPassword: 'Init-Pass-1234', providers: { domestic: async (no: string) => ({ stage: 'in_transit', eta: '2026-10-05', echo: no }) } });
+  const app = createApp({ dataDir: dir, distDir: dir, adminId: 'admin', adminPassword: 'Init-Pass-1234', require2fa: false, ...extra, providers: { domestic: async (no: string) => ({ stage: 'in_transit', eta: '2026-10-05', echo: no }) } });
   const server = app.server();
   await new Promise<void>((r) => server.listen(0, '127.0.0.1', r));
   const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
   const client = () => {
-    let cookie = '';
+    const jar = new Map<string, string>();
     return async (method: string, path: string, body?: unknown, headers: Record<string, string> = {}) => {
       const res = await fetch(base + path, {
         method, redirect: 'manual',
-        headers: { 'Content-Type': 'application/json', ...(method !== 'GET' ? { 'X-Requested-With': 'tracker' } : {}), ...(cookie ? { Cookie: cookie } : {}), ...headers },
+        headers: { 'Content-Type': 'application/json', ...(method !== 'GET' ? { 'X-Requested-With': 'tracker' } : {}), ...(jar.size ? { Cookie: [...jar].map(([k, v]) => `${k}=${v}`).join('; ') } : {}), ...headers },
         body: body === undefined ? undefined : JSON.stringify(body),
       });
-      const sc = res.headers.get('set-cookie');
-      if (sc) cookie = sc.split(';')[0].endsWith('=') ? '' : sc.split(';')[0];
+      for (const sc of res.headers.getSetCookie()) {
+        const [kv] = sc.split(';'); const i = kv.indexOf('=');
+        const k = kv.slice(0, i), v = kv.slice(i + 1);
+        if (v) jar.set(k, v); else jar.delete(k);
+      }
       let json: any = null; try { json = await res.json(); } catch { /* html など */ }
       return { status: res.status, json, headers: res.headers };
     };
@@ -141,5 +144,87 @@ test('追跡中継は認証後のみ。入力は検証される', async () => {
   assert.equal(r.status, 200); assert.equal(r.json.stage, 'in_transit');
   assert.equal((await a('GET', '/api/track?mode=sea&no=CSQU3054383')).status, 501);
   assert.equal((await a('GET', '/api/track?mode=domestic&no=')).status, 400);
+  t.close();
+});
+
+// ---- 二段階認証 ----
+const code = (secret: string, offset = 0) => hotp(b32dec(secret), Math.floor(Date.now() / 30000) + offset);
+
+test('TOTP: RFC 6238 のテストベクタ', () => {
+  assert.equal(hotp(Buffer.from('12345678901234567890'), 1), '287082'); // T=59秒
+  assert.equal(hotp(Buffer.from('12345678901234567890'), 37037036), '081804'); // T=1111111080
+});
+
+test('2FA必須: パスワード変更→QR登録まで他の操作は不可、登録後は認証コードが必要', async () => {
+  const t = await boot({ require2fa: true }); const c = t.client();
+  await c('POST', '/api/login', { id: 'admin', password: 'Init-Pass-1234' });
+  await c('POST', '/api/password', { current: 'Init-Pass-1234', next: STRONG });
+  assert.equal((await c('GET', '/api/me')).json.user.needTotp, true);
+  assert.equal((await c('GET', '/api/shipments')).json.error, 'totp_setup_required');
+  const setup = await c('POST', '/api/totp/setup');
+  assert.match(setup.json.uri, /^otpauth:\/\/totp\/.+secret=[A-Z2-7]+/);
+  assert.equal((await c('POST', '/api/totp/enable', { code: '000000' })).status, 400);
+  const secret = setup.json.secret as string;
+  assert.equal((await c('POST', '/api/totp/enable', { code: code(secret) })).status, 200);
+  assert.equal((await c('GET', '/api/shipments')).status, 200);
+  assert.equal((await c('POST', '/api/totp/setup')).status, 400); // 上書き不可
+  await c('POST', '/api/logout');
+
+  // 新しいログイン: パスワードだけではセッションが発行されない
+  const d = t.client();
+  const step1 = await d('POST', '/api/login', { id: 'admin', password: STRONG });
+  assert.equal(step1.json.totp, true); assert.equal(step1.json.user, undefined);
+  assert.equal((await d('GET', '/api/me')).status, 401);
+  assert.equal((await d('POST', '/api/login/totp', { code: '123456' })).status, 401);
+  // 登録時に使ったコード（今のステップ）は使用済み扱い。次のステップのコードならログインできる
+  assert.equal((await d('POST', '/api/login/totp', { code: code(secret) })).status, 401);
+  const used = code(secret, 1);
+  assert.equal((await d('POST', '/api/login/totp', { code: used })).status, 200);
+  assert.equal((await d('GET', '/api/me')).status, 200);
+  // 同じコードの再利用は拒否（リプレイ対策）
+  await d('POST', '/api/logout');
+  const e = t.client();
+  await e('POST', '/api/login', { id: 'admin', password: STRONG });
+  assert.equal((await e('POST', '/api/login/totp', { code: used })).status, 401);
+  t.close();
+});
+
+test('2FA: 認証コードを5回間違えるとロック。コード画面を経ずにセッションは得られない', async () => {
+  const t = await boot({ require2fa: true }); const c = t.client();
+  await c('POST', '/api/login', { id: 'admin', password: 'Init-Pass-1234' });
+  await c('POST', '/api/password', { current: 'Init-Pass-1234', next: STRONG });
+  const { json } = await c('POST', '/api/totp/setup');
+  await c('POST', '/api/totp/enable', { code: code(json.secret) });
+  await c('POST', '/api/logout');
+  const d = t.client();
+  await d('POST', '/api/login', { id: 'admin', password: STRONG });
+  for (let i = 0; i < 5; i++) await d('POST', '/api/login/totp', { code: '00000' + i });
+  assert.equal((await d('POST', '/api/login/totp', { code: code(json.secret, 1) })).status, 401); // 待機中の確認は破棄済み
+  assert.equal((await d('POST', '/api/login', { id: 'admin', password: STRONG })).status, 423);
+  // コード待ちのCookieなしで /api/login/totp は使えない
+  const e = t.client();
+  assert.equal((await e('POST', '/api/login/totp', { code: code(json.secret, 1) })).status, 401);
+  t.close();
+});
+
+test('管理者による2FA解除: 再登録が必須になり、ログイン中のセッションは失効', async () => {
+  const t = await boot({ require2fa: true }); const a = t.client();
+  await a('POST', '/api/login', { id: 'admin', password: 'Init-Pass-1234' });
+  await a('POST', '/api/password', { current: 'Init-Pass-1234', next: STRONG });
+  const s1 = (await a('POST', '/api/totp/setup')).json.secret;
+  await a('POST', '/api/totp/enable', { code: code(s1) });
+  const made = await a('POST', '/api/users', { id: 'u03', name: '鈴木' });
+  const u = t.client();
+  await u('POST', '/api/login', { id: 'u03', password: made.json.tempPassword });
+  await u('POST', '/api/password', { current: made.json.tempPassword, next: 'Staff-Pass-2026' });
+  const s2 = (await u('POST', '/api/totp/setup')).json.secret;
+  await u('POST', '/api/totp/enable', { code: code(s2) });
+  assert.equal((await u('GET', '/api/shipments')).status, 200);
+  assert.equal((await a('POST', '/api/users/u03/reset2fa')).status, 200);
+  assert.equal((await u('GET', '/api/me')).status, 401);
+  const again = t.client();
+  assert.equal((await again('POST', '/api/login', { id: 'u03', password: 'Staff-Pass-2026' })).json.user.needTotp, true);
+  const list = (await a('GET', '/api/users')).json.users;
+  assert.equal(JSON.stringify(list).includes(s2), false); // 秘密鍵はAPIで返さない
   t.close();
 });

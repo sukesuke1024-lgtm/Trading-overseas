@@ -1,7 +1,8 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 
 export type Role = 'admin' | 'staff';
-export interface User { id: string; name: string; role: Role; mustChange: boolean; disabled?: boolean; locked?: boolean }
+export interface User { id: string; name: string; role: Role; mustChange: boolean; totp: boolean; needTotp: boolean; disabled?: boolean; locked?: boolean }
+export type LoginResult = { ok: true } | { totp: true } | { error: string };
 export type AuthState =
   | { status: 'loading' }
   | { status: 'error' }
@@ -24,7 +25,7 @@ export async function call<T = any>(method: string, path: string, body?: unknown
   return { ok: res.ok, status: res.status, data };
 }
 
-interface Ctx { state: AuthState; login: (id: string, pw: string) => Promise<string>; logout: () => Promise<void>; setUser: (u: User) => void; retry: () => void }
+interface Ctx { state: AuthState; login: (id: string, pw: string) => Promise<LoginResult>; loginTotp: (code: string) => Promise<string>; logout: () => Promise<void>; setUser: (u: User) => void; retry: () => void }
 const AuthCtx = createContext<Ctx | null>(null);
 export const useAuth = () => { const c = useContext(AuthCtx); if (!c) throw new Error('AuthProvider が必要です'); return c; };
 
@@ -54,6 +55,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     login: async (id, pw) => {
       try {
         const r = await call('POST', '/api/login', { id, password: pw });
+        if (r.ok && r.data?.totp) return { totp: true };
+        if (r.ok) { setState({ status: 'in', user: r.data.user }); return { ok: true }; }
+        return { error: r.data?.error ?? 'ログインできませんでした' };
+      } catch { return { error: 'サーバーに接続できません。ネットワークを確認してください。' }; }
+    },
+    loginTotp: async (code) => {
+      try {
+        const r = await call('POST', '/api/login/totp', { code });
         if (r.ok) { setState({ status: 'in', user: r.data.user }); return ''; }
         return r.data?.error ?? 'ログインできませんでした';
       } catch { return 'サーバーに接続できません。ネットワークを確認してください。'; }

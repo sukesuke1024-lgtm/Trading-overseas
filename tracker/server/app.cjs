@@ -40,6 +40,41 @@ function pwProblem(pw, id) {
   return '';
 }
 
+// ---- TOTP（RFC 6238 / SHA-1 / 6桁 / 30秒）。Google・Microsoft Authenticator 等と互換 ----
+const B32 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+function b32enc(buf) {
+  let bits = 0, val = 0, out = '';
+  for (const b of buf) { val = (val << 8) | b; bits += 8; while (bits >= 5) { out += B32[(val >>> (bits - 5)) & 31]; bits -= 5; } }
+  if (bits > 0) out += B32[(val << (5 - bits)) & 31];
+  return out;
+}
+function b32dec(str) {
+  let bits = 0, val = 0; const out = [];
+  for (const ch of str.replace(/=+$/, '').toUpperCase()) {
+    const i = B32.indexOf(ch); if (i < 0) continue;
+    val = (val << 5) | i; bits += 5;
+    if (bits >= 8) { out.push((val >>> (bits - 8)) & 255); bits -= 8; }
+  }
+  return Buffer.from(out);
+}
+function hotp(secret, counter) {
+  const b = Buffer.alloc(8); b.writeBigUInt64BE(BigInt(counter));
+  const h = crypto.createHmac('sha1', secret).update(b).digest();
+  const o = h[19] & 15;
+  const n = (((h[o] & 0x7f) << 24) | (h[o + 1] << 16) | (h[o + 2] << 8) | h[o + 3]) % 1e6;
+  return String(n).padStart(6, '0');
+}
+// 前後1ステップ（±30秒）を許容。使用済みステップ以前は拒否（コードの使い回し防止）。成功時はステップ番号、失敗は null
+function totpVerify(secretB32, code, lastStep, now) {
+  const key = b32dec(secretB32), step = Math.floor((now == null ? Date.now() : now) / 30000);
+  for (let d = -1; d <= 1; d++) {
+    const st = step + d; if (st <= (lastStep || 0)) continue;
+    const a = Buffer.from(hotp(key, st)), b = Buffer.from(code);
+    if (a.length === b.length && crypto.timingSafeEqual(a, b)) return st;
+  }
+  return null;
+}
+
 function cleanShipment(s) {
   if (!s || typeof s !== 'object') return null;
   const no = String(s.containerNo || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
@@ -61,6 +96,7 @@ function createApp(opts) {
   const providers = opts.providers || {};
   const secureCookie = !!opts.secureCookie;
   const trustProxy = !!opts.trustProxy;
+  const require2fa = opts.require2fa !== false; // 既定: 全員に二段階認証を必須とする
   fs.mkdirSync(dataDir, { recursive: true, mode: 0o700 });
   const F = { users: path.join(dataDir, 'users.json'), ships: path.join(dataDir, 'shipments.json'), audit: path.join(dataDir, 'audit.log') };
 
@@ -84,17 +120,22 @@ function createApp(opts) {
   const saveUsers = () => writeJson(F.users, users);
   const saveShips = () => writeJson(F.ships, shipments);
   const findUser = (id) => users.find((u) => u.id === id);
-  const pub = (u) => ({ id: u.id, name: u.name, role: u.role, mustChange: !!u.mustChange, disabled: !!u.disabled, locked: u.lockedUntil > Date.now() });
+  const hasTotp = (u) => !!(u.totp && u.totp.enabled);
+  const needTotp = (u) => require2fa && !hasTotp(u);
+  const pub = (u) => ({ id: u.id, name: u.name, role: u.role, mustChange: !!u.mustChange, disabled: !!u.disabled, locked: u.lockedUntil > Date.now(), totp: hasTotp(u), needTotp: needTotp(u) });
   const dummy = makeCred('dummy-password-for-timing');
 
-  const sessions = new Map(); // token -> { id, created, last }
+  const sessions = new Map(); // token -> { id, created, last, pendingSecret }
+  const pending = new Map(); // パスワード確認済み・認証コード待ち: token -> { id, exp }
   const ipFails = new Map();
   const killSessions = (id, except) => { for (const [t, s] of sessions) if (s.id === id && t !== except) sessions.delete(t); };
 
   const ipOf = (req) => (trustProxy && req.headers['x-forwarded-for'] ? String(req.headers['x-forwarded-for']).split(',')[0].trim() : req.socket.remoteAddress) || '?';
   const cookies = (req) => Object.fromEntries(String(req.headers.cookie || '').split(';').map((c) => c.trim().split(/=(.*)/s).slice(0, 2)).filter((p) => p[0]));
-  const setCookie = (res, token, maxAge) => {
-    res.setHeader('Set-Cookie', `hlt_sid=${token}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${maxAge}${secureCookie ? '; Secure' : ''}`);
+  const setCookie = (res, token, maxAge, name = 'hlt_sid') => {
+    const c = `${name}=${token}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${maxAge}${secureCookie ? '; Secure' : ''}`;
+    const cur = res.getHeader('Set-Cookie');
+    res.setHeader('Set-Cookie', cur ? [].concat(cur, c) : c);
   };
   const sessionOf = (req) => {
     const t = cookies(req).hlt_sid;
@@ -122,6 +163,15 @@ function createApp(opts) {
     req.on('error', reject);
   });
 
+  function startSession(res, user, now) {
+    user.failed = 0; user.lockedUntil = 0; saveUsers();
+    const token = crypto.randomBytes(32).toString('hex');
+    sessions.set(token, { id: user.id, created: now, last: now });
+    setCookie(res, token, MAX_MS / 1000);
+    audit(user.id, 'login', user.id);
+    return send(res, 200, { user: pub(user) });
+  }
+
   async function api(req, res, u) {
     const method = req.method;
     const p = u.pathname;
@@ -148,12 +198,34 @@ function createApp(opts) {
         saveUsers(); audit(id, 'login_fail', id, 'パスワード不一致');
         return send(res, 401, { error: 'IDまたはパスワードが違います' });
       }
-      user.failed = 0; user.lockedUntil = 0; saveUsers();
-      const token = crypto.randomBytes(32).toString('hex');
-      sessions.set(token, { id: user.id, created: now, last: now });
-      setCookie(res, token, MAX_MS / 1000);
-      audit(user.id, 'login', user.id);
-      return send(res, 200, { user: pub(user) });
+      if (hasTotp(user)) {
+        // パスワードは合っている。認証アプリのコードを確認するまでセッションは発行しない（5分以内に入力）
+        const pre = crypto.randomBytes(24).toString('hex');
+        pending.set(pre, { id: user.id, exp: now + 5 * 60e3 });
+        setCookie(res, pre, 300, 'hlt_pre');
+        return send(res, 200, { totp: true });
+      }
+      return startSession(res, user, now);
+    }
+    if (p === '/api/login/totp' && method === 'POST') {
+      const now = Date.now();
+      const pre = cookies(req).hlt_pre;
+      const pd = pre && pending.get(pre);
+      if (!pd || pd.exp < now) { if (pre) pending.delete(pre); return send(res, 401, { error: '時間切れです。最初からログインし直してください' }); }
+      const user = findUser(pd.id);
+      if (!user || user.disabled || !hasTotp(user)) { pending.delete(pre); return send(res, 401, { error: '最初からログインし直してください' }); }
+      if (user.lockedUntil > now) return send(res, 423, { error: 'アカウントがロックされています。15分後にやり直すか、管理者に解除を依頼してください' });
+      const b = await readBody(req, 1e3);
+      const code = String(b.code || '').replace(/\s/g, '');
+      const step = /^[0-9]{6}$/.test(code) ? totpVerify(user.totp.secret, code, user.totp.lastStep, now) : null;
+      if (step === null) {
+        user.failed = (user.failed || 0) + 1;
+        if (user.failed >= MAX_FAILS) { user.lockedUntil = now + LOCK_MS; user.failed = 0; pending.delete(pre); audit(user.id, 'locked', user.id, `${MAX_FAILS}回失敗(認証コード)`); }
+        saveUsers(); audit(user.id, 'totp_fail', user.id);
+        return send(res, 401, { error: '認証コードが違います。認証アプリの最新の6桁を入力してください' });
+      }
+      user.totp.lastStep = step; pending.delete(pre); setCookie(res, '', 0, 'hlt_pre');
+      return startSession(res, user, now);
     }
     if (p === '/api/logout' && method === 'POST') {
       const s = sessionOf(req);
@@ -178,6 +250,27 @@ function createApp(opts) {
       return send(res, 200, { user: pub(me) });
     }
     if (me.mustChange) return send(res, 403, { error: 'password_change_required' });
+    if (needTotp(me) && p !== '/api/totp/setup' && p !== '/api/totp/enable') return send(res, 403, { error: 'totp_setup_required' });
+
+    // ---- 二段階認証の登録（QRコード用の情報を返し、認証アプリのコードで確認してから有効化）----
+    if (p === '/api/totp/setup' && method === 'POST') {
+      if (hasTotp(me)) return send(res, 400, { error: 'すでに登録されています。変更は管理者に解除を依頼してください' });
+      const secret = b32enc(crypto.randomBytes(20));
+      sessions.get(sess.token).pendingSecret = secret;
+      const label = encodeURIComponent('H-LINK 荷物追跡') + ':' + encodeURIComponent(me.id);
+      return send(res, 200, { secret, uri: `otpauth://totp/${label}?secret=${secret}&issuer=${encodeURIComponent('H-LINK 荷物追跡')}&algorithm=SHA1&digits=6&period=30` });
+    }
+    if (p === '/api/totp/enable' && method === 'POST') {
+      const ss = sessions.get(sess.token);
+      if (!ss.pendingSecret) return send(res, 400, { error: '先に登録用のQRコードを表示してください' });
+      const b = await readBody(req, 1e3);
+      const code = String(b.code || '').replace(/\s/g, '');
+      const step = /^[0-9]{6}$/.test(code) ? totpVerify(ss.pendingSecret, code, 0) : null;
+      if (step === null) return send(res, 400, { error: '認証コードが違います。アプリに表示されている最新の6桁を入力してください' });
+      me.totp = { secret: ss.pendingSecret, enabled: true, lastStep: step }; ss.pendingSecret = null;
+      saveUsers(); audit(me.id, 'totp_enable', me.id);
+      return send(res, 200, { user: pub(me) });
+    }
 
     const admin = me.role === 'admin';
     const needAdmin = () => { if (!admin) { send(res, 403, { error: '管理者のみ実行できます' }); return false; } return true; };
@@ -247,7 +340,7 @@ function createApp(opts) {
       saveUsers(); audit(me.id, 'user_create', id, role);
       return send(res, 200, { user: pub(findUser(id)), tempPassword: temp });
     }
-    const um = p.match(/^\/api\/users\/([A-Za-z0-9_.-]{2,32})\/(reset|unlock|disable|enable|role)$/);
+    const um = p.match(/^\/api\/users\/([A-Za-z0-9_.-]{2,32})\/(reset|reset2fa|unlock|disable|enable|role)$/);
     if (um && method === 'POST') {
       if (!needAdmin()) return;
       const t = findUser(um[1]); if (!t) return send(res, 404, { error: '見つかりません' });
@@ -259,6 +352,10 @@ function createApp(opts) {
         Object.assign(t, makeCred(temp), { mustChange: true, failed: 0, lockedUntil: 0 }); killSessions(t.id);
         saveUsers(); audit(me.id, 'user_reset', t.id);
         return send(res, 200, { user: pub(t), tempPassword: temp });
+      }
+      if (act === 'reset2fa') {
+        t.totp = null; killSessions(t.id); saveUsers(); audit(me.id, 'totp_reset', t.id);
+        return send(res, 200, { user: pub(t) });
       }
       if (act === 'unlock') { t.failed = 0; t.lockedUntil = 0; saveUsers(); audit(me.id, 'user_unlock', t.id); return send(res, 200, { user: pub(t) }); }
       if (act === 'disable') {
@@ -305,4 +402,4 @@ function createApp(opts) {
   return { handler, initialAdmin, server: () => http.createServer(handler) };
 }
 
-module.exports = { createApp, pwProblem, cleanShipment };
+module.exports = { createApp, pwProblem, cleanShipment, hotp, b32dec, b32enc, totpVerify };

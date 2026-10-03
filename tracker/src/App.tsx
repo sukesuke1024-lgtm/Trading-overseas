@@ -11,6 +11,7 @@ import { Settings } from './pages/Settings.tsx';
 import { Help } from './pages/Help.tsx';
 import { Login } from './pages/Login.tsx';
 import { ForceChange } from './pages/ForceChange.tsx';
+import { TotpSetup } from './pages/TotpSetup.tsx';
 import { Users } from './pages/Users.tsx';
 import { ShipmentForm } from './components/ShipmentForm.tsx';
 
@@ -38,6 +39,7 @@ function Gate() {
   );
   if (state.status === 'anon') return <Login notice={state.notice} />;
   if (state.status === 'in' && state.user.mustChange) return <ForceChange name={state.user.name} />;
+  if (state.status === 'in' && state.user.needTotp) return <TotpSetup name={state.user.name} />;
   return <Shell server={state.status === 'in'} user={state.status === 'in' ? state.user : null} />;
 }
 

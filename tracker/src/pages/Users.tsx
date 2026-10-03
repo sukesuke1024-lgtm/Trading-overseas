@@ -6,7 +6,7 @@ interface Entry { at: string; by: string; action: string; target: string; detail
 const ACTIONS: Record<string, string> = {
   login: 'ログイン', logout: 'ログアウト', login_fail: 'ログイン失敗', locked: 'ロック', password_change: 'パスワード変更',
   shipment_create: '荷物を登録', shipment_update: '荷物を更新', shipment_delete: '荷物を削除', shipment_import: '一括取り込み',
-  user_create: 'ユーザー追加', user_reset: 'パスワード再発行', user_unlock: 'ロック解除', user_disable: 'ユーザー無効化', user_enable: 'ユーザー有効化', user_role: '権限変更', init: '初期設定',
+  user_create: 'ユーザー追加', user_reset: 'パスワード再発行', user_unlock: 'ロック解除', user_disable: 'ユーザー無効化', user_enable: 'ユーザー有効化', totp_enable: '二段階認証を登録', totp_fail: '認証コード失敗', totp_reset: '二段階認証を解除', user_role: '権限変更', init: '初期設定',
 };
 const ROLE: Record<Role, string> = { admin: '管理者', staff: '一般' };
 
@@ -51,7 +51,7 @@ export function Users({ say }: { say: (m: string) => void }) {
         <h2>ユーザー</h2>
         <div className="card table-wrap">
           <table>
-            <thead><tr><th>ID</th><th>氏名</th><th>権限</th><th>状態</th><th>操作</th></tr></thead>
+            <thead><tr><th>ID</th><th>氏名</th><th>権限</th><th>状態</th><th>二段階認証</th><th>操作</th></tr></thead>
             <tbody>
               {users.map((u) => (
                 <tr key={u.id} style={{ cursor: 'default' }}>
@@ -59,8 +59,10 @@ export function Users({ say }: { say: (m: string) => void }) {
                   <td>{u.name}</td>
                   <td>{ROLE[u.role]}</td>
                   <td>{u.disabled ? <span className="pill plain">無効</span> : u.locked ? <span className="pill bad">ロック中</span> : u.mustChange ? <span className="pill warn">初回未設定</span> : <span className="pill good">有効</span>}</td>
+                  <td>{u.totp ? <span className="pill good">登録済</span> : <span className="pill plain">未登録</span>}</td>
                   <td><div className="rowact">
                     <button className="btn" onClick={() => void act(u.id, 'reset')}>パスワード再発行</button>
+                    {u.totp && <button className="btn" onClick={() => void act(u.id, 'reset2fa')}>二段階認証を解除</button>}
                     {u.locked && <button className="btn" onClick={() => void act(u.id, 'unlock')}>ロック解除</button>}
                     <button className="btn" disabled={u.id === me} onClick={() => void act(u.id, 'role', { role: u.role === 'admin' ? 'staff' : 'admin' })}>{u.role === 'admin' ? '一般にする' : '管理者にする'}</button>
                     {u.disabled ? <button className="btn" onClick={() => void act(u.id, 'enable')}>有効にする</button>

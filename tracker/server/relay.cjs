@@ -1,6 +1,6 @@
 // 起動: npm run build && TRACK17_KEY=xxxx npm start   → http://localhost:8080
 //   DATA_DIR（既定 tracker/data）  TRACKER_ADMIN_ID / TRACKER_ADMIN_PASSWORD（初回のみ。省略時は自動生成して表示）
-//   COOKIE_SECURE=1（https配下で必須） TRUST_PROXY=1（リバースプロキシの X-Forwarded-For を信用）
+//   TRACKER_2FA=off（二段階認証を必須にしない。非推奨）  COOKIE_SECURE=1（https配下で必須） TRUST_PROXY=1（リバースプロキシの X-Forwarded-For を信用）
 'use strict';
 const path = require('path');
 const { createApp } = require('./app.cjs');
@@ -59,6 +59,7 @@ const app = createApp({
   adminPassword: process.env.TRACKER_ADMIN_PASSWORD,
   secureCookie: process.env.COOKIE_SECURE === '1',
   trustProxy: process.env.TRUST_PROXY === '1',
+  require2fa: process.env.TRACKER_2FA !== 'off', // 社内LANのみで運用する場合に限り off にできる（非推奨）
 });
 
 app.server().listen(PORT, () => {

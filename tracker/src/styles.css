@@ -163,3 +163,9 @@ tbody tr[data-sev="1"] td:first-child { box-shadow: inset 4px 0 0 var(--warn); }
   .login { grid-template-columns: minmax(0, 1fr); } .login-brand { padding: 20px 16px; } .login-brand ul { display: none; }
   .whoami { flex-direction: row; align-items: center; border: 0; margin: 0; padding: 0; } .who { display: none; }
 }
+
+.setup-steps { margin: 0; padding-left: 20px; color: var(--text-2); } .setup-steps li { margin: 4px 0; }
+.qrbox { display: grid; place-items: center; min-height: 232px; background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: 8px; }
+.qrbox img { image-rendering: pixelated; max-width: 100%; height: auto; }
+.secretkey { display: block; background: var(--surface-2); padding: 8px 10px; border-radius: 6px; letter-spacing: .08em; user-select: all; word-break: break-all; }
+.input.code { font-size: 20px; letter-spacing: .25em; text-align: center; }
