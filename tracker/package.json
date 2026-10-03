@@ -1,5 +1,5 @@
 {
   "name": "hlink-tracker",
   "private": true,
-  "scripts": { "test": "node --test test/core.test.mjs" }
+  "scripts": { "test": "node --test test/core.test.mjs", "start": "node server/relay.js" }
 }

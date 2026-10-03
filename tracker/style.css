@@ -41,3 +41,15 @@ dialog::backdrop{background:rgba(0,0,0,.5)}
 .fgrid .full{grid-column:1/-1}
 .row{display:flex;gap:8px;justify-content:flex-end;margin-top:14px}
 .empty{color:var(--mute);padding:30px;text-align:center}
+.quick{display:flex;gap:8px;margin-bottom:12px}.quick input{flex:1}
+#notice .alert{margin-bottom:10px}
+.todo{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin-bottom:14px}
+.todo h3{margin:0 0 6px;font-size:14px}
+.todo .t{display:flex;gap:8px;align-items:baseline;padding:4px 0;border-top:1px solid var(--line);cursor:pointer}
+.todo .t:first-of-type{border-top:0}
+.todo .t b{font-family:ui-monospace,monospace;font-weight:600}
+.mode{display:inline-block;min-width:34px;text-align:center;border-radius:4px;padding:0 6px;font-size:11px;background:var(--accent);color:#fff;margin-right:6px}
+.events{list-style:none;margin:10px 0 0;padding:0;border-left:2px solid var(--line)}
+.events li{padding:2px 0 8px 12px;font-size:13px}.events time{color:var(--mute);font-size:12px;display:block}
+.sub{color:var(--mute);font-size:12px}
+.chips a{cursor:pointer;color:var(--accent);margin-right:10px}
