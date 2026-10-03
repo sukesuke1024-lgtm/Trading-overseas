@@ -3,7 +3,7 @@ name: Recruitment LP
 on:
   push:
     branches: [main, claude/overseas-buyer-sales-recruitment-video-idqyvw]
-    paths: ['lp/**', 'portal/**', 'crm/**', 'recruit-video/out/**', '.github/workflows/lp.yml']
+    paths: ['lp/**', 'portal/**', 'crm/**', 'producer-portal/**', 'recruit-video/out/**', '.github/workflows/lp.yml']
   pull_request:
     paths: ['lp/**', 'recruit-video/out/**', '.github/workflows/lp.yml']
   workflow_dispatch:
@@ -72,6 +72,16 @@ jobs:
           mkdir -p ../lp/dist/portal
           cp -r out/. ../lp/dist/portal/
           touch ../lp/dist/.nojekyll
+      # 生産者ポータルのデモ版（ブラウザ内で動作・テスト用）を /producer/ 配下に同梱して公開する
+      - name: Build producer portal demo
+        working-directory: producer-portal
+        env:
+          BASE_URL: ${{ steps.pages.outputs.base_url }}/producer/
+        run: |
+          npm ci
+          npm run build:demo
+          mkdir -p ../lp/dist/producer
+          cp -r dist-demo/. ../lp/dist/producer/
       # 公的データの自動取り込み（為替・OFAC 制裁リスト・官公庁の RSS/Atom）。失敗しても公開は続け、前回の値を残す
       - name: Restore previous public data
         uses: actions/cache/restore@v4

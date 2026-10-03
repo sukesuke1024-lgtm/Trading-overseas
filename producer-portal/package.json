@@ -6,7 +6,13 @@
   "description": "H-LINK 生産者ポータル（出荷・売上管理ダッシュボード）。依存パッケージなし（Node.js 20+）",
   "scripts": {
     "start": "node server.mjs",
-    "test": "node --test test/*.test.mjs"
+    "test": "node --test test/*.test.mjs",
+    "build:demo": "node scripts/build-demo.mjs"
   },
-  "engines": { "node": ">=20" }
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "qrcode": "^1.5.4"
+  }
 }

@@ -32,7 +32,7 @@ const ymd = (d) => d.toISOString().slice(0, 10);
 const addDays = (n) => { const d = new Date(); d.setUTCDate(d.getUTCDate() + n); return d; };
 const monthKey = (offset) => { const d = new Date(); d.setUTCDate(1); d.setUTCMonth(d.getUTCMonth() + offset); return d.toISOString().slice(0, 7); };
 
-function seed(initialPassword) {
+export function seed(initialPassword) {
   const pw = hashPassword(initialPassword);
   const producers = [
     { id: 'P000123', name: '山田農園', owner: '山田 太郎', email: 'yamada@example.com', pw, mustChange: true, failed: 0, lockUntil: 0 },

@@ -23,6 +23,15 @@ npm test                       # セキュリティ・業務ロジックのテ�
 | `PORTAL_TRUST_PROXY=1` | `X-Forwarded-For` をクライアントIPとして使う（プロキシ配下のみ） |
 | `PORTAL_DB` | データファイルの場所 |
 
+## デモ版（GitHub Pages・テスト用）
+
+サーバー不要でブラウザ内だけで動く版を `/producer/` に公開します（`npm run build:demo`）。ログインは **生産者ID `P000123` / パスワード `demo`**。データはその端末の localStorage にだけ保存されます。**認証・ロック・CSRF などのセキュリティ機能は本物ではありません**（デモ専用）。
+
+- URL: https://sukesuke1024-lgtm.github.io/Trading-overseas/producer/
+- QR: [`docs/qr-producer.png`](docs/qr-producer.png)
+
+公開には、このブランチを `main` にマージし、リポジトリの Settings → Pages で Source を「GitHub Actions」にしておく必要があります（既存の LP・CRM と同じ仕組み）。
+
 ## セキュリティ対策
 
 - **認証**：パスワードは scrypt（ソルト付き）で保存。ID の有無で応答・処理時間を変えない（ID 列挙対策）。10文字以上・英数字必須。初回は強制変更。

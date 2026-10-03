@@ -1,2 +1,4 @@
 data/db.json
 data/*.tmp
+dist-demo/
+node_modules/
