@@ -8,6 +8,12 @@
   function esc(s) {
     return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; });
   }
+  var toastTimer;
+  function say(msg) {
+    var t = $('toast'); if (!t) return;
+    t.textContent = msg; t.hidden = false;
+    clearTimeout(toastTimer); toastTimer = setTimeout(function () { t.hidden = true; }, 5000);
+  }
   function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
   function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* 保存不可でも動く */ } }
   function load() {
@@ -118,7 +124,11 @@
       '<div class="row" style="justify-content:flex-start"><button id="b-edit">編集</button><button id="b-next" class="ghost">次の工程へ</button><button id="b-del" class="danger">削除</button></div>';
     $('b-edit').onclick = function () { openForm(s); };
     $('b-next').onclick = function () { s.stage = C.STAGE_KEYS[Math.min(idx + 1, 6)]; s.lastEventAt = new Date().toISOString(); commit(); };
-    $('b-del').onclick = function () { if (!confirm(s.containerNo + ' を削除しますか？')) return; state.list.splice(state.list.indexOf(s), 1); state.sel = null; commit(); };
+    var armed = false;
+    $('b-del').onclick = function () {
+      if (!armed) { armed = true; this.textContent = 'もう一度押すと削除'; var b = this; setTimeout(function () { armed = false; b.textContent = '削除'; }, 4000); return; }
+      state.list.splice(state.list.indexOf(s), 1); state.sel = null; commit();
+    };
   }
 
   function commit() { save(); render(); }
@@ -143,8 +153,8 @@
       e.preventDefault();
       var o = {}; new FormData($('form')).forEach(function (v, k) { o[k] = String(v).trim(); });
       o.containerNo = C.normalizeNo(o.containerNo);
-      if (!o.containerNo) { alert('追跡番号を入力してください'); return; }
-      if (!C.validFor(o.mode, o.containerNo) && !confirm('この輸送手段の番号形式（検査数字）と一致しません。このまま保存しますか？')) return;
+      if (!o.containerNo) { say('追跡番号を入力してください'); return; }
+      if (!C.validFor(o.mode, o.containerNo)) say('番号形式（検査数字）が一致しません。入力ミスがないか確認してください（保存はしました）。');
       if (isNew) { o.lastEventAt = new Date().toISOString(); state.list.unshift(o); state.sel = o; } else Object.assign(s, o);
       $('dlg').close(); commit();
     };
@@ -170,7 +180,7 @@
   // ---- 追跡サービスからの更新（中継サーバー経由） ----
   var busy = false;
   function refreshAll(manual) {
-    if (!state.cfg.relay) { if (manual) alert('「設定」で中継サーバーのURLを指定してください。'); return Promise.resolve(); }
+    if (!state.cfg.relay) { if (manual) say('「設定」で中継サーバーのURLを指定してください。'); return Promise.resolve(); }
     if (busy) return Promise.resolve();
     busy = true; $('btn-refresh').textContent = '… 更新中';
     var targets = state.list.filter(function (s) { return C.stageIndex(s.stage) < 6; });
@@ -189,7 +199,7 @@
       });
     }, Promise.resolve()).then(function () {
       busy = false; $('btn-refresh').textContent = '↻ 更新'; commit();
-      if (manual) alert('更新：' + changed + ' 件に変化 / 失敗 ' + failed + ' 件' + (unsupported ? ' / 追跡未設定の手段 ' + unsupported + ' 件（手入力のまま）' : ''));
+      if (manual) say('更新：' + changed + ' 件に変化 / 失敗 ' + failed + ' 件' + (unsupported ? ' / 追跡未設定の手段 ' + unsupported + ' 件（手入力のまま）' : ''));
     });
   }
 
@@ -223,13 +233,13 @@
     var r = new FileReader();
     r.onload = function () {
       var text = String(r.result), rows;
-      try { rows = f.name.slice(-5) === '.json' ? JSON.parse(text).list.map(C.migrate) : C.parseCsv(text); } catch (err) { alert('読み込めませんでした'); return; }
+      try { rows = f.name.slice(-5) === '.json' ? JSON.parse(text).list.map(C.migrate) : C.parseCsv(text); } catch (err) { say('読み込めませんでした'); return; }
       var added = 0;
       rows.forEach(function (o) {
         var cur = state.list.filter(function (s) { return s.containerNo === o.containerNo; })[0];
         if (cur) Object.assign(cur, o); else { state.list.push(o); added++; }
       });
-      alert(rows.length + ' 件を取り込みました（新規 ' + added + ' 件）'); $('file').value = ''; commit();
+      say(rows.length + ' 件を取り込みました（新規 ' + added + ' 件）'); $('file').value = ''; commit();
     };
     r.readAsText(f);
   };
