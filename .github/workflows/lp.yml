@@ -38,8 +38,9 @@ jobs:
       - run: npm run check
 
   deploy:
-    # GitHub Pages を「Source: GitHub Actions」で有効にすると公開されます
-    if: always() && github.event_name != 'pull_request' && (needs.test.result == 'success' || github.event_name == 'schedule')
+    # 公開サイト（GitHub Pages）への公開は、リポジトリ変数 PUBLISH_PAGES を 'true' にしたときだけ行います（既定は非公開）。
+    # 公開するとき：Settings → Secrets and variables → Actions → Variables に PUBLISH_PAGES=true を追加し、Settings → Pages の Source を GitHub Actions にする。
+    if: vars.PUBLISH_PAGES == 'true' && always() && github.event_name != 'pull_request' && (needs.test.result == 'success' || github.event_name == 'schedule')
     needs: test
     runs-on: ubuntu-latest
     permissions:
