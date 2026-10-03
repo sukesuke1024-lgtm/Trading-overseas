@@ -3,42 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>H-LINK 統合トラッカー</title>
-<link rel="stylesheet" href="style.css">
+<title>H-LINK 荷物追跡</title>
 </head>
 <body>
-<header class="top">
-  <h1>統合トラッカー <small>海・空・宅配</small></h1>
-  <div class="actions">
-    <button id="btn-refresh" class="ghost" title="追跡サービスから最新を取得">↻ 更新</button>
-    <button id="btn-import" class="ghost">CSV取込</button>
-    <button id="btn-export" class="ghost">CSV出力</button>
-    <button id="btn-backup" class="ghost">バックアップ</button>
-    <button id="btn-settings" class="ghost">設定</button>
-    <input id="file" type="file" accept=".csv,text/csv" hidden>
-  </div>
-</header>
-<main>
-  <div id="notice"></div>
-  <form class="quick" id="quick">
-    <input id="quick-no" placeholder="番号を貼り付けて Enter（コンテナ／AWB／ヤマト・佐川・日本郵便・EMS・DHL・UPS を自動判別）" autocomplete="off">
-    <button type="submit">＋ 登録</button>
-  </form>
-  <section class="summary" id="summary"></section>
-  <section id="todo"></section>
-  <div class="bar">
-    <input id="q" type="search" placeholder="番号・B/L・ロット・生産者・取引先で検索">
-    <select id="f-mode"><option value="">全手段</option></select>
-    <select id="f-stage"><option value="">全状態</option><option value="open">輸送中のみ</option><option value="delivered">完了のみ</option></select>
-  </div>
-  <div class="layout">
-    <ul id="list" class="list"></ul>
-    <article id="detail" class="detail"></article>
-  </div>
-</main>
-<div id="toast" class="toast" role="status" hidden></div>
-<dialog id="dlg"><form id="form" method="dialog"></form></dialog>
-<script src="core.js"></script>
-<script src="app.js"></script>
+<div id="root"></div>
+<script type="module" src="/src/main.tsx"></script>
 </body>
 </html>

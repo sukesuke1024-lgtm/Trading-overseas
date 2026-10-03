@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 jobs:
-  test:
+  check:
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -19,5 +19,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: npm
+          cache-dependency-path: tracker/package-lock.json
+      - run: npm ci
       - run: npm test
-      - run: node --check server/relay.js
+      - run: npm run typecheck
+      - run: npm run build
+      - run: node --check server/relay.cjs

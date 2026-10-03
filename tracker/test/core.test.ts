@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createRequire } from 'node:module';
-const C = createRequire(import.meta.url)('../core.js');
+
+import * as C from '../src/lib/core.js';
 const T = (d) => Date.parse(d);
 
 test('ISO 6346 check digit', () => {
