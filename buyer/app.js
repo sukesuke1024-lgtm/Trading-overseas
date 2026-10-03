@@ -15,14 +15,14 @@ const icon = n => `<svg class="ic"><use href="#i-${n}"/></svg>`;
 
 /* ---------- master data ---------- */
 const CATS = [
-  { id: '水産物', emoji: '🐟', bg: 'linear-gradient(135deg,#dff1fb,#bfe3f5)' },
-  { id: '農産物', emoji: '🥬', bg: 'linear-gradient(135deg,#e4f5dc,#c6e8b5)' },
-  { id: '畜産物', emoji: '🥩', bg: 'linear-gradient(135deg,#fde4e4,#f6bcbc)' },
-  { id: '加工食品', emoji: '🍜', bg: 'linear-gradient(135deg,#fdf0d6,#f6dca1)' },
-  { id: '飲料', emoji: '🍵', bg: 'linear-gradient(135deg,#e4f3e6,#c3e4c8)' },
-  { id: '調味料', emoji: '🍶', bg: 'linear-gradient(135deg,#f6e8d8,#e8cba6)' },
-  { id: '健康・機能性', emoji: '🌿', bg: 'linear-gradient(135deg,#e8f3e0,#cfe6b8)' },
-  { id: 'その他', emoji: '📦', bg: 'linear-gradient(135deg,#ececf2,#d5d6e2)' },
+  { id: '水産物', ic: 'c-fish', bg: 'linear-gradient(135deg,#dff1fb,#bfe3f5)' },
+  { id: '農産物', ic: 'c-leaf', bg: 'linear-gradient(135deg,#e4f5dc,#c6e8b5)' },
+  { id: '畜産物', ic: 'c-meat', bg: 'linear-gradient(135deg,#fde4e4,#f6bcbc)' },
+  { id: '加工食品', ic: 'c-bowl', bg: 'linear-gradient(135deg,#fdf0d6,#f6dca1)' },
+  { id: '飲料', ic: 'c-cup', bg: 'linear-gradient(135deg,#e4f3e6,#c3e4c8)' },
+  { id: '調味料', ic: 'c-bottle', bg: 'linear-gradient(135deg,#f6e8d8,#e8cba6)' },
+  { id: '健康・機能性', ic: 'c-sprout', bg: 'linear-gradient(135deg,#e8f3e0,#cfe6b8)' },
+  { id: 'その他', ic: 'c-box', bg: 'linear-gradient(135deg,#ececf2,#d5d6e2)' },
 ];
 const catOf = id => CATS.find(c => c.id === id) || CATS[7];
 const COUNTRIES = ['シンガポール', '香港', '台湾', '韓国', 'タイ', 'ベトナム', 'マレーシア', '米国', 'アラブ首長国連邦', 'その他'];
@@ -45,37 +45,40 @@ const SUP = {
   pack: '関西パッケージ株式会社',
 };
 
-const P = (id, name, sup, cat, origin, temp, unit, tiers, stock, stockLabel, certs, img, emoji, desc, extra = {}) =>
-  ({ id, name, sup, cat, origin, temp, unit, tiers, stock, stockLabel, certs, img, emoji, desc, ...extra });
+const P = (id, name, sup, cat, origin, temp, unit, tiers, stock, stockLabel, certs, img, _x, desc, extra = {}) =>
+  ({ id, name, sup, cat, origin, temp, unit, tiers, stock, stockLabel, certs, img, desc, ...extra });
 
 const PRODUCTS = [
-  P('scallop', '北海道産 ホタテ（冷凍）', SUP.hokkaido, '水産物', '北海道', '冷凍', 'kg', [[20, 2800], [100, 2650], [500, 2500]], 1200, 'ok', ['HACCP', '産地証明'], 'assets/p-scallop.jpg', '🦪', '北海道オホーツク海産の大粒ホタテ貝柱。急速冷凍で鮮度とうま味を保持。', { pack: '1kg×10袋', shelf: '冷凍 18か月', lead: '受注後 7〜10日で出荷' }),
-  P('wagyu', '国産和牛 サーロイン', SUP.kyushu, '畜産物', '熊本県', '冷凍', 'kg', [[10, 8000], [50, 7500], [200, 7000]], 500, 'ok', ['輸出証明書', '産地証明', 'HACCP'], 'assets/p-wagyu.jpg', '🥩', 'きめ細かなサシと上品な甘みの A4/A5 国産和牛サーロイン。真空パックで輸出に対応。', { pack: '真空パック 約5kg/箱', shelf: '冷凍 12か月', lead: '受注後 10〜14日で出荷' }),
-  P('melon', '北海道産 メロン', SUP.doo, '農産物', '北海道', '冷蔵', '箱', [[10, 3500], [50, 3300], [200, 3100]], 800, 'ok', ['GLOBALG.A.P.'], 'assets/p-melon.jpg', '🍈', '糖度 14 度以上を厳選した赤肉メロン。海外向けに空輸対応の専用箱で出荷。', { pack: '2玉/箱（約3kg）', shelf: '冷蔵 10日', lead: '受注後 5〜7日で出荷' }),
-  P('salmon', '北海道産 トラウトサーモン フィレ（冷凍）', SUP.hokkaido, '水産物', '北海道', '冷凍', 'kg', [[20, 2400], [100, 2250]], 900, 'ok', ['HACCP', '産地証明'], 'assets/p-salmon.jpg', '🍣', '脂ののった養殖トラウトのフィレ。刺身・加熱どちらにも使える業務用規格。', { pack: '1kg×10袋', shelf: '冷凍 12か月', lead: '受注後 7日で出荷' }),
-  P('strawberry', '冷凍いちご（とちおとめ）', SUP.tochigi, '農産物', '栃木県', '冷凍', 'kg', [[20, 850], [100, 790], [500, 720]], 3000, 'ok', ['HACCP'], 'assets/p-strawberry.jpg', '🍓', '完熟で収穫して急速凍結。スムージー・製菓・デザート用に。', { pack: '1kg×10袋', shelf: '冷凍 18か月', lead: '受注後 5日で出荷' }),
-  P('rice', '北海道産 米（ゆめぴりか）', SUP.kita, '農産物', '北海道', '常温', 'kg', [[100, 400], [1000, 370]], 20000, 'ok', ['産地証明', '輸出証明書'], 'assets/p-rice.jpg', '🍚', 'もちもちとした粘りと甘みが特長。輸出用の 10kg/25kg 規格に対応。', { pack: '10kg/袋', shelf: '常温 12か月', lead: '受注後 7日で出荷' }),
-  P('beef2', '黒毛和牛 肩ロース スライス', SUP.kyushu, '畜産物', '熊本県', '冷凍', 'kg', [[10, 5200], [50, 4900]], 60, 'low', ['輸出証明書', 'HACCP'], 'assets/p-beef2.jpg', '🥓', 'すき焼き・しゃぶしゃぶ用にスライスした肩ロース。', { pack: '真空 500g×10', shelf: '冷凍 12か月', lead: '受注後 10日で出荷' }),
-  P('tai', '愛媛県産 真鯛 フィレ（冷蔵）', SUP.seto, '水産物', '愛媛県', '冷蔵', 'kg', [[30, 1900], [100, 1750]], 0, 'pre', ['HACCP'], null, '🐟', '瀬戸内で育った養殖真鯛。下処理済みフィレで飲食店向け。', { pack: '2kg/箱', shelf: '冷蔵 5日', lead: '予約受付：2週間後から出荷' }),
-  P('apple', '青森県産 ふじりんご', SUP.tsugaru, '農産物', '青森県', '冷蔵', '箱', [[20, 3200], [100, 3000]], 1500, 'ok', ['GLOBALG.A.P.', '産地証明'], null, '🍎', '蜜入りの大玉ふじ。輸出向けに選果・ワックス処理済み。', { pack: '10kg/箱（28玉）', shelf: '冷蔵 2か月', lead: '受注後 5日で出荷' }),
-  P('ramen', '無添加 冷凍ラーメン（醤油）', SUP.hakata, '加工食品', '福岡県', '冷凍', 'ケース', [[50, 4800], [200, 4500]], 600, 'ok', ['HACCP', 'ハラール'], null, '🍜', '化学調味料不使用のスープと細麺のセット。1ケース 30食。', { pack: '30食/ケース', shelf: '冷凍 9か月', lead: '受注後 10日で出荷' }),
-  P('matcha', '静岡県産 抹茶パウダー（業務用）', SUP.shizuoka, '飲料', '静岡県', '常温', 'kg', [[5, 9800], [30, 9200]], 120, 'ok', ['有機JAS', 'HACCP'], null, '🍵', '石臼挽きの鮮やかな緑。ラテ・製菓・アイス向けの業務用 500g 缶入り。', { pack: '500g缶×4', shelf: '常温 12か月', lead: '受注後 5日で出荷' }),
-  P('shoyu', '国産丸大豆 醤油（1L）', SUP.shodo, '調味料', '香川県', '常温', '本', [[100, 480], [500, 430]], 5000, 'ok', ['HACCP', 'ハラール'], null, '🍶', '木桶仕込みの丸大豆醤油。やわらかなコクと香り。', { pack: '1L×6本/箱', shelf: '常温 24か月', lead: '受注後 7日で出荷' }),
-  P('kurozu', '薩摩 黒酢ドリンク（健康・機能性表示）', SUP.satsuma, '健康・機能性', '鹿児島県', '常温', '本', [[60, 690], [300, 620]], 900, 'low', ['HACCP', '有機JAS'], null, '🌿', '壺造り黒酢を飲みやすく仕立てた機能性ドリンク。', { pack: '720ml×12本', shelf: '常温 18か月', lead: '受注後 10日で出荷' }),
-  P('vacbag', '食品用 真空包装資材（冷凍対応）', SUP.pack, 'その他', '大阪府', '常温', 'ロール', [[10, 3600], [50, 3300]], 400, 'ok', ['HACCP'], null, '📦', '輸出冷凍食品の梱包に適した耐寒・高バリアの真空袋ロール。', { pack: '10ロール/箱', shelf: '常温 24か月', lead: '受注後 5日で出荷' }),
+  P('scallop', '北海道産 ホタテ（冷凍）', SUP.hokkaido, '水産物', '北海道', '冷凍', 'kg', [[20, 2800], [100, 2650], [500, 2500]], 1200, 'ok', ['HACCP', '産地証明'], 'assets/p-scallop.jpg', '', '北海道オホーツク海産の大粒ホタテ貝柱。急速冷凍で鮮度とうま味を保持。', { pack: '1kg×10袋', shelf: '冷凍 18か月', lead: '受注後 7〜10日で出荷' }),
+  P('wagyu', '国産和牛 サーロイン', SUP.kyushu, '畜産物', '熊本県', '冷凍', 'kg', [[10, 8000], [50, 7500], [200, 7000]], 500, 'ok', ['輸出証明書', '産地証明', 'HACCP'], 'assets/p-wagyu.jpg', '', 'きめ細かなサシと上品な甘みの A4/A5 国産和牛サーロイン。真空パックで輸出に対応。', { pack: '真空パック 約5kg/箱', shelf: '冷凍 12か月', lead: '受注後 10〜14日で出荷' }),
+  P('melon', '北海道産 メロン', SUP.doo, '農産物', '北海道', '冷蔵', '箱', [[10, 3500], [50, 3300], [200, 3100]], 800, 'ok', ['GLOBALG.A.P.'], 'assets/p-melon.jpg', '', '糖度 14 度以上を厳選した赤肉メロン。海外向けに空輸対応の専用箱で出荷。', { pack: '2玉/箱（約3kg）', shelf: '冷蔵 10日', lead: '受注後 5〜7日で出荷' }),
+  P('salmon', '北海道産 トラウトサーモン フィレ（冷凍）', SUP.hokkaido, '水産物', '北海道', '冷凍', 'kg', [[20, 2400], [100, 2250]], 900, 'ok', ['HACCP', '産地証明'], 'assets/p-salmon.jpg', '', '脂ののった養殖トラウトのフィレ。刺身・加熱どちらにも使える業務用規格。', { pack: '1kg×10袋', shelf: '冷凍 12か月', lead: '受注後 7日で出荷' }),
+  P('strawberry', '冷凍いちご（とちおとめ）', SUP.tochigi, '農産物', '栃木県', '冷凍', 'kg', [[20, 850], [100, 790], [500, 720]], 3000, 'ok', ['HACCP'], 'assets/p-strawberry.jpg', '', '完熟で収穫して急速凍結。スムージー・製菓・デザート用に。', { pack: '1kg×10袋', shelf: '冷凍 18か月', lead: '受注後 5日で出荷' }),
+  P('rice', '北海道産 米（ゆめぴりか）', SUP.kita, '農産物', '北海道', '常温', 'kg', [[100, 400], [1000, 370]], 20000, 'ok', ['産地証明', '輸出証明書'], 'assets/p-rice.jpg', '', 'もちもちとした粘りと甘みが特長。輸出用の 10kg/25kg 規格に対応。', { pack: '10kg/袋', shelf: '常温 12か月', lead: '受注後 7日で出荷' }),
+  P('beef2', '黒毛和牛 肩ロース スライス', SUP.kyushu, '畜産物', '熊本県', '冷凍', 'kg', [[10, 5200], [50, 4900]], 60, 'low', ['輸出証明書', 'HACCP'], 'assets/p-beef2.jpg', '', 'すき焼き・しゃぶしゃぶ用にスライスした肩ロース。', { pack: '真空 500g×10', shelf: '冷凍 12か月', lead: '受注後 10日で出荷' }),
+  P('tai', '愛媛県産 真鯛 フィレ（冷蔵）', SUP.seto, '水産物', '愛媛県', '冷蔵', 'kg', [[30, 1900], [100, 1750]], 0, 'pre', ['HACCP'], null, '', '瀬戸内で育った養殖真鯛。下処理済みフィレで飲食店向け。', { pack: '2kg/箱', shelf: '冷蔵 5日', lead: '予約受付：2週間後から出荷' }),
+  P('apple', '青森県産 ふじりんご', SUP.tsugaru, '農産物', '青森県', '冷蔵', '箱', [[20, 3200], [100, 3000]], 1500, 'ok', ['GLOBALG.A.P.', '産地証明'], null, '', '蜜入りの大玉ふじ。輸出向けに選果・ワックス処理済み。', { pack: '10kg/箱（28玉）', shelf: '冷蔵 2か月', lead: '受注後 5日で出荷' }),
+  P('ramen', '無添加 冷凍ラーメン（醤油）', SUP.hakata, '加工食品', '福岡県', '冷凍', 'ケース', [[50, 4800], [200, 4500]], 600, 'ok', ['HACCP', 'ハラール'], null, '', '化学調味料不使用のスープと細麺のセット。1ケース 30食。', { pack: '30食/ケース', shelf: '冷凍 9か月', lead: '受注後 10日で出荷' }),
+  P('matcha', '静岡県産 抹茶パウダー（業務用）', SUP.shizuoka, '飲料', '静岡県', '常温', 'kg', [[5, 9800], [30, 9200]], 120, 'ok', ['有機JAS', 'HACCP'], null, '', '石臼挽きの鮮やかな緑。ラテ・製菓・アイス向けの業務用 500g 缶入り。', { pack: '500g缶×4', shelf: '常温 12か月', lead: '受注後 5日で出荷' }),
+  P('shoyu', '国産丸大豆 醤油（1L）', SUP.shodo, '調味料', '香川県', '常温', '本', [[100, 480], [500, 430]], 5000, 'ok', ['HACCP', 'ハラール'], null, '', '木桶仕込みの丸大豆醤油。やわらかなコクと香り。', { pack: '1L×6本/箱', shelf: '常温 24か月', lead: '受注後 7日で出荷' }),
+  P('kurozu', '薩摩 黒酢ドリンク（健康・機能性表示）', SUP.satsuma, '健康・機能性', '鹿児島県', '常温', '本', [[60, 690], [300, 620]], 900, 'low', ['HACCP', '有機JAS'], null, '', '壺造り黒酢を飲みやすく仕立てた機能性ドリンク。', { pack: '720ml×12本', shelf: '常温 18か月', lead: '受注後 10日で出荷' }),
+  P('vacbag', '食品用 真空包装資材（冷凍対応）', SUP.pack, 'その他', '大阪府', '常温', 'ロール', [[10, 3600], [50, 3300]], 400, 'ok', ['HACCP'], null, '', '輸出冷凍食品の梱包に適した耐寒・高バリアの真空袋ロール。', { pack: '10ロール/箱', shelf: '常温 24か月', lead: '受注後 5日で出荷' }),
 ];
 const prod = id => PRODUCTS.find(p => p.id === id);
 const minPrice = p => p.tiers[0][1];
 const moq = p => p.tiers[0][0];
 const priceFor = (p, q) => { let v = p.tiers[0][1]; for (const [m, pr] of p.tiers) if (q >= m) v = pr; return v; };
 const stockHtml = p => `<span class="stock ${p.stockLabel === 'low' ? 'low' : p.stockLabel === 'pre' ? 'pre' : ''}">${p.stockLabel === 'low' ? '残りわずか' : p.stockLabel === 'pre' ? '予約受付' : '在庫あり'}</span>`;
-const thumb = (p, cls = '') => p.img ? `<img src="${p.img}" alt="${esc(p.name)}" loading="lazy">` : `<span class="${cls}" aria-hidden="true">${p.emoji}</span>`;
-const thumbBox = p => p.img ? `<img src="${p.img}" alt="">` : `<span aria-hidden="true">${p.emoji}</span>`;
+const catIc = (cat) => `<svg class="ic cat-ic" aria-hidden="true"><use href="#${catOf(cat).ic}"/></svg>`;
+const thumb = (p) => p.img ? `<img src="${p.img}" alt="${esc(p.name)}" loading="lazy">` : catIc(p.cat);
+const thumbBox = p => p.img ? `<img src="${p.img}" alt="">` : catIc(p.cat);
 const tierLabel = (p, i) => { const t = p.tiers, a = t[i][0], b = t[i + 1]; return b ? `${a} – ${b[0] - 1} ${p.unit}` : `${a} ${p.unit} 以上`; };
 
 /* ---------- state ---------- */
-const KEY = 'hlink-buyer-v1';
+const CFG = window.HLINK_CONFIG || {};
+let KEY = 'hlink-buyer-v1', USER = null;
 const seed = () => {
+  const u = USER || { name: 'バイヤー', company: 'Sunrise Trading Pte. Ltd.' };
   const mk = (daysBack, no, pid, qty, stage) => {
     const p = prod(pid), dates = [];
     for (let i = 0; i <= stage; i++) dates.push(daysAgo(Math.max(daysBack - i * 2, 0)));
@@ -83,7 +86,7 @@ const seed = () => {
   };
   const ymd = n => fmtDate(daysAgo(n)).replace(/\//g, '');
   return {
-    profile: { company: 'Sunrise Trading Pte. Ltd.', name: 'バイヤー', email: 'buyer@example.com', country: 'シンガポール', tel: '+65 6000 0000', addrs: ['Sunrise Trading Pte. Ltd. / 1 Harbour Road, Singapore 049213', 'Sunrise Trading 第2倉庫 / 22 Tuas South Ave, Singapore 637100'], notify: { order: true, quote: true, msg: true, news: false } },
+    profile: { company: u.company, name: u.name, email: 'buyer@example.com', country: 'シンガポール', tel: '+65 6000 0000', addrs: ['Sunrise Trading Pte. Ltd. / 1 Harbour Road, Singapore 049213', 'Sunrise Trading 第2倉庫 / 22 Tuas South Ave, Singapore 637100'], notify: { order: true, quote: true, msg: true, news: false } },
     favs: ['scallop', 'wagyu', 'melon'],
     orders: [
       mk(3, `HL-${ymd(3)}-001`, 'scallop', 100, 1),
@@ -112,7 +115,7 @@ const seed = () => {
   };
 };
 const load = () => { try { const v = JSON.parse(localStorage.getItem(KEY)); return v && v.profile ? v : null; } catch { return null; } };
-let S = load() || seed();
+let S = null;
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch { /* storage unavailable */ } };
 const isFav = id => S.favs.includes(id);
 const ymdNow = () => fmtDate(new Date()).replace(/\//g, '');
@@ -268,7 +271,7 @@ views.home = () => {
   </div>
 
   <section class="card" style="margin-bottom:18px"><h2>人気のカテゴリー <a href="#/categories">すべて見る ›</a></h2>
-    <div class="cat-row">${CATS.map(c => `<a class="cat" href="#/search?cat=${encodeURIComponent(c.id)}"><span class="tile" style="background:${c.bg}">${c.emoji}</span>${c.id}</a>`).join('')}</div></section>
+    <div class="cat-row">${CATS.map(c => `<a class="cat" href="#/search?cat=${encodeURIComponent(c.id)}"><span class="tile" style="background:${c.bg}">${catIc(c.id)}</span>${c.id}</a>`).join('')}</div></section>
 
   <div class="cols-2" style="margin-bottom:18px">
     <section class="card"><h2>進行中の注文 <a href="#/orders">発注履歴へ ›</a></h2>
@@ -323,7 +326,7 @@ views.home.mount = root => {
 views.categories = () => `<div class="page"><div class="page-head"><div><h1>カテゴリー</h1><p>カテゴリーから商品を探せます。</p></div></div>
   <div class="prod-grid" style="grid-template-columns:repeat(auto-fill,minmax(220px,1fr))">${CATS.map(c => {
     const n = PRODUCTS.filter(p => p.cat === c.id).length;
-    return `<a class="pcard" href="#/search?cat=${encodeURIComponent(c.id)}"><div class="pimg" style="background:${c.bg};font-size:64px">${c.emoji}</div><div class="pbody"><div class="pname">${c.id}</div><div class="pmeta">${n} 商品</div></div></a>`;
+    return `<a class="pcard" href="#/search?cat=${encodeURIComponent(c.id)}"><div class="pimg" style="background:${c.bg}">${catIc(c.id)}</div><div class="pbody"><div class="pname">${c.id}</div><div class="pmeta">${n} 商品</div></div></a>`;
   }).join('')}</div></div>`;
 
 /* 01 Search */
@@ -362,7 +365,7 @@ views.search.mount = root => {
   const draw = () => {
     let r = PRODUCTS.filter(p => {
       const kw = F.q.toLowerCase();
-      if (kw && !(p.name + p.origin + p.sup + p.cat + p.desc).toLowerCase().includes(kw)) return false;
+      if (kw && !I18N.all([p.name, p.origin, p.sup, p.cat, p.desc].join(' ')).toLowerCase().includes(kw)) return false;
       if (F.cats.size && !F.cats.has(p.cat)) return false;
       if (F.origin && p.origin !== F.origin) return false;
       if (F.cert && !p.certs.includes(F.cert)) return false;
@@ -395,7 +398,7 @@ views.product = () => {
   return `<div class="page"><div class="crumbs"><a href="#/">ダッシュボード</a> › <a href="#/search?cat=${encodeURIComponent(p.cat)}">${p.cat}</a> › ${esc(p.name)}</div>
   <div class="page-head"><div><h1><span class="num">02</span>商品詳細・卸価格・在庫・MOQ</h1><p>MOQ・卸価格・在庫状況をわかりやすく表示。安心して商談を進められます。</p></div></div>
   <div class="card"><div class="pd">
-    <div class="pd-img" style="${p.img ? '' : 'background:' + catOf(p.cat).bg}">${p.img ? `<img src="${p.img}" alt="${esc(p.name)}">` : `<span aria-hidden="true">${p.emoji}</span>`}</div>
+    <div class="pd-img" style="${p.img ? '' : 'background:' + catOf(p.cat).bg}">${p.img ? `<img src="${p.img}" alt="${esc(p.name)}">` : catIc(p.cat)}</div>
     <div>
       <div class="pmeta">${esc(p.sup)}</div>
       <h1>${esc(p.name)}</h1>
@@ -437,7 +440,7 @@ views.sample = () => {
   if (!p) return views.product();
   if (!SF || SF.pid !== p.id) SF = { pid: p.id, step: 0, qty: 1, to: S.profile.addrs[0] || '', when: '最短で希望', msg: '', no: '' };
   const steps = ['入力', '確認', '完了'];
-  const stepper = `<div class="stepper">${steps.map((s, i) => `<div class="s ${i < SF.step ? 'done' : i === SF.step ? 'on' : ''}"><i>${i < SF.step ? '✓' : i + 1}</i>${s}</div>`).join('')}</div>`;
+  const stepper = `<div class="stepper">${steps.map((s, i) => `<div class="s ${i < SF.step ? 'done' : i === SF.step ? 'on' : ''}"><i>${i < SF.step ? icon('check') : i + 1}</i>${s}</div>`).join('')}</div>`;
   const prodBox = `<div class="sum-prod"><div class="th">${thumbBox(p)}</div><div><b>${esc(p.name)}</b><div class="pmeta">サンプル内容 ${esc(p.pack.split('×')[0])} ／ ${esc(p.sup)}</div></div></div>`;
   let body = '';
   if (SF.step === 0) body = `${prodBox}
@@ -525,9 +528,9 @@ views.messages = () => {
   if (th && th.unread) { th.unread = 0; save(); }
   return `<div class="page"><div class="page-head"><div><h1><span class="num">05</span>問い合わせ・チャット</h1><p>サプライヤーに直接問い合わせ。商談や輸出に関する相談もスムーズに。</p></div></div>
   <div class="card chat ${th ? 'has-active' : ''}" id="chat">
-    <div class="threads">${S.threads.map(t => { const last = t.msgs[t.msgs.length - 1]; return `<button class="thread ${t.id === activeThread ? 'on' : ''}" data-th="${t.id}"><span class="av">${esc(t.sup[0])}</span><span style="min-width:0"><b>${esc(t.sup)}</b><small>${last ? esc(last.file ? '📎 ' + last.file.name : last.t.split('\n')[0]) : '新しいチャット'}</small></span>${t.unread ? `<span class="badge red">${t.unread}</span>` : ''}</button>`; }).join('')}</div>
-    <div class="conv">${th ? `<div class="conv-head"><button class="icon-btn back" id="cBack" aria-label="一覧へ戻る">${icon('chev').replace('<svg class="ic">', '<svg class="ic" style="transform:scaleX(-1)">')}</button><span class="avatar" style="background:#e9ecf1;color:var(--ink)">${esc(th.sup[0])}</span><div><b>${esc(th.sup)}</b><small>${th.role}</small></div></div>
-      <div class="msgs" id="msgs">${th.msgs.length ? th.msgs.map(m => `<div class="m ${m.me ? 'me' : ''}">${m.t ? `<div class="bub">${esc(m.t)}</div>` : ''}${m.file ? `<div class="file"><span class="pdf">PDF</span><div><b>${esc(m.file.name)}</b><br><small>${esc(m.file.size)}</small></div></div>` : ''}<small>${fmtDT(m.d)}</small></div>`).join('') : '<div class="empty">サプライヤーへ最初のメッセージを送りましょう。</div>'}</div>
+    <div class="threads">${S.threads.map(t => { const last = t.msgs[t.msgs.length - 1]; return `<button class="thread ${t.id === activeThread ? 'on' : ''}" data-th="${t.id}"><span class="av">${icon('handshake')}</span><span style="min-width:0"><b>${esc(t.sup)}</b><small>${last ? esc(last.file ? '[添付] ' + last.file.name : last.t.split('\n')[0]) : '新しいチャット'}</small></span>${t.unread ? `<span class="badge red">${t.unread}</span>` : ''}</button>`; }).join('')}</div>
+    <div class="conv">${th ? `<div class="conv-head"><button class="icon-btn back" id="cBack" aria-label="一覧へ戻る">${icon('chev').replace('<svg class="ic">', '<svg class="ic" style="transform:scaleX(-1)">')}</button><span class="avatar" style="background:#e9ecf1;color:var(--ink)">${icon('handshake')}</span><div><b>${esc(th.sup)}</b><small>${th.role}</small></div></div>
+      <div class="msgs" id="msgs">${th.msgs.length ? th.msgs.map(m => `<div class="m ${m.me ? 'me' : ''}">${m.t ? `<div class="bub"${m.u ? ' data-notr' : ''}>${esc(m.t)}</div>` : ''}${m.file ? `<div class="file"><span class="pdf">PDF</span><div><b>${esc(m.file.name)}</b><br><small>${esc(m.file.size)}</small></div></div>` : ''}<small>${fmtDT(m.d)}</small></div>`).join('') : '<div class="empty">サプライヤーへ最初のメッセージを送りましょう。</div>'}</div>
       <div class="typing" id="typing" hidden>入力中…</div>
       <form class="composer" id="composer"><input type="file" id="cFile" hidden><button type="button" class="attach" id="cAttach" aria-label="ファイルを添付">${icon('clip')}</button><input class="in" id="cText" placeholder="メッセージを入力…" aria-label="メッセージ" autocomplete="off"><button class="send" aria-label="送信">${icon('send')}</button></form>`
       : '<div class="empty" style="margin:auto">左の一覧からサプライヤーを選択してください。</div>'}</div></div></div>`;
@@ -540,7 +543,7 @@ views.messages.mount = root => {
   $('#cBack', root).onclick = () => { activeThread = null; render(); };
   const push = (m, who) => { th.msgs.push({ ...m, d: new Date().toISOString() }); save(); if (route.name === 'messages' && activeThread === who) render(); };
   const send = (m) => {
-    push({ me: true, ...m }, th.id);
+    push({ me: true, u: !!m.t, ...m }, th.id);
     const reply = autoReply(m.t || '添付');
     setTimeout(() => { const el = $('#typing'); if (el && activeThread === th.id) el.hidden = false; }, 200);
     setTimeout(() => {
@@ -608,6 +611,7 @@ views.account.mount = root => {
 
 /* ---------- chrome ---------- */
 function refreshChrome() {
+  if (!S) return;
   const set = (id, n) => { const el = $(id); el.textContent = n > 0 ? n : ''; };
   set('#navFav', S.favs.length);
   set('#navReq', S.quotes.filter(q => q.status === '回答待ち').length + S.samples.filter(s => s.status === '受付済').length);
@@ -615,24 +619,44 @@ function refreshChrome() {
   set('#navMsg', S.threads.reduce((a, t) => a + t.unread, 0));
   $('#bellDot').hidden = !S.notifs.some(n => !n.read);
   $('#userName').textContent = S.profile.name + '様';
-  $('#userAvatar').textContent = (S.profile.name || 'B')[0].toUpperCase();
+  $('#userAvatar').textContent = (USER.id || 'B')[0].toUpperCase();
+  $('#upName').textContent = S.profile.name + ' / ' + S.profile.company;
+  $('#upRole').textContent = USER.role === 'internal' ? '社内担当' : 'バイヤー（卸関係者）';
 }
-const closeBell = () => { $('#bellPop').hidden = true; $('#bellBtn').setAttribute('aria-expanded', 'false'); };
+const closeBell = () => { $('#bellPop').hidden = true; $('#bellBtn').setAttribute('aria-expanded', 'false'); closeUser(); };
+const closeUser = () => { $('#userPop').hidden = true; $('#userBtn').setAttribute('aria-expanded', 'false'); };
 $('#bellBtn').onclick = e => {
   e.stopPropagation();
   const pop = $('#bellPop');
   if (!pop.hidden) return closeBell();
+  closeUser();
   pop.innerHTML = `<h4>通知<button id="readAll">すべて既読にする</button></h4><ul>${S.notifs.length ? S.notifs.slice(0, 12).map((n, i) => `<li class="${n.read ? '' : 'unread'}" data-n="${i}" style="cursor:pointer"><div>${esc(n.msg)}<small>${fmtDate(n.date)} ${fmtDT(n.date)}</small></div></li>`).join('') : '<li>通知はありません</li>'}</ul>`;
   pop.hidden = false; $('#bellBtn').setAttribute('aria-expanded', 'true');
   $('#readAll', pop).onclick = () => { S.notifs.forEach(n => n.read = true); save(); refreshChrome(); closeBell(); };
   $$('[data-n]', pop).forEach(li => li.onclick = () => { const n = S.notifs[+li.dataset.n]; n.read = true; save(); refreshChrome(); closeBell(); if (n.to) navigate(n.to); });
 };
+$('#userBtn').onclick = e => {
+  e.stopPropagation();
+  const pop = $('#userPop');
+  if (!pop.hidden) return closeUser();
+  $('#bellPop').hidden = true;
+  pop.hidden = false; $('#userBtn').setAttribute('aria-expanded', 'true');
+};
+$('#userPop').addEventListener('click', e => { if (e.target.closest('a,button')) closeUser(); });
 document.addEventListener('click', e => { if (!e.target.closest('.pop-wrap')) closeBell(); });
 
+/* menu (hamburger): drawer on narrow screens, collapsible sidebar on wide screens */
 const side = $('#side'), scrim = $('#scrim');
-function closeMenu() { side.classList.remove('open'); scrim.hidden = true; $('#menuBtn').setAttribute('aria-expanded', 'false'); }
-$('#menuBtn').onclick = () => { const o = side.classList.toggle('open'); scrim.hidden = !o; $('#menuBtn').setAttribute('aria-expanded', o); };
+const narrow = () => matchMedia('(max-width:900px)').matches;
+function closeMenu() { side.classList.remove('open'); scrim.hidden = true; if (narrow()) $('#menuBtn').setAttribute('aria-expanded', 'false'); }
+$('#menuBtn').onclick = () => {
+  if (narrow()) { const o = side.classList.toggle('open'); scrim.hidden = !o; $('#menuBtn').setAttribute('aria-expanded', o); return; }
+  const c = document.body.classList.toggle('side-collapsed');
+  $('#menuBtn').setAttribute('aria-expanded', !c);
+  try { localStorage.setItem('hlink-side', c ? '0' : '1'); } catch { /* ignore */ }
+};
 scrim.onclick = closeMenu;
+try { if (localStorage.getItem('hlink-side') === '0') { document.body.classList.add('side-collapsed'); $('#menuBtn').setAttribute('aria-expanded', 'false'); } else $('#menuBtn').setAttribute('aria-expanded', 'true'); } catch { /* ignore */ }
 $('#topSearch').onsubmit = e => { e.preventDefault(); const v = $('#topQ').value.trim(); navigate('#/search' + (v ? '?q=' + encodeURIComponent(v) : '')); };
 $('#resetDemo').onclick = () => {
   openModal(`<h3>デモデータを初期化</h3><p class="pmeta">お気に入り・注文・メッセージなどを初期状態に戻します。</p>
@@ -644,41 +668,157 @@ $('#resetDemo').onclick = () => {
   });
 };
 
-/* ---------- router ---------- */
+/* language */
+const langChange = e => { I18N.setLang(e.target.value); if (S) { document.title = I18N.translate(`${TITLES[route.name]} | H-LINK バイヤーポータル`); } };
+$('#langSel').onchange = langChange; $('#loginLang').onchange = langChange;
+
+/* company website link (config.js: companyUrl) */
+(() => {
+  const u = String(CFG.companyUrl || '');
+  if (!/^https?:\/\//i.test(u)) return;
+  ['#companyLink', '#sideCompany'].forEach(id => { const a = $(id); a.href = u; a.hidden = false; });
+})();
+
+/* ---------- router & page history ---------- */
 const TITLES = { home: 'ダッシュボード', categories: 'カテゴリー', search: '商品検索', product: '商品詳細', sample: 'サンプル依頼', requests: '見積・サンプル依頼', favorites: 'お気に入り・再注文', messages: 'メッセージ', orders: '発注履歴', account: 'アカウント設定' };
 const NAV_OF = { home: 'home', categories: 'categories', search: 'search', product: 'search', sample: 'search', requests: 'requests', favorites: 'favorites', messages: 'messages', orders: 'orders', account: 'account' };
-let cur = '';
-try { cur = location.hash; } catch { /* sandboxed */ }
-function onRoute() { parse(); appliedHash = ''; if (route.name !== 'sample') SF = null; closeMenu(); closeBell(); render(); }
-function navigate(to) {
-  to = String(to).replace(/^#?/, '#');
-  if (to === cur) { render(); return; }
-  cur = to;
-  try { history.pushState(null, '', to); } catch { /* sandboxed frame: keep route in memory */ }
-  onRoute();
-}
-document.addEventListener('click', e => {
-  const a = e.target.closest('a[href^="#/"]');
-  if (!a || e.defaultPrevented || e.metaKey || e.ctrlKey) return;
-  e.preventDefault(); navigate(a.getAttribute('href'));
-});
+let cur = '#/', hist = ['#/'], hidx = 0, pushOK = false;
+const norm = h => (!h || h === '#') ? '#/' : h;
+function readHash() { try { return norm(location.hash); } catch { return '#/'; } }
 function parse() {
   const h = cur.replace(/^#\/?/, ''), [path, qs] = h.split('?');
   const parts = path.split('/').filter(Boolean).map(decodeURIComponent);
   route.name = parts[0] && views[parts[0]] ? parts[0] : 'home';
   route.args = parts.slice(1); route.q = new URLSearchParams(qs || '');
 }
+function updateNavBtns() { $('#navBack').disabled = hidx <= 0; $('#navFwd').disabled = hidx >= hist.length - 1; }
+function onRoute() { parse(); appliedHash = ''; if (route.name !== 'sample') SF = null; closeMenu(); closeBell(); render(); }
+function navigate(to) {
+  to = norm(String(to).replace(/^#?/, '#'));
+  if (!S) return;
+  if (to === cur) { render(); return; }
+  cur = to;
+  hist.splice(hidx + 1); hist.push(to); hidx = hist.length - 1;
+  try { history.pushState({ h: hidx }, '', to); pushOK = true; } catch { pushOK = false; }
+  onRoute();
+}
+function stepHistory(d) {
+  const i = hidx + d;
+  if (i < 0 || i >= hist.length) return;
+  const own = () => { hidx = i; cur = hist[i]; onRoute(); };
+  if (!pushOK) return own();
+  const before = hidx;
+  try { history.go(d); } catch { return own(); }
+  setTimeout(() => { if (hidx === before) own(); }, 250);   // popstate が来ない環境ではアプリ内の履歴で移動
+}
+$('#navBack').onclick = () => stepHistory(-1);
+$('#navFwd').onclick = () => stepHistory(1);
+window.addEventListener('popstate', () => {
+  if (!S) return;
+  const h = readHash();
+  if (hist[hidx - 1] === h) hidx--; else if (hist[hidx + 1] === h) hidx++; else { hist.splice(hidx + 1); hist.push(h); hidx = hist.length - 1; }
+  cur = h; onRoute();
+});
+window.addEventListener('hashchange', () => {
+  if (!S) return;
+  const h = readHash(); if (h === cur) return;
+  cur = h; hist.splice(hidx + 1); hist.push(h); hidx = hist.length - 1; onRoute();
+});
+document.addEventListener('click', e => {
+  const a = e.target.closest('a[href^="#/"]');
+  if (!a || e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey) return;
+  e.preventDefault(); navigate(a.getAttribute('href'));
+});
 function render(keepScroll) {
+  if (!S) return;
   clearInterval(heroTimer); heroTimer = null;
   const root = $('#view');
   root.innerHTML = views[route.name]();
   views[route.name].mount?.(root);
   if (['home', 'categories', 'product'].includes(route.name)) bindFavs(root);
-  document.title = `${TITLES[route.name]} | H-LINK バイヤーポータル`;
+  document.title = I18N.translate(`${TITLES[route.name]} | H-LINK バイヤーポータル`);
   $$('[data-nav]').forEach(a => { const on = a.dataset.nav === NAV_OF[route.name]; a.classList.toggle('active', on); on ? a.setAttribute('aria-current', 'page') : a.removeAttribute('aria-current'); });
+  updateNavBtns();
   if (!keepScroll) window.scrollTo(0, 0);
 }
-const fromUrl = () => { try { cur = location.hash; } catch { /* ignore */ } onRoute(); };
-window.addEventListener('hashchange', fromUrl);
-window.addEventListener('popstate', fromUrl);
-parse(); refreshChrome(); render();
+
+/* ---------- login / session (demo) ----------
+   ブラウザ内で照合するデモ用の仕組みです。本番ではサーバー側の認証（パスワードの検証・セッション・多要素認証）が必要です。 */
+const SESS = 'hlink-session', LOCK = 'hlink-lock';
+const idleMs = (CFG.idleMinutes || 15) * 60000;
+let lastAct = Date.now(), idleTimer = null, warned = false;
+const sget = k => { try { return JSON.parse(sessionStorage.getItem(k)); } catch { return null; } };
+const sset = (k, v) => { try { sessionStorage.setItem(k, JSON.stringify(v)); } catch { /* ignore */ } };
+async function sha256(t) { const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(t)); return [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, '0')).join(''); }
+const safeEq = (a, b) => { if (a.length !== b.length) return false; let r = 0; for (let i = 0; i < a.length; i++) r |= a.charCodeAt(i) ^ b.charCodeAt(i); return r === 0; };
+const lockState = () => { try { return JSON.parse(localStorage.getItem(LOCK)) || { fails: 0, until: 0 }; } catch { return { fails: 0, until: 0 }; } };
+const setLock = v => { try { localStorage.setItem(LOCK, JSON.stringify(v)); } catch { /* ignore */ } };
+function loginMsg(t) { const e = $('#loginErr'); e.textContent = t || ''; e.hidden = !t; }
+function setBusy(b) { $('#loginBtn').disabled = b; }
+
+function enter(user) {
+  USER = user; KEY = 'hlink-buyer-v1:' + user.id;
+  S = load() || seed();
+  if (!S.profile.name) S.profile.name = user.name;
+  document.body.classList.add('authed'); $('#login').hidden = true;
+  lastAct = Date.now(); sset(SESS, { id: user.id, act: lastAct });
+  hist = [readHash()]; hidx = 0; cur = hist[0];
+  startIdle(); refreshChrome(); parse(); render();
+}
+function logout(msg) {
+  clearInterval(idleTimer); idleTimer = null; warned = false;
+  try { sessionStorage.removeItem(SESS); } catch { /* ignore */ }
+  clearInterval(heroTimer); heroTimer = null;
+  $('#modalRoot').hidden = true; $('#modalRoot').innerHTML = ''; closeBell(); closeMenu();
+  S = null; USER = null; SF = null; activeThread = null;
+  $('#view').innerHTML = '';
+  try { history.replaceState(null, '', location.pathname + location.search); } catch { /* ignore */ }
+  cur = '#/'; hist = ['#/']; hidx = 0;
+  $('#loginForm').reset(); loginMsg(msg || '');
+  document.body.classList.remove('authed'); $('#login').hidden = false;
+  $('#lgId').focus();
+}
+function startIdle() {
+  clearInterval(idleTimer);
+  idleTimer = setInterval(() => {
+    const idle = Date.now() - lastAct;
+    if (idle >= idleMs) return logout('一定時間操作がなかったため、ログアウトしました。');
+    if (idle >= idleMs - 60000 && !warned) { warned = true; toast('まもなく自動ログアウトされます。操作を続けると延長されます。'); }
+  }, 10000);
+}
+const touch = (() => { let t = 0; return () => { lastAct = Date.now(); warned = false; if (lastAct - t > 15000) { t = lastAct; if (USER) sset(SESS, { id: USER.id, act: lastAct }); } }; })();
+['pointerdown', 'keydown', 'touchstart', 'scroll'].forEach(ev => addEventListener(ev, () => { if (USER) touch(); }, { passive: true, capture: true }));
+$('#logoutBtn').onclick = () => logout('ログアウトしました。');
+
+$('#loginForm').onsubmit = async e => {
+  e.preventDefault();
+  const id = $('#lgId').value.trim(), pw = $('#lgPw').value;
+  if (!id || !pw) return loginMsg('ログインIDとパスワードを入力してください。');
+  const lk = lockState();
+  if (lk.until > Date.now()) return loginMsg('ログイン試行が多すぎます。しばらくしてからお試しください。');
+  if (!(window.crypto && crypto.subtle)) return loginMsg('この環境ではログインできません（HTTPS が必要です）。');
+  setBusy(true);
+  try {
+    const h = await sha256(`${CFG.salt}:${id}:${pw}`);
+    const acc = (CFG.accounts || []).find(a => safeEq(a.hash, h) && a.id === id);
+    await new Promise(r => setTimeout(r, 400));   // 総当たり対策のわずかな遅延
+    if (!acc) {
+      const f = lk.fails + 1;
+      setLock(f >= (CFG.maxFails || 5) ? { fails: 0, until: Date.now() + (CFG.lockSeconds || 60) * 1000 } : { fails: f, until: 0 });
+      $('#lgPw').value = '';
+      return loginMsg(f >= (CFG.maxFails || 5) ? 'ログイン試行が多すぎます。しばらくしてからお試しください。' : 'IDまたはパスワードが正しくありません。');
+    }
+    setLock({ fails: 0, until: 0 });
+    $('#loginForm').reset(); loginMsg('');
+    enter(acc);
+  } finally { setBusy(false); }
+};
+
+/* ---------- boot ---------- */
+I18N.init();
+(() => {
+  const ss = sget(SESS);
+  const acc = ss && (CFG.accounts || []).find(a => a.id === ss.id);
+  if (acc && Date.now() - ss.act < idleMs) { cur = readHash(); enter(acc); }
+  else { $('#login').hidden = false; }
+})();
