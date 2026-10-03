@@ -89,6 +89,8 @@ button{cursor:pointer}
 @media (min-width:960px){.s2-grid{grid-template-columns:1.3fr 1fr;align-items:end}}
 .s2 .en .g{color:#8A8A8A}
 .s2 .lead{color:#B8B8B8;max-width:28em}
+.band{position:relative;margin:clamp(44px,6vw,96px) calc(50% - 50vw) 0;height:clamp(260px,50vw,660px);overflow:hidden;background:#111}
+.band img{position:absolute;left:0;top:-8%;width:100%;height:116%;object-fit:cover}
 .svc{position:relative;display:grid;gap:0;margin-top:clamp(48px,7vw,110px);border-top:1px solid rgba(255,255,255,.18)}
 @media (min-width:760px){.svc{grid-template-columns:repeat(2,1fr)}}
 @media (min-width:1100px){.svc{grid-template-columns:repeat(4,1fr)}}
@@ -106,14 +108,16 @@ button{cursor:pointer}
 /* ---------- scene 3: reliability, road ---------- */
 .s3{position:relative;background:var(--paper);padding-block:clamp(80px,10vw,160px)}
 .s3-grid{display:grid;gap:44px}
-@media (min-width:1000px){.s3-grid{grid-template-columns:1.2fr 150px 1fr;gap:clamp(30px,5vw,80px);min-height:90vh}}
+@media (min-width:1000px){.s3-grid{grid-template-columns:1.2fr 230px 1fr;gap:clamp(30px,5vw,80px);min-height:90vh}}
 .s3-l{display:flex;flex-direction:column;justify-content:space-between;gap:48px}
 .s3-l p{max-width:26em;color:var(--mute);font-size:15px}
 .road{display:none;position:relative;background:#050506;overflow:hidden;border-radius:2px}
 @media (min-width:1000px){.road{display:block}}
 .road::before{content:"";position:absolute;left:50%;top:0;bottom:0;width:3px;translate:-50% 0;background:repeating-linear-gradient(180deg,rgba(255,255,255,.55) 0 36px,transparent 36px 78px);background-size:100% 78px;animation:dash 1.1s linear infinite}
 @keyframes dash{to{background-position:0 78px}}
-.truck-v{position:absolute;left:50%;top:0;width:64px;translate:-50% 0;will-change:transform}
+.road img{position:absolute;left:0;top:-6%;width:100%;height:112%;object-fit:cover;will-change:transform}
+.wh{margin:0;overflow:hidden;border-radius:4px;aspect-ratio:16/10;background:#ddd}
+.wh img{width:100%;height:100%;object-fit:cover;display:block}
 .s3-r{display:grid;align-content:center;gap:0}
 .feat{padding:30px 0;border-top:1px solid var(--line);display:grid;gap:10px}
 .feat:last-child{border-bottom:1px solid var(--line)}
@@ -158,6 +162,11 @@ button{cursor:pointer}
 .s0 .reveal{opacity:0;transform:translateY(26px);animation:up2 1.1s var(--out) forwards}
 @keyframes up2{to{opacity:1;transform:none}}
 
+.s0-bg{position:absolute;inset:0;z-index:-2;width:100%;height:100%;object-fit:cover;object-position:70% 36%;animation:zoomOut 16s var(--out) both}
+@keyframes zoomOut{from{transform:scale(1.16)}to{transform:scale(1.02)}}
+.s0::before{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(90deg,rgba(4,5,28,.86) 0%,rgba(4,5,28,.5) 48%,rgba(4,5,28,.08) 82%),linear-gradient(180deg,rgba(4,5,28,.6),transparent 28%,transparent 52%,rgba(4,5,28,.9))}
+@media (max-width:700px){.s0-bg{object-position:74% 30%}.s0::before{background:linear-gradient(180deg,rgba(4,5,28,.55),rgba(4,5,28,.15) 30%,rgba(4,5,28,.55) 58%,rgba(4,5,28,.94))}}
+
 /* vertical call-to-action tab */
 .vtab{position:fixed;right:0;top:50%;z-index:58;translate:0 -50%;writing-mode:vertical-rl;white-space:nowrap;padding:22px 12px;background:#1B2BE0;color:#fff;font:700 14px/1 var(--jp);letter-spacing:.3em;border-radius:10px 0 0 10px;box-shadow:-8px 8px 30px rgba(10,20,120,.45);transition:transform .5s var(--out),opacity .4s}
 .vtab:hover{transform:translateX(-4px)}
@@ -182,9 +191,22 @@ button{cursor:pointer}
 .cj .callouts{position:absolute;left:0;right:0;top:56%;margin:0 auto;display:block;width:min(26em,86vw)}
 .cj .callout{position:absolute;left:0;right:0;opacity:0;text-align:center;text-shadow:0 2px 24px rgba(3,14,60,.8)}
 
+.air{position:relative;height:190vh;background:#000;color:#fff}
+.air-sticky{position:sticky;top:0;height:100dvh;overflow:hidden;display:grid;align-items:end}
+.air-v{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;will-change:transform}
+.air-sticky::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.5),transparent 34%,transparent 46%,rgba(0,0,0,.82))}
+.air-in{width:100%;position:relative;z-index:2;padding-block:0 clamp(56px,11vh,130px);display:grid;gap:12px;justify-items:start}
+.air .en{text-shadow:0 6px 50px rgba(0,0,0,.45)}
+.air-p{color:#E4E6EF;max-width:28em;margin-bottom:10px}
+@media (min-aspect-ratio:1/1){
+  .air-sticky{background:#000}
+  .air-sticky::before{content:"";position:absolute;inset:-40px;background:url(img/air-poster.jpg) center/cover;filter:blur(30px) brightness(.5) saturate(1.2)}
+  .air-v{left:auto;right:7vw;width:min(36vw,56.25dvh);height:100dvh;inset:auto 7vw auto auto;top:0;box-shadow:0 0 90px rgba(0,0,0,.5)}
+  .air-sticky::after{background:linear-gradient(90deg,rgba(0,0,0,.55),transparent 55%)}
+}
+
 /* ---------- scene 5: contact ---------- */
 .s5{position:relative;background:var(--paper);padding-block:clamp(90px,11vw,180px);overflow:hidden}
-.plane{position:absolute;left:34vw;top:-5vw;width:min(58vw,780px);opacity:.9;pointer-events:none;rotate:-14deg;will-change:transform}
 .s5-grid{position:relative;display:grid;gap:48px}
 @media (min-width:1000px){.s5-grid{grid-template-columns:5fr 6fr;gap:clamp(40px,6vw,100px);align-items:start}}
 .assure{display:grid;gap:12px;margin-top:30px;color:var(--mute)}
@@ -247,7 +269,7 @@ button{cursor:pointer}
 <main id="top">
 <!-- ===== scene 0 ===== -->
 <section class="s0" id="s0" aria-labelledby="h1">
-  <div class="orb" aria-hidden="true"></div><div class="dots" aria-hidden="true"></div>
+  <img class="s0-bg" src="img/plane-sunset.webp" width="1672" height="941" alt="夕焼けの空を飛ぶ旅客機と雲海">
   <div class="s0-in">
     <p class="eyebrow reveal" style="animation-delay:.1s">One window, from Hokkaido</p>
     <h1 id="h1" class="reveal" style="animation-delay:.25s">From Hokkaido<br>to the <span class="b">world.</span></h1>
@@ -403,6 +425,7 @@ button{cursor:pointer}
       </div>
       <p class="lead">生産者・メーカーと海外バイヤーのあいだに立ち、調達から輸出の実務までを引き受けます。ご相談は無料です。</p>
     </div>
+    <figure class="band"><img src="img/port.webp" width="1672" height="941" alt="夕暮れの港。大きなクレーンとコンテナ船、岸壁に並ぶコンテナとトラック" loading="lazy"></figure>
     <ul class="svc">
       <li><span class="kan" aria-hidden="true">魚</span><h3>Seafood<small>水産物</small></h3><p>カニ、ホタテ、ウニ、いくら、サーモン。</p></li>
       <li><span class="kan" aria-hidden="true">畑</span><h3>Produce<small>農産物</small></h3><p>じゃがいも、かぼちゃ、とうもろこし。</p></li>
@@ -422,30 +445,9 @@ button{cursor:pointer}
         <p class="jp-h">すべての区間を、<br>ひとつにつなぐ。</p>
       </div>
       <p>生産、加工、物流、貿易、そして買い手。つなぎ目で起きる手間と不安を、H-LINKが引き受けます。</p>
+      <figure class="wh"><img src="img/warehouse.webp" width="1500" height="844" alt="高い棚にパレットが整然と並ぶ倉庫と、フォークリフト" loading="lazy"></figure>
     </div>
-    <div class="road" id="road" aria-hidden="true">
-      <svg class="truck-v" id="truckV" viewBox="-14 0 92 312">
-        <defs>
-          <linearGradient id="vRoof" x1="0" x2="1"><stop offset="0" stop-color="#9DA2A8"/><stop offset=".25" stop-color="#E9EBED"/><stop offset=".75" stop-color="#D3D6DA"/><stop offset="1" stop-color="#8E939A"/></linearGradient>
-          <linearGradient id="vCab" x1="0" x2="1"><stop offset="0" stop-color="#0D0E10"/><stop offset=".3" stop-color="#34373D"/><stop offset=".7" stop-color="#25272B"/><stop offset="1" stop-color="#0A0B0C"/></linearGradient>
-          <pattern id="vRib" width="64" height="8" patternUnits="userSpaceOnUse"><rect width="64" height="2.6" fill="rgba(255,255,255,.55)"/><rect y="4" width="64" height="4" fill="rgba(0,0,0,.14)"/></pattern>
-          <filter id="vBlur"><feGaussianBlur stdDeviation="4"/></filter>
-        </defs>
-        <rect x="14" y="14" width="56" height="236" rx="4" fill="#000" opacity=".5" filter="url(#vBlur)"/>
-        <g fill="#0B0B0C"><rect x="-4" y="118" width="12" height="26" rx="3"/><rect x="56" y="118" width="12" height="26" rx="3"/><rect x="-4" y="150" width="12" height="26" rx="3"/><rect x="56" y="150" width="12" height="26" rx="3"/><rect x="-4" y="182" width="12" height="26" rx="3"/><rect x="56" y="182" width="12" height="26" rx="3"/><rect x="-5" y="252" width="14" height="30" rx="4"/><rect x="55" y="252" width="14" height="30" rx="4"/></g>
-        <rect x="6" y="6" width="52" height="204" rx="3" fill="url(#vRoof)"/>
-        <rect x="6" y="6" width="52" height="204" rx="3" fill="url(#vRib)"/>
-        <rect x="6" y="6" width="52" height="204" rx="3" fill="none" stroke="rgba(0,0,0,.35)" stroke-width="2"/>
-        <rect x="6" y="6" width="4" height="204" fill="rgba(0,0,0,.2)"/><rect x="54" y="6" width="4" height="204" fill="rgba(0,0,0,.25)"/>
-        <text transform="translate(38 108) rotate(90)" text-anchor="middle" font-family="Georgia,serif" font-weight="700" font-size="20" letter-spacing="3"><tspan fill="#E4002B">H</tspan><tspan fill="#1B1D21">-LINK</tspan></text>
-        <rect x="18" y="210" width="28" height="42" fill="#1B1C1F"/><rect x="22" y="212" width="20" height="36" fill="#26282C"/>
-        <path d="M10 250 H54 Q58 250 58 256 V296 Q58 306 48 306 H16 Q6 306 6 296 V256 Q6 250 10 250 Z" fill="url(#vCab)"/>
-        <path d="M14 262 H50 V276 Q32 270 14 276 Z" fill="#141B24"/><path d="M14 262 H50" stroke="rgba(255,255,255,.28)" stroke-width="1.5"/>
-        <rect x="12" y="282" width="40" height="3" rx="1.5" fill="#E4311F"/>
-        <rect x="-2" y="268" width="9" height="5" rx="2" fill="#17181B"/><rect x="57" y="268" width="9" height="5" rx="2" fill="#17181B"/>
-        <rect x="10" y="302" width="10" height="4" rx="1.5" fill="#FFF6D8"/><rect x="44" y="302" width="10" height="4" rx="1.5" fill="#FFF6D8"/>
-      </svg>
-    </div>
+    <div class="road" id="road" aria-hidden="true"><img src="img/road-truck.webp" width="270" height="480" alt="" loading="lazy"></div>
     <div class="s3-r">
       <div class="feat"><span class="kan" aria-hidden="true">窓</span><h3>One contact<small>窓口を一本化</small></h3><p>複数の生産者・会社への連絡を、H-LINKがまとめます。</p></div>
       <div class="feat"><span class="kan" aria-hidden="true">務</span><h3>Paperwork to port<small>実務までまとめて</small></h3><p>書類、通関、物流の手配まで対応します。</p></div>
@@ -495,33 +497,21 @@ button{cursor:pointer}
   </div></div>
 </section>
 
+<!-- ===== air ===== -->
+<section class="air" id="air" aria-labelledby="air-h">
+  <div class="air-sticky">
+    <video class="air-v" id="airV" autoplay muted loop playsinline preload="metadata" poster="img/air-poster.jpg" aria-hidden="true"><source src="video/air.mp4" type="video/mp4"></video>
+    <div class="air-in wrap">
+      <h2 class="en" id="air-h"><span class="gl" data-text="BY SEA.&#10;BY AIR.">By sea.<br>By air.</span></h2>
+      <p class="jp-h">海からも、空からも。</p>
+      <p class="air-p">輸送手段は、品目や納期に合わせてご相談ください。</p>
+      <a class="btn-w" href="#contact" data-pick="producer">無料で相談する</a>
+    </div>
+  </div>
+</section>
+
 <!-- ===== scene 5 ===== -->
 <section class="s5" id="contact" aria-labelledby="c-h">
-  <svg class="plane" id="plane" viewBox="0 0 700 520" aria-hidden="true">
-    <defs>
-      <linearGradient id="pF" x1="0" x2="1"><stop offset="0" stop-color="#B9BEC6"/><stop offset=".45" stop-color="#FFFFFF"/><stop offset="1" stop-color="#A9AFB8"/></linearGradient>
-      <linearGradient id="pWR" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#C2C7CF"/></linearGradient>
-      <linearGradient id="pWL" x1="1" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#C2C7CF"/></linearGradient>
-      <linearGradient id="pE" x1="0" x2="1"><stop offset="0" stop-color="#8E949D"/><stop offset=".4" stop-color="#F4F5F7"/><stop offset="1" stop-color="#7D838C"/></linearGradient>
-      <filter id="pB"><feGaussianBlur stdDeviation="9"/></filter>
-      <g id="pSil"><path d="M372 230 L640 345 Q652 352 650 366 L646 382 L380 330 Z M328 230 L60 345 Q48 352 50 366 L54 382 L320 330 Z M362 430 L470 478 L466 494 L368 468 Z M338 430 L230 478 L234 494 L332 468 Z M350 22 C372 22 382 70 382 120 L382 430 C382 470 366 500 350 512 C334 500 318 470 318 430 L318 120 C318 70 328 22 350 22 Z"/></g>
-    </defs>
-    <use href="#pSil" fill="#000" opacity=".2" filter="url(#pB)" transform="translate(46 58)"/>
-    <path d="M372 230 L640 345 Q652 352 650 366 L646 382 L380 330 Z" fill="url(#pWR)"/>
-    <path d="M328 230 L60 345 Q48 352 50 366 L54 382 L320 330 Z" fill="url(#pWL)"/>
-    <path d="M372 230 L640 345" stroke="#fff" stroke-width="3" fill="none"/><path d="M328 230 L60 345" stroke="#fff" stroke-width="3" fill="none"/>
-    <g stroke="rgba(60,70,85,.35)" stroke-width="1.6" fill="none"><path d="M384 300 L560 372M384 314 L580 376M316 300 L140 372M316 314 L120 376"/></g>
-    <path d="M640 345 L664 300 L674 304 L650 366 Z" fill="#E4002B"/><path d="M60 345 L36 300 L26 304 L50 366 Z" fill="#E4002B"/>
-    <g><rect x="484" y="276" width="30" height="96" rx="15" fill="url(#pE)"/><ellipse cx="499" cy="282" rx="13" ry="7" fill="#1B2330"/><ellipse cx="499" cy="282" rx="13" ry="7" fill="none" stroke="#E4002B" stroke-width="2.5"/></g>
-    <g><rect x="186" y="276" width="30" height="96" rx="15" fill="url(#pE)"/><ellipse cx="201" cy="282" rx="13" ry="7" fill="#1B2330"/><ellipse cx="201" cy="282" rx="13" ry="7" fill="none" stroke="#E4002B" stroke-width="2.5"/></g>
-    <path d="M362 430 L470 478 L466 494 L368 468 Z" fill="url(#pWR)"/><path d="M338 430 L230 478 L234 494 L332 468 Z" fill="url(#pWL)"/>
-    <path d="M350 22 C372 22 382 70 382 120 L382 430 C382 470 366 500 350 512 C334 500 318 470 318 430 L318 120 C318 70 328 22 350 22 Z" fill="url(#pF)"/>
-    <path d="M334 64 L366 64 L363 82 L337 82 Z" fill="#1B2330"/><path d="M340 68 L350 68 L348 76 L342 76Z" fill="rgba(255,255,255,.35)"/>
-    <path d="M326 104V424" stroke="#6B7C93" stroke-width="3.5" stroke-dasharray="2.5 8.5" fill="none"/><path d="M374 104V424" stroke="#6B7C93" stroke-width="3.5" stroke-dasharray="2.5 8.5" fill="none"/>
-    <g stroke="rgba(60,70,85,.28)" stroke-width="1.5"><path d="M320 150H380M320 230H380M320 330H380"/></g>
-    <rect x="318" y="296" width="64" height="9" fill="#E4002B"/>
-    <path d="M346 404 L354 404 L356 502 L344 502 Z" fill="#E4002B"/>
-  </svg>
   <div class="wrap s5-grid">
     <div>
       <h2 class="en" id="c-h"><span class="gl" data-text="TALK&#10;TO US.">Talk<br><span class="g">to us.</span></span></h2>
@@ -568,6 +558,7 @@ const CONTACT_EMAIL = "hello@example.com";
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+if (reduce) { const v = document.getElementById("airV"); if (v) { v.removeAttribute("autoplay"); v.pause(); } }
 
 /* ship cargo: deterministic colours so the deck always looks the same */
 (() => {
@@ -641,7 +632,7 @@ if ("IntersectionObserver" in window && !reduce) {
 if ("IntersectionObserver" in window) {
   const nav = $(".nav");
   const nio = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) nav.classList.toggle("dk", e.target.dataset.nav === "1"); }), { rootMargin: "0px 0px -94% 0px" });
-  [["#s0", 1], ["#s1", 0], ["#services", 1], ["#reliability", 0], ["#world", 1], ["#contact", 0], [".ft", 1]].forEach(([q, v]) => { const el = $(q); el.dataset.nav = v; nio.observe(el); });
+  [["#s0", 1], ["#s1", 0], ["#services", 1], ["#reliability", 0], ["#world", 1], ["#contact", 0], [".air", 1], [".ft", 1]].forEach(([q, v]) => { const el = $(q); el.dataset.nav = v; nio.observe(el); });
 }
 /* sticky CTA: after scene 1, hidden over the form */
 if ("IntersectionObserver" in window) {
@@ -697,15 +688,12 @@ if (window.gsap && window.ScrollTrigger && !reduce) {
   t4.to(head, { opacity: 0, y: -40, duration: 1 }, 1.2);
   items.forEach((el, i) => { const at = 2.4 + i * 2.2; t4.fromTo(el, { opacity: 0, y: 40 }, { opacity: 1, y: 0, duration: .8 }, at).to(el, { opacity: 0, y: -40, duration: .8 }, at + 1.5); });
 
-  /* the truck reappears from above on the road in scene 3 */
-  const road = $("#road");
-  if (road && getComputedStyle(road).display !== "none") {
-    const tv = $("#truckV");
-    gsap.fromTo(tv, { y: -220 }, { y: () => road.clientHeight - 80, ease: "none", scrollTrigger: { trigger: "#reliability", start: "top 70%", end: "bottom 70%", scrub: .6, invalidateOnRefresh: true } });
-  }
+  /* the road photograph and the wide photographs drift slower than the page */
+  gsap.fromTo("#road img", { yPercent: -5 }, { yPercent: 5, ease: "none", scrollTrigger: { trigger: "#reliability", start: "top bottom", end: "bottom top", scrub: .6 } });
+  $$(".band img").forEach((img) => gsap.fromTo(img, { yPercent: -6 }, { yPercent: 6, ease: "none", scrollTrigger: { trigger: img.parentElement, start: "top bottom", end: "bottom top", scrub: .6 } }));
+  gsap.fromTo("#airV", { scale: 1 }, { scale: 1.16, ease: "none", scrollTrigger: { trigger: ".air", start: "top top", end: "bottom bottom", scrub: .6 } });
   /* sea: the ship slides past slowly, the wake follows it */
   gsap.fromTo("#shipW", { y: -520 }, { y: () => $(".s4").offsetHeight - 120, ease: "none", scrollTrigger: { trigger: ".s4", start: "top bottom", end: "bottom top", scrub: .8, invalidateOnRefresh: true } });
-  gsap.fromTo("#plane", { x: 120, y: 60 }, { x: -60, y: -30, ease: "none", scrollTrigger: { trigger: "#contact", start: "top bottom", end: "bottom top", scrub: .8 } });
 }
 </script>
 </body>
