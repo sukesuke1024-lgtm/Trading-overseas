@@ -45,7 +45,8 @@ async function track17(no) {
 
 // 海上・航空は専用API（ShipsGo 等）の契約後にここへ追加する。未設定の間は 501 を返し、画面は手入力のまま動く
 const providers = {
-  domestic: process.env.TRACK17_KEY ? track17 : null,
+  hokkaido: process.env.TRACK17_KEY ? track17 : null,
+  mainland: process.env.TRACK17_KEY ? track17 : null,
   intl: process.env.TRACK17_KEY ? track17 : null,
   sea: null,
   air: null,

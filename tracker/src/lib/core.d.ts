@@ -1,23 +1,23 @@
-export type Mode = 'sea' | 'air' | 'domestic' | 'intl';
+export type Mode = 'sea' | 'air' | 'hokkaido' | 'mainland' | 'intl';
 export type StageKey = 'booked' | 'picked_up' | 'departed' | 'in_transit' | 'arrived' | 'customs' | 'delivered';
 export interface TrackEvent { at: string; text: string; place?: string }
 export interface Shipment {
   mode: Mode; containerNo: string; stage: StageKey;
   bookingNo?: string; blNo?: string; carrier?: string; vessel?: string; voyage?: string;
   pol?: string; pod?: string; etd?: string; eta?: string; freeTimeEnd?: string;
-  lot?: string; producer?: string; buyer?: string; note?: string;
+  lot?: string; dealId?: string; producer?: string; buyer?: string; note?: string;
   exception?: boolean; exceptionNote?: string; lastEventAt?: string; checkedAt?: string;
   position?: { lat: number; lon: number }; events?: TrackEvent[];
   updatedBy?: string; updatedAt?: string;
 }
 export interface Alert { level: 'danger' | 'warn'; text: string }
-export interface Candidate { mode: Mode; carrier: string; valid: boolean }
+export interface Candidate { mode: Mode | 'domestic'; carrier: string; valid: boolean }
 export interface Place { name: string; lat: number; lon: number }
 export const PORTS: Record<string, Place>;
 export const MODES: Record<Mode, { name: string; short: string }>;
 export const STAGE_KEYS: StageKey[];
 export const CSV_COLS: string[];
-export function stageLabels(mode: Mode): { key: StageKey; label: string }[];
+export function stageLabels(mode: string): { key: StageKey; label: string }[];
 export function normalizeNo(s: string): string;
 export function isValidContainerNo(s: string): boolean;
 export function isValidAwb(s: string): boolean;
@@ -31,7 +31,9 @@ export function estimatePosition(s: Partial<Shipment>, now?: number): { lat: num
 export function daysToEta(s: Partial<Shipment>, now?: number): number | null;
 export function alertsFor(s: Shipment, now?: number): Alert[];
 export function severity(s: Shipment, now?: number): 0 | 1 | 2;
-export function migrate(s: Partial<Shipment>): Shipment;
+export function migrate(s: Partial<Omit<Shipment, 'mode'>> & { mode?: string }): Shipment;
+export function isDomestic(mode: string): boolean;
+export function defaultMode(mode: string): Mode;
 export function applyUpdate(s: Shipment, up: Partial<Shipment> & { now?: number }): { shipment: Shipment; changed: boolean };
 export function toCsv(list: Shipment[]): string;
 export function parseCsv(text: string): Shipment[];

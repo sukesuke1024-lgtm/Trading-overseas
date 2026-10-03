@@ -33,7 +33,8 @@ test('detect mode from number', () => {
 
 test('stage labels differ by mode, legacy keys migrate', () => {
   assert.equal(C.stageLabels('air')[3].label, '飛行中');
-  assert.equal(C.stageLabels('domestic')[5].label, '配達中');
+  assert.equal(C.stageLabels('hokkaido')[5].label, '配達中');
+  assert.equal(C.stageLabels('mainland')[2].label, '発送（道外へ）');
   assert.equal(C.migrate({ containerNo: 'X', stage: 'sailing' }).stage, 'in_transit');
   assert.equal(C.migrate({ containerNo: 'X', stage: 'sailing' }).mode, 'sea');
 });
@@ -81,4 +82,18 @@ test('csv roundtrip and mode inference', () => {
   const inf = C.parseCsv('containerNo,stage\n131-1234567-5,sailing');
   assert.equal(inf[0].mode, 'air');
   assert.equal(inf[0].stage, 'in_transit');
+});
+
+test('国内宅配は道内/道外に分かれ、旧データ(domestic)は道内へ移行', () => {
+  assert.deepEqual(Object.keys(C.MODES), ['sea', 'air', 'hokkaido', 'mainland', 'intl']);
+  assert.equal(C.MODES.hokkaido.short, '道内');
+  assert.equal(C.MODES.mainland.short, '道外');
+  assert.equal(C.migrate({ containerNo: 'X', mode: 'domestic', stage: 'booked' }).mode, 'hokkaido');
+  assert.equal(C.validFor('mainland', '100000000004'), true);
+  assert.equal(C.parseCsv('mode,containerNo\ndomestic,100000000004')[0].mode, 'hokkaido');
+  // 道外は長距離のため「動きなし」とみなすまでの日数が長い
+  const base = { containerNo: '100000000004', stage: 'in_transit' as const, lastEventAt: '2026-10-01T00:00:00Z' };
+  const t = Date.parse('2026-10-04T00:00:00Z');
+  assert.ok(C.alertsFor({ ...base, mode: 'hokkaido' }, t).some((a) => /動きがありません/.test(a.text)));
+  assert.ok(!C.alertsFor({ ...base, mode: 'mainland' }, t).some((a) => /動きがありません/.test(a.text)));
 });

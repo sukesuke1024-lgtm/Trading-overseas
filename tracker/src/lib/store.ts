@@ -13,10 +13,11 @@ const day = (n: number) => new Date(Date.now() + n * 86400000).toISOString().sli
 
 function sample(): Shipment[] {
   return [
-    { mode: 'sea', containerNo: 'CSQU3054383', bookingNo: 'BK-0001', pol: 'JPYOK', pod: 'SGSIN', etd: day(-5), eta: day(5), stage: 'in_transit', vessel: 'EXAMPLE EXPRESS', voyage: '041E', lot: 'LOT-2610-A', producer: 'サンプル水産', buyer: 'Sample Trading Pte', note: '冷凍 -18℃（サンプル）' },
+    { mode: 'sea', containerNo: 'CSQU3054383', dealId: 'D-0001', bookingNo: 'BK-0001', pol: 'JPYOK', pod: 'SGSIN', etd: day(-5), eta: day(5), stage: 'in_transit', vessel: 'EXAMPLE EXPRESS', voyage: '041E', lot: 'LOT-2610-A', producer: 'サンプル水産', buyer: 'Sample Trading Pte', note: '冷凍 -18℃（サンプル）' },
     { mode: 'air', containerNo: '13112345675', pol: 'NRT', pod: 'LAX', etd: day(-1), eta: day(1), stage: 'in_transit', lot: 'LOT-2610-A', producer: 'サンプル水産', buyer: 'LA Demo Inc', note: '生鮮・空輸（サンプル）' },
-    { mode: 'domestic', containerNo: '100000000004', carrier: 'ヤマト運輸', eta: day(1), stage: 'in_transit', lot: 'LOT-2609-C', buyer: '国内サンプル商店', note: 'サンプル' },
+    { mode: 'hokkaido', containerNo: '100000000004', carrier: 'ヤマト運輸', dealId: 'D-0001', eta: day(1), stage: 'in_transit', lot: 'LOT-2609-C', buyer: '国内サンプル商店', note: 'サンプル' },
     { mode: 'sea', containerNo: 'MSKU0000000', pol: 'JPNGO', pod: 'HKHKG', etd: day(-12), eta: day(-2), stage: 'in_transit', lot: 'LOT-2609-C', buyer: 'HK Demo Ltd', note: 'ETA超過の例（番号は架空）' },
+    { mode: 'mainland', containerNo: '200000000001', carrier: '佐川急便', eta: day(2), stage: 'in_transit', lot: 'LOT-2610-B', buyer: '東京サンプル商事', note: '道外宛（サンプル）' },
   ];
 }
 
@@ -98,3 +99,57 @@ export function useShipments(server: boolean, say: (m: string) => void) {
 
 export function lastBackup(): number { return Number(get(BK) ?? 0); }
 export function markBackup() { set(BK, String(Date.now())); }
+
+// 取引・緊急連絡先・問題報告の共通フック。サーバー版はAPI（履歴つき）、デモはブラウザ内
+export function useCollection<T extends { id: string }>(name: 'deals' | 'contacts' | 'incidents', prefix: string, server: boolean, say: (m: string) => void, seed: () => T[]) {
+  const key = `hlink-tracker-${name}`;
+  const [list, setList] = useState<T[]>(() => {
+    if (server) return [];
+    const t = get(key);
+    if (t) { try { return JSON.parse(t) as T[]; } catch { /* 初期データへ */ } }
+    return seed();
+  });
+  const alive = useRef(true);
+  useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
+  useEffect(() => { if (!server) set(key, JSON.stringify(list)); }, [list, server, key]);
+
+  const reload = useCallback(async () => {
+    const r = await call<{ items: T[]; error?: string }>('GET', `/api/c/${name}`);
+    if (!alive.current) return;
+    if (r.ok) setList(r.data.items); else if (r.status !== 401) say(r.data?.error ?? '取得に失敗しました');
+  }, [name, say]);
+  useEffect(() => {
+    if (!server) return;
+    void reload();
+    const t = setInterval(() => { if (document.visibilityState === 'visible') void reload(); }, 60000);
+    return () => clearInterval(t);
+  }, [server, reload]);
+
+  const save = useCallback(async (item: Partial<T> & Record<string, unknown>): Promise<T | null> => {
+    if (server) {
+      const r = await call<{ item: T; error?: string }>('POST', `/api/c/${name}`, { item });
+      if (!r.ok) { say(r.data?.error ?? '保存に失敗しました'); return null; }
+      setList((cur) => (cur.some((x) => x.id === r.data.item.id) ? cur.map((x) => (x.id === r.data.item.id ? r.data.item : x)) : [r.data.item, ...cur]));
+      return r.data.item;
+    }
+    const now = new Date().toISOString();
+    let out!: T;
+    setList((cur) => {
+      if (item.id && cur.some((x) => x.id === item.id)) { out = { ...cur.find((x) => x.id === item.id)!, ...item, updatedAt: now } as T; return cur.map((x) => (x.id === item.id ? out : x)); }
+      const max = cur.reduce((m, x) => Math.max(m, Number(x.id.split('-')[1]) || 0), 0);
+      out = { ...item, id: `${prefix}-${String(max + 1).padStart(4, '0')}`, createdBy: 'demo', createdAt: now, updatedAt: now } as unknown as T;
+      return [out, ...cur];
+    });
+    return out;
+  }, [server, name, prefix, say]);
+
+  const remove = useCallback(async (id: string) => {
+    if (server) {
+      const r = await call('DELETE', `/api/c/${name}/${encodeURIComponent(id)}`);
+      if (!r.ok) { say(r.data?.error ?? '削除に失敗しました'); return; }
+    }
+    setList((cur) => cur.filter((x) => x.id !== id));
+  }, [server, name, say]);
+
+  return { list, save, remove, reload };
+}

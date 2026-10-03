@@ -101,7 +101,7 @@ export function Users({ say }: { say: (m: string) => void }) {
               <thead><tr><th>日時</th><th>操作者</th><th>内容</th><th>対象</th><th className="hide-sm">詳細</th></tr></thead>
               <tbody>{log.map((e) => (
                 <tr key={e.at + e.action + e.target + e.by} style={{ cursor: 'default' }}>
-                  <td style={{ whiteSpace: 'nowrap' }}>{new Date(e.at).toLocaleString('ja-JP', { hour12: false })}</td>
+                  <td style={{ whiteSpace: 'nowrap' }}>{new Date(e.at).toLocaleString('ja-JP', { hour12: false, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' })}</td>
                   <td className="no">{e.by}</td><td>{ACTIONS[e.action] ?? e.action}</td><td className="mono">{e.target}</td><td className="hide-sm muted">{e.detail}</td>
                 </tr>
               ))}</tbody>

@@ -10,7 +10,7 @@ export type LoginResult = { ok: true } | { totp: true } | { error: string };
 export type AuthState =
   | { status: 'loading' }
   | { status: 'error' }
-  | { status: 'local'; loggedIn: boolean }   // サーバーなし（静的配信・デモ）。デモ用のログイン画面を出す。実際の認証ではなく、データはブラウザ内
+  | { status: 'local'; loggedIn: boolean; notice?: string }   // サーバーなし（静的配信・デモ）。デモ用のログイン画面を出す。実際の認証ではなく、データはブラウザ内
   | { status: 'anon'; notice?: string }
   | { status: 'in'; user: User };
 
@@ -73,7 +73,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return r.data?.error ?? 'ログインできませんでした';
       } catch { return 'サーバーに接続できません。ネットワークを確認してください。'; }
     },
-    logout: async () => { if (state.status === 'local') { demoSet(false); setState({ status: 'local', loggedIn: false }); return; } try { await call('POST', '/api/logout'); } catch { /* 切断でも画面は戻す */ } setState({ status: 'anon' }); },
+    logout: async () => { const notice = 'ログアウトしました。ご利用ありがとうございました。'; if (state.status === 'local') { demoSet(false); setState({ status: 'local', loggedIn: false, notice }); return; } try { await call('POST', '/api/logout'); } catch { /* 切断でも画面は戻す */ } setState({ status: 'anon', notice }); },
   }), [state, probe]);
 
   return <AuthCtx.Provider value={value}>{children}</AuthCtx.Provider>;

@@ -20,23 +20,28 @@ Object.keys(PLACES).forEach((k) => { PORTS[k] = { name: PLACES[k][0], lat: PLACE
 const MODES = {
   sea: { name: '海上コンテナ', short: '海' },
   air: { name: '航空貨物', short: '空' },
-  domestic: { name: '国内宅配', short: '国内' },
+  hokkaido: { name: '国内宅配（道内）', short: '道内' },
+  mainland: { name: '国内宅配（道外）', short: '道外' },
   intl: { name: '国際宅配', short: '国際' },
 };
+// 旧データ・番号判別の「国内」は、既定で道内として扱う（画面で道外へ変更できる）
+const isDomestic = (mode) => mode === 'hokkaido' || mode === 'mainland' || mode === 'domestic';
+const defaultMode = (mode) => (mode === 'domestic' ? 'hokkaido' : mode);
 
 // 全手段共通の7工程。表示名だけ手段ごとに変える
 const STAGE_KEYS = ['booked', 'picked_up', 'departed', 'in_transit', 'arrived', 'customs', 'delivered'];
 const LABELS = {
   sea: ['ブッキング済', '積地ターミナル搬入', '本船積込', '航海中', '揚地到着', '通関中', '配送完了'],
   air: ['手配済', '空港受付', '搭載・出発', '飛行中', '到着', '通関中', '配達完了'],
-  domestic: ['受付済', '集荷', '発送', '輸送中', '配達店到着', '配達中', '配達完了'],
+  hokkaido: ['受付済', '集荷', '発送', '輸送中', '配達店到着', '配達中', '配達完了'],
+  mainland: ['受付済', '集荷', '発送（道外へ）', '輸送中（海峡・長距離）', '配達店到着', '配達中', '配達完了'],
   intl: ['受付済', '集荷', '発送', '国際輸送中', '到着国', '通関・配達中', '配達完了'],
 };
 // 旧データ（海上専用版）のキーからの移行
 const LEGACY_STAGE = { gate_in: 'picked_up', loaded: 'departed', sailing: 'in_transit' };
 
 const STAGES = STAGE_KEYS.map((key, i) => ({ key, label: LABELS.sea[i] }));
-function stageLabels(mode) { return STAGE_KEYS.map((key, i) => ({ key, label: (LABELS[mode] || LABELS.sea)[i] })); }
+function stageLabels(mode) { return STAGE_KEYS.map((key, i) => ({ key, label: (LABELS[defaultMode(mode)] || LABELS.sea)[i] })); }
 function stageIndex(key) {
   const k = LEGACY_STAGE[key] || key;
   const i = STAGE_KEYS.indexOf(k);
@@ -113,7 +118,7 @@ function validFor(mode, no) {
   const n = normalizeNo(no);
   if (mode === 'sea') return isValidContainerNo(n);
   if (mode === 'air') return isValidAwb(n);
-  if (mode === 'domestic') return /^[0-9]{11,12}$/.test(n);
+  if (isDomestic(mode)) return /^[0-9]{11,12}$/.test(n);
   if (mode === 'intl') return /^[0-9]{10}$/.test(n) || /^1Z[A-Z0-9]{16}$/.test(n) || isValidS10(n) || /^[0-9A-Z]{8,30}$/.test(n);
   return false;
 }
@@ -161,7 +166,7 @@ function daysToEta(s, now) {
   return isFinite(eta) ? Math.ceil((eta - nowOf(now)) / 86400000) : null;
 }
 // 手段ごとの「更新が止まっている」とみなす日数
-const STALE_DAYS = { sea: 5, air: 2, domestic: 3, intl: 5 };
+const STALE_DAYS = { sea: 5, air: 2, hokkaido: 2, mainland: 4, intl: 5 };
 
 function alertsFor(s, now) {
   const out = [], idx = stageIndex(s.stage), t = nowOf(now);
@@ -191,7 +196,7 @@ function severity(s, now) {
 // 旧データの移行（mode無し→海上）。破壊せず新しいオブジェクトを返す
 function migrate(s) {
   const o = Object.assign({}, s);
-  if (!o.mode) o.mode = 'sea';
+  o.mode = o.mode ? defaultMode(o.mode) : 'sea';
   o.stage = STAGE_KEYS[stageIndex(o.stage)];
   return o;
 }
@@ -211,7 +216,7 @@ function applyUpdate(s, up) {
 
 // ---- CSV ----
 // 列名 containerNo は旧版との互換のため「追跡番号」の意味で維持
-const CSV_COLS = ['mode', 'containerNo', 'bookingNo', 'blNo', 'carrier', 'vessel', 'voyage', 'pol', 'pod', 'etd', 'eta', 'stage', 'freeTimeEnd', 'lot', 'producer', 'buyer', 'note'];
+const CSV_COLS = ['mode', 'containerNo', 'dealId', 'bookingNo', 'blNo', 'carrier', 'vessel', 'voyage', 'pol', 'pod', 'etd', 'eta', 'stage', 'freeTimeEnd', 'lot', 'producer', 'buyer', 'note'];
 const csvEscape = (v) => { const t = v == null ? '' : String(v); return /[",\n\r]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t; };
 function toCsv(list) { return [CSV_COLS.join(',')].concat(list.map((s) => CSV_COLS.map((c) => csvEscape(s[c])).join(','))).join('\r\n'); }
 function parseCsv(text) {
@@ -233,10 +238,11 @@ function parseCsv(text) {
     const o = {};
     head.forEach((h, i) => { if (CSV_COLS.includes(h)) o[h] = (r[i] || '').trim(); });
     o.containerNo = normalizeNo(o.containerNo);
-    if (!MODES[o.mode]) { const d = detect(o.containerNo)[0]; o.mode = d ? d.mode : 'sea'; }
+    o.mode = defaultMode(o.mode);
+    if (!MODES[o.mode]) { const d = detect(o.containerNo)[0]; o.mode = d ? defaultMode(d.mode) : 'sea'; }
     o.stage = STAGE_KEYS[stageIndex(o.stage)];
     return o;
   }).filter((o) => o.containerNo);
 }
 
-export { PORTS, MODES, STAGES, STAGE_KEYS, CARRIERS, AIRLINES, CSV_COLS, stageLabels, normalizeNo, normalizeContainerNo, isValidContainerNo, isValidAwb, isValidYamato, isValidS10, detect, validFor, carrierOf, stageIndex, haversineKm, voyageProgress, estimatePosition, delayDays, daysToEta, alertsFor, severity, migrate, applyUpdate, toCsv, parseCsv };
+export { isDomestic, defaultMode, PORTS, MODES, STAGES, STAGE_KEYS, CARRIERS, AIRLINES, CSV_COLS, stageLabels, normalizeNo, normalizeContainerNo, isValidContainerNo, isValidAwb, isValidYamato, isValidS10, detect, validFor, carrierOf, stageIndex, haversineKm, voyageProgress, estimatePosition, delayDays, daysToEta, alertsFor, severity, migrate, applyUpdate, toCsv, parseCsv };

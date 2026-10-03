@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import * as C from '../lib/core.js';
 import type { Mode, Shipment } from '../lib/core.js';
+import type { Deal } from '../lib/domain.ts';
 
-interface Props { initial: Partial<Shipment> | null; existing: boolean; onSave: (s: Shipment) => void; onClose: () => void }
+interface Props { initial: Partial<Shipment> | null; deals: Deal[]; existing: boolean; onSave: (s: Shipment) => void; onClose: () => void }
 
-export function ShipmentForm({ initial, existing, onSave, onClose }: Props) {
+export function ShipmentForm({ initial, deals, existing, onSave, onClose }: Props) {
   const ref = useRef<HTMLDialogElement>(null);
   const [f, setF] = useState<Partial<Shipment>>(initial ?? {});
   useEffect(() => { setF({ mode: 'sea', stage: 'booked', ...initial }); }, [initial]);
@@ -47,9 +48,9 @@ export function ShipmentForm({ initial, existing, onSave, onClose }: Props) {
             <input className="input mono" value={f.containerNo ?? ''} readOnly={existing} required autoFocus
               onChange={(e) => {
                 const v = e.target.value; const d = C.detect(v)[0];
-                setF((cur) => ({ ...cur, containerNo: v, ...(d && !existing ? { mode: d.mode, carrier: d.mode === 'sea' || d.mode === 'air' ? cur.carrier : d.carrier } : {}) }));
+                setF((cur) => ({ ...cur, containerNo: v, ...(d && !existing ? { mode: C.defaultMode(d.mode), carrier: d.mode === 'sea' || d.mode === 'air' ? cur.carrier : d.carrier } : {}) }));
               }} />
-            {valid === true && <span className="hint good">番号の形式を確認しました{cand ? `（${C.MODES[cand.mode].name}${cand.carrier ? '・' + cand.carrier : ''}）` : ''}</span>}
+            {valid === true && <span className="hint good">番号の形式を確認しました{cand ? `（${C.MODES[C.defaultMode(cand.mode)].name}${cand.carrier ? '・' + cand.carrier : ''}）` : ''}</span>}
             {valid === false && <span className="hint bad">この輸送手段の番号形式（検査数字）と一致しません。入力ミスがないか確認してください。</span>}
           </label>
           <label className="field">輸送手段
@@ -68,6 +69,12 @@ export function ShipmentForm({ initial, existing, onSave, onClose }: Props) {
           {P({ k: 'pol', label: '出発港・空港' })}{P({ k: 'pod', label: '到着港・空港' })}
           {T({ k: 'etd', label: 'ETD（出発予定）', type: 'date' })}{T({ k: 'eta', label: 'ETA（到着・配達予定）', type: 'date' })}
           {T({ k: 'freeTimeEnd', label: 'フリータイム終了日', type: 'date' })}<div />
+          <label className="field full">取引（任意）
+            <select className="select" value={f.dealId ?? ''} onChange={set('dealId')}>
+              <option value="">紐付けない</option>
+              {deals.map((d) => <option key={d.id} value={d.id}>{d.id}　{d.partner}　{d.title}</option>)}
+            </select>
+          </label>
           {T({ k: 'lot', label: 'ロット番号' })}{T({ k: 'producer', label: '生産者' })}
           {T({ k: 'buyer', label: '取引先' })}<div />
           {T({ k: 'note', label: '備考', full: true })}

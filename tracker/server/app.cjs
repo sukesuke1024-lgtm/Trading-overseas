@@ -10,9 +10,9 @@ const path = require('path');
 const crypto = require('crypto');
 const { URL } = require('url');
 
-const MODES = new Set(['sea', 'air', 'domestic', 'intl']);
+const MODES = new Set(['sea', 'air', 'hokkaido', 'mainland', 'intl']);
 const STAGES = ['booked', 'picked_up', 'departed', 'in_transit', 'arrived', 'customs', 'delivered'];
-const STR_FIELDS = ['bookingNo', 'blNo', 'carrier', 'vessel', 'voyage', 'pol', 'pod', 'etd', 'eta', 'freeTimeEnd', 'lot', 'producer', 'buyer', 'note', 'exceptionNote', 'lastEventAt', 'checkedAt'];
+const STR_FIELDS = ['dealId', 'bookingNo', 'blNo', 'carrier', 'vessel', 'voyage', 'pol', 'pod', 'etd', 'eta', 'freeTimeEnd', 'lot', 'producer', 'buyer', 'note', 'exceptionNote', 'lastEventAt', 'checkedAt'];
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.ico': 'image/x-icon', '.json': 'application/json; charset=utf-8', '.woff2': 'font/woff2' };
 
 const IDLE_MS = 2 * 3600e3;
@@ -78,8 +78,9 @@ function totpVerify(secretB32, code, lastStep, now) {
 function cleanShipment(s) {
   if (!s || typeof s !== 'object') return null;
   const no = String(s.containerNo || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
-  if (!/^[A-Z0-9]{5,40}$/.test(no) || !MODES.has(s.mode)) return null;
-  const o = { mode: s.mode, containerNo: no, stage: STAGES.includes(s.stage) ? s.stage : 'booked' };
+  const mode = s.mode === 'domestic' ? 'hokkaido' : s.mode; // 旧データ: 国内→道内
+  if (!/^[A-Z0-9]{5,40}$/.test(no) || !MODES.has(mode)) return null;
+  const o = { mode, containerNo: no, stage: STAGES.includes(s.stage) ? s.stage : 'booked' };
   for (const k of STR_FIELDS) if (typeof s[k] === 'string' && s[k].length <= 500) o[k] = s[k];
   if (typeof s.exception === 'boolean') o.exception = s.exception;
   if (s.position && Number.isFinite(s.position.lat) && Number.isFinite(s.position.lon)) o.position = { lat: s.position.lat, lon: s.position.lon };
@@ -89,6 +90,54 @@ function cleanShipment(s) {
   }
   return o;
 }
+
+// ---- 取引・緊急連絡先・問題報告（共通の保存・検証） ----
+const str = (v, max) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
+const oneOf = (v, list, d) => (list.includes(v) ? v : d);
+const DEAL_STATUS = ['negotiating', 'ordered', 'shipped', 'delivered', 'paid', 'cancelled'];
+const CONTACT_CAT = ['internal', 'carrier', 'forwarder', 'customs', 'insurance', 'other'];
+const INC_TYPE = ['delay', 'damage', 'temperature', 'customs', 'lost', 'other'];
+const INC_SEV = ['urgent', 'high', 'normal'];
+
+function cleanDeal(d) {
+  if (!d || typeof d !== 'object') return null;
+  const title = str(d.title, 100), partner = str(d.partner, 100);
+  if (!title || !partner) return null;
+  const amount = d.amount === '' || d.amount == null ? null : Number(d.amount);
+  if (amount !== null && (!Number.isFinite(amount) || amount < 0 || amount > 1e13)) return null;
+  return {
+    title, partner, partnerCountry: str(d.partnerCountry, 60), contactPerson: str(d.contactPerson, 60), product: str(d.product, 100),
+    quantity: str(d.quantity, 60), amount, currency: str(d.currency, 3).toUpperCase() || 'JPY', terms: str(d.terms, 20),
+    status: oneOf(d.status, DEAL_STATUS, 'negotiating'), owner: str(d.owner, 50), dueDate: str(d.dueDate, 10), lot: str(d.lot, 60), note: str(d.note, 500),
+  };
+}
+function cleanContact(c) {
+  if (!c || typeof c !== 'object') return null;
+  const name = str(c.name, 100);
+  if (!name) return null;
+  const phone = str(c.phone, 40);
+  if (phone && !/^[0-9+\-() #*]{3,40}$/.test(phone)) return null;
+  return {
+    name, category: oneOf(c.category, CONTACT_CAT, 'other'), person: str(c.person, 60), phone, email: str(c.email, 100),
+    hours: str(c.hours, 60), always: c.always === true, modes: Array.isArray(c.modes) ? c.modes.filter((m) => MODES.has(m)) : [], note: str(c.note, 300),
+  };
+}
+function cleanIncident(i) {
+  if (!i || typeof i !== 'object') return null;
+  const title = str(i.title, 100);
+  if (!title) return null;
+  return {
+    title, type: oneOf(i.type, INC_TYPE, 'other'), severity: oneOf(i.severity, INC_SEV, 'normal'), detail: str(i.detail, 1000),
+    shipmentNo: str(i.shipmentNo, 40).toUpperCase().replace(/[^A-Z0-9]/g, ''), dealId: str(i.dealId, 20),
+    status: i.status === 'resolved' ? 'resolved' : 'open', resolution: str(i.resolution, 1000),
+  };
+}
+// write: 書き込める権限 / del: 削除できる権限
+const COLLECTIONS = {
+  deals: { file: 'deals.json', prefix: 'D', clean: cleanDeal, write: 'staff', del: 'admin', label: 'deal' },
+  contacts: { file: 'contacts.json', prefix: 'C', clean: cleanContact, write: 'admin', del: 'admin', label: 'contact' },
+  incidents: { file: 'incidents.json', prefix: 'I', clean: cleanIncident, write: 'staff', del: 'admin', label: 'incident' },
+};
 
 function createApp(opts) {
   const dataDir = opts.dataDir;
@@ -108,6 +157,10 @@ function createApp(opts) {
 
   let users = readJson(F.users, null);
   let shipments = readJson(F.ships, []);
+  const data = {};
+  for (const [name, c] of Object.entries(COLLECTIONS)) data[name] = readJson(path.join(dataDir, c.file), []);
+  const saveColl = (name) => writeJson(path.join(dataDir, COLLECTIONS[name].file), data[name]);
+  const nextId = (name) => { const c = COLLECTIONS[name]; const max = data[name].reduce((m, x) => Math.max(m, Number(String(x.id).split('-')[1]) || 0), 0); return `${c.prefix}-${String(max + 1).padStart(4, '0')}`; };
   let initialAdmin = null;
   if (!users) {
     const id = opts.adminId || 'admin';
@@ -325,6 +378,49 @@ function createApp(opts) {
       try { return send(res, 200, await fn(no)); } catch (e) { return send(res, 502, { error: String((e && e.message) || e) }); }
     }
 
+    // ---- 取引・緊急連絡先・問題報告 ----
+    const cm = p.match(/^\/api\/c\/(deals|contacts|incidents)(?:\/([A-Z]-[0-9]{4,}))?$/);
+    if (cm) {
+      const name = cm[1], id = cm[2], conf = COLLECTIONS[name], list = data[name];
+      const can = (need) => need === 'staff' || admin;
+      if (!id && method === 'GET') return send(res, 200, { items: list });
+      if (!id && method === 'POST') {
+        if (!can(conf.write)) return send(res, 403, { error: '管理者のみ実行できます' });
+        const b = await readBody(req, 1e5);
+        const item = b.item || {};
+        const clean = conf.clean(item);
+        if (!clean) return send(res, 400, { error: '入力内容が正しくありません（必須項目・形式を確認してください）' });
+        const now = new Date().toISOString();
+        const i = item.id ? list.findIndex((x) => x.id === item.id) : -1;
+        if (item.id && i < 0) return send(res, 404, { error: '見つかりません' });
+        let rec;
+        if (i < 0) {
+          rec = { id: nextId(name), ...clean, createdBy: me.id, createdAt: now, updatedBy: me.id, updatedAt: now };
+          if (name === 'incidents' && rec.status === 'resolved') Object.assign(rec, { resolvedBy: me.id, resolvedAt: now });
+          list.unshift(rec); audit(me.id, `${conf.label}_create`, rec.id, name === 'incidents' ? rec.severity : clean.title);
+        } else {
+          const old = list[i];
+          rec = { ...old, ...clean, updatedBy: me.id, updatedAt: now };
+          if (name === 'incidents') {
+            if (clean.status === 'resolved' && old.status !== 'resolved') Object.assign(rec, { resolvedBy: me.id, resolvedAt: now });
+            if (clean.status === 'open') { delete rec.resolvedBy; delete rec.resolvedAt; }
+          }
+          const changed = Object.keys(clean).filter((k) => JSON.stringify(clean[k]) !== JSON.stringify(old[k]));
+          list[i] = rec;
+          if (changed.length) audit(me.id, name === 'incidents' && rec.status === 'resolved' && old.status !== 'resolved' ? 'incident_resolve' : `${conf.label}_update`, rec.id, changed.join(','));
+        }
+        saveColl(name);
+        return send(res, 200, { item: rec });
+      }
+      if (id && method === 'DELETE') {
+        if (!can(conf.del)) return send(res, 403, { error: '管理者のみ実行できます' });
+        const i = list.findIndex((x) => x.id === id);
+        if (i < 0) return send(res, 404, { error: '見つかりません' });
+        list.splice(i, 1); saveColl(name); audit(me.id, `${conf.label}_delete`, id);
+        return send(res, 200, { ok: true });
+      }
+    }
+
     // ---- 管理者: ユーザー・監査ログ ----
     if (p === '/api/users' && method === 'GET') { if (!needAdmin()) return; return send(res, 200, { users: users.map(pub) }); }
     if (p === '/api/users' && method === 'POST') {
@@ -402,4 +498,4 @@ function createApp(opts) {
   return { handler, initialAdmin, server: () => http.createServer(handler) };
 }
 
-module.exports = { createApp, pwProblem, cleanShipment, hotp, b32dec, b32enc, totpVerify };
+module.exports = { createApp, pwProblem, cleanShipment, cleanDeal, cleanContact, cleanIncident, hotp, b32dec, b32enc, totpVerify };

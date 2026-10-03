@@ -10,7 +10,7 @@ const { createApp, hotp, b32dec } = createRequire(import.meta.url)('../server/ap
 
 async function boot(extra: Record<string, unknown> = {}) {
   const dir = mkdtempSync(join(tmpdir(), 'trk-'));
-  const app = createApp({ dataDir: dir, distDir: dir, adminId: 'admin', adminPassword: 'Init-Pass-1234', require2fa: false, ...extra, providers: { domestic: async (no: string) => ({ stage: 'in_transit', eta: '2026-10-05', echo: no }) } });
+  const app = createApp({ dataDir: dir, distDir: dir, adminId: 'admin', adminPassword: 'Init-Pass-1234', require2fa: false, ...extra, providers: { hokkaido: async (no: string) => ({ stage: 'in_transit', eta: '2026-10-05', echo: no }) } });
   const server = app.server();
   await new Promise<void>((r) => server.listen(0, '127.0.0.1', r));
   const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
@@ -40,7 +40,7 @@ test('未ログインはAPIを使えない／ログイン前の保護', async ()
   const t = await boot(); const c = t.client();
   assert.equal((await c('GET', '/api/me')).status, 401);
   assert.equal((await c('GET', '/api/shipments')).status, 401);
-  assert.equal((await c('GET', '/api/track?mode=domestic&no=123456789012')).status, 401);
+  assert.equal((await c('GET', '/api/track?mode=hokkaido&no=123456789012')).status, 401);
   t.close();
 });
 
@@ -140,10 +140,10 @@ test('ユーザー管理: 無効化で即ログアウト、最後の管理者は
 
 test('追跡中継は認証後のみ。入力は検証される', async () => {
   const t = await boot(); const a = await loginAdmin(t);
-  const r = await a('GET', '/api/track?mode=domestic&no=100000000004');
+  const r = await a('GET', '/api/track?mode=hokkaido&no=100000000004');
   assert.equal(r.status, 200); assert.equal(r.json.stage, 'in_transit');
   assert.equal((await a('GET', '/api/track?mode=sea&no=CSQU3054383')).status, 501);
-  assert.equal((await a('GET', '/api/track?mode=domestic&no=')).status, 400);
+  assert.equal((await a('GET', '/api/track?mode=hokkaido&no=')).status, 400);
   t.close();
 });
 
@@ -226,5 +226,52 @@ test('管理者による2FA解除: 再登録が必須になり、ログイン中
   assert.equal((await again('POST', '/api/login', { id: 'u03', password: 'Staff-Pass-2026' })).json.user.needTotp, true);
   const list = (await a('GET', '/api/users')).json.users;
   assert.equal(JSON.stringify(list).includes(s2), false); // 秘密鍵はAPIで返さない
+  t.close();
+});
+
+test('取引・緊急連絡先・問題報告: 登録・更新・検証・権限・履歴', async () => {
+  const t = await boot(); const a = await loginAdmin(t);
+  // 取引
+  assert.equal((await a('POST', '/api/c/deals', { item: { title: '', partner: 'X' } })).status, 400);
+  assert.equal((await a('POST', '/api/c/deals', { item: { title: 'A', partner: 'B', amount: -5 } })).status, 400);
+  const d1 = await a('POST', '/api/c/deals', { item: { title: 'ホタテ 1コンテナ', partner: 'Sample Pte', amount: '1200000', currency: 'usd', status: 'ordered', evil: 1 } });
+  assert.equal(d1.status, 200); assert.equal(d1.json.item.id, 'D-0001'); assert.equal(d1.json.item.currency, 'USD'); assert.equal('evil' in d1.json.item, false);
+  const upd = await a('POST', '/api/c/deals', { item: { id: 'D-0001', title: 'ホタテ 1コンテナ', partner: 'Sample Pte', status: 'shipped' } });
+  assert.equal(upd.json.item.status, 'shipped'); assert.equal(upd.json.item.createdBy, 'admin');
+  assert.equal((await a('POST', '/api/c/deals', { item: { id: 'D-9999', title: 'x', partner: 'y' } })).status, 404);
+  assert.equal((await a('POST', '/api/c/deals', { item: { title: 'B', partner: 'C' } })).json.item.id, 'D-0002');
+
+  // 一般ユーザー: 取引・問題は書ける、緊急連絡先は書けない、削除はできない
+  const made = await a('POST', '/api/users', { id: 'u05', name: '高橋' });
+  const s = t.client();
+  await s('POST', '/api/login', { id: 'u05', password: made.json.tempPassword });
+  await s('POST', '/api/password', { current: made.json.tempPassword, next: 'Staff-Pass-2026' });
+  assert.equal((await s('POST', '/api/c/deals', { item: { title: 'C', partner: 'D' } })).status, 200);
+  assert.equal((await s('DELETE', '/api/c/deals/D-0001')).status, 403);
+  assert.equal((await s('POST', '/api/c/contacts', { item: { name: '運送会社', phone: '011-000-0000' } })).status, 403);
+  assert.equal((await a('POST', '/api/c/contacts', { item: { name: 'ヤマト運輸 法人窓口', category: 'carrier', phone: 'tel:011' } })).status, 400);
+  const ct = await a('POST', '/api/c/contacts', { item: { name: 'ヤマト運輸 法人窓口', category: 'carrier', phone: '0120-123-456', always: true, modes: ['hokkaido', 'mainland', 'bogus'] } });
+  assert.equal(ct.status, 200); assert.deepEqual(ct.json.item.modes, ['hokkaido', 'mainland']);
+  assert.equal((await s('GET', '/api/c/contacts')).json.items.length, 1); // 一般も閲覧は可能
+
+  // 問題報告 → 解決
+  assert.equal((await s('POST', '/api/c/incidents', { item: { title: '' } })).status, 400);
+  const inc = await s('POST', '/api/c/incidents', { item: { title: '温度異常', type: 'temperature', severity: 'urgent', shipmentNo: 'csqu 305438-3', detail: '-10℃' } });
+  assert.equal(inc.status, 200); assert.equal(inc.json.item.shipmentNo, 'CSQU3054383'); assert.equal(inc.json.item.status, 'open');
+  const solved = await s('POST', '/api/c/incidents', { item: { ...inc.json.item, status: 'resolved', resolution: '冷凍機を交換' } });
+  assert.equal(solved.json.item.status, 'resolved'); assert.equal(solved.json.item.resolvedBy, 'u05');
+  assert.equal((await a('DELETE', `/api/c/incidents/${inc.json.item.id}`)).status, 200);
+  assert.equal((await a('DELETE', '/api/c/deals/D-0001')).status, 200);
+  const log = (await a('GET', '/api/audit?limit=100')).json.entries.map((e: any) => e.action);
+  for (const k of ['deal_create', 'deal_update', 'deal_delete', 'contact_create', 'incident_create', 'incident_resolve', 'incident_delete']) assert.ok(log.includes(k), k);
+  t.close();
+});
+
+test('国内宅配は道内/道外。旧データ(domestic)は道内として受け付ける', async () => {
+  const t = await boot(); const a = await loginAdmin(t);
+  const r1 = await a('POST', '/api/shipments', { shipment: { mode: 'mainland', containerNo: '100000000004', stage: 'booked' } });
+  assert.equal(r1.json.shipment.mode, 'mainland');
+  const r2 = await a('POST', '/api/shipments', { shipment: { mode: 'domestic', containerNo: '123456789012', stage: 'booked', dealId: 'D-0001' } });
+  assert.equal(r2.json.shipment.mode, 'hokkaido'); assert.equal(r2.json.shipment.dealId, 'D-0001');
   t.close();
 });

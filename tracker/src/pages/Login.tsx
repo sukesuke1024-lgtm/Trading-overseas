@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { Eye, EyeOff, LogIn } from 'lucide-react';
 import { DEMO, useAuth } from '../lib/auth.tsx';
+import lockup from '../assets/brand-lockup.png';
+import { Streaks } from '../components/Brand.tsx';
 
 export function Login({ notice, demo }: { notice?: string; demo?: boolean }) {
   const { login, loginTotp } = useAuth();
@@ -15,12 +17,11 @@ export function Login({ notice, demo }: { notice?: string; demo?: boolean }) {
   return (
     <div className="login">
       <aside className="login-brand">
-        <div className="brand big"><i>H</i><div>H-LINK 荷物追跡</div></div>
-        <p>海上コンテナ・航空貨物・宅配を、1つの画面で。</p>
+        <Streaks />
+        <img className="lockup" src={lockup} alt="H-LINK　つなぐ、越える、食の可能性をひらく。" />
         <ul>
-          <li>番号を貼るだけで輸送手段を自動判別</li>
-          <li>毎朝見るのは「要対応」だけ</li>
-          <li>変更はすべて履歴に残ります</li>
+          <li>海上・航空・宅配を、1つの画面で追跡</li>
+          <li>問題はすぐ報告・緊急連絡</li>
         </ul>
       </aside>
       <main className="login-main">
