@@ -19,3 +19,9 @@ cd buyer && python3 -m http.server 8000   # http://localhost:8000
 
 - データは localStorage に保存（サイドバー下の「デモデータを初期化」で復元）。
 - 商品写真は一部のみ。`app.js` の `PRODUCTS` の `img` に画像パスを入れると差し替えできます。
+
+## 公開URL・QR・マニュアル
+
+- URL: https://sukesuke1024-lgtm.github.io/Trading-overseas/buyer/ （`main` へのマージで `.github/workflows/lp.yml` が `/buyer/` として公開）
+- QR: `assets/qr.svg` / `assets/qr.png`
+- マニュアル: `guide.html`（アプリ左メニュー「使い方ガイド」。URL・QR入り、印刷可）／ PDF: `docs/H-LINK_buyer-portal_manual.pdf`
