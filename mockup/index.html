@@ -108,7 +108,7 @@ button{cursor:pointer}
 /* ---------- scene 3: reliability, road ---------- */
 .s3{position:relative;background:var(--paper);padding-block:clamp(80px,10vw,160px)}
 .s3-grid{display:grid;gap:44px}
-@media (min-width:1000px){.s3-grid{grid-template-columns:1.2fr 230px 1fr;gap:clamp(30px,5vw,80px);min-height:90vh}}
+@media (min-width:1000px){.s3-grid{grid-template-columns:1.1fr 1fr;gap:clamp(30px,5vw,80px);min-height:90vh}}
 .s3-l{display:flex;flex-direction:column;justify-content:space-between;gap:48px}
 .s3-l p{max-width:26em;color:var(--mute);font-size:15px}
 .road{display:none;position:relative;background:#050506;overflow:hidden;border-radius:2px}
@@ -205,6 +205,26 @@ button{cursor:pointer}
   .air-sticky::after{background:linear-gradient(90deg,rgba(0,0,0,.55),transparent 55%)}
 }
 
+
+/* ---------- the ascent ---------- */
+.asc{position:relative;height:100dvh;min-height:520px;overflow:hidden;color:#fff;background:linear-gradient(180deg,#05132B 0%,#0A3A85 55%,#F29B4E 100%)}
+.asc canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+.shipL{position:absolute;left:50%;top:50%;height:60vh;translate:-50% -50%;will-change:transform,opacity;filter:drop-shadow(0 26px 30px rgba(0,6,30,.6))}
+.shipL svg{height:100%;width:auto;display:block;transform:rotate(180deg)}
+.shipPhoto{height:100%;width:auto;display:block}
+.shipPhoto + svg{display:none}
+.airV{position:absolute;top:0;left:50%;height:100%;width:auto;aspect-ratio:9/16;translate:-50% 0;object-fit:cover;opacity:0;pointer-events:none;will-change:transform,opacity;-webkit-mask-image:linear-gradient(90deg,transparent,#000 36%,#000 64%,transparent),linear-gradient(180deg,transparent,#000 12%,#000 88%,transparent);-webkit-mask-composite:source-in;mask-image:linear-gradient(90deg,transparent,#000 36%,#000 64%,transparent),linear-gradient(180deg,transparent,#000 12%,#000 88%,transparent);mask-composite:intersect}
+.cap{position:absolute;left:var(--gut);right:var(--gut);bottom:11vh;display:grid;gap:10px;justify-items:start;opacity:0;pointer-events:none;will-change:transform,opacity}
+.cap .en{text-shadow:0 6px 60px rgba(2,10,40,.55)}
+.cap .jp-h{margin-top:0;text-shadow:0 4px 40px rgba(2,10,40,.6)}
+.capB{bottom:auto;top:50%;translate:0 -50%;justify-items:center;text-align:center}
+.asc::after{content:"";position:absolute;inset:0;background:linear-gradient(0deg,rgba(2,6,20,.72),rgba(2,6,20,.25) 42%,transparent 62%);opacity:var(--vig,0);pointer-events:none}
+.cap{z-index:2}
+.cap-p{color:#EDEFF8;max-width:28em;margin-bottom:6px;text-shadow:0 2px 30px rgba(2,10,40,.7)}
+.capC.on{pointer-events:auto}
+.asc.static .cap{opacity:0}.asc.static .capC{opacity:1;pointer-events:auto}
+.asc.static .airV{opacity:1}.asc.static .shipL{display:none}
+
 /* ---------- scene 5: contact ---------- */
 .s5{position:relative;background:var(--paper);padding-block:clamp(90px,11vw,180px);overflow:hidden}
 .s5-grid{position:relative;display:grid;gap:48px}
@@ -275,143 +295,8 @@ button{cursor:pointer}
     <h1 id="h1" class="reveal" style="animation-delay:.25s">From Hokkaido<br>to the <span class="b">world.</span></h1>
     <p class="jp reveal" style="animation-delay:.4s">北海道の食を、世界の食卓へ。</p>
     <p class="lead reveal" style="animation-delay:.55s">生産者・メーカーと海外バイヤーを、輸出の実務までつなぐ会社です。ご相談は無料です。</p>
-    <div class="s0-cta reveal" style="animation-delay:.7s"><a class="btn-w" href="#contact">無料で相談する</a><a class="btn-o" href="#s1"><span>事業を見る</span></a></div>
+    <div class="s0-cta reveal" style="animation-delay:.7s"><a class="btn-w" href="#contact">無料で相談する</a><a class="btn-o" href="#services"><span>事業を見る</span></a></div>
   </div>
-</section>
-
-<!-- ===== scene 1 ===== -->
-<section class="s1" id="s1" aria-labelledby="h1b">
-  <div class="ghostword" aria-hidden="true">HOKKAIDO</div>
-  <div class="s1-t">
-    <h2 class="sh" id="h1b">産地で積んで、<br>世界へ運ぶ。</h2>
-    <p class="sub">荷役から出荷まで、窓口はひとつ。</p>
-  </div>
-  <div class="speed" id="speed" aria-hidden="true">00 KM/H</div>
-
-  <svg class="stage" id="stage" viewBox="0 0 1600 760" preserveAspectRatio="xMidYMax meet" role="img" aria-label="クレーンがコンテナをトラックに積み込み、トラックが走り出すイラスト">
-    <defs>
-      <linearGradient id="gSteel" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6B7078"/><stop offset=".4" stop-color="#43474E"/><stop offset="1" stop-color="#26292E"/></linearGradient>
-      <linearGradient id="gSteelV" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#2B2E33"/><stop offset=".35" stop-color="#6A6F77"/><stop offset=".6" stop-color="#4A4E55"/><stop offset="1" stop-color="#23262A"/></linearGradient>
-      <linearGradient id="gGround" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#26272B"/><stop offset=".28" stop-color="#101113"/><stop offset="1" stop-color="#000"/></linearGradient>
-      <linearGradient id="gBox" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".26"/><stop offset=".1" stop-color="#fff" stop-opacity=".06"/><stop offset=".75" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".38"/></linearGradient>
-      <linearGradient id="gCab" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#34373D"/><stop offset=".3" stop-color="#1D1F23"/><stop offset="1" stop-color="#0E0F11"/></linearGradient>
-      <linearGradient id="gGlass" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#8FA4B8"/><stop offset=".45" stop-color="#2B3744"/><stop offset="1" stop-color="#121820"/></linearGradient>
-      <linearGradient id="gTank" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#E8EAEC"/><stop offset=".5" stop-color="#9DA2A8"/><stop offset="1" stop-color="#52565B"/></linearGradient>
-      <radialGradient id="gRim" cx=".38" cy=".34" r=".8"><stop offset="0" stop-color="#F2F3F4"/><stop offset=".6" stop-color="#9CA1A7"/><stop offset="1" stop-color="#555A60"/></radialGradient>
-      <radialGradient id="gBeam" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#FFF6D0" stop-opacity=".55"/><stop offset="1" stop-color="#FFF6D0" stop-opacity="0"/></radialGradient>
-      <pattern id="corr" width="10" height="108" patternUnits="userSpaceOnUse"><rect x="0" width="3.2" height="108" fill="rgba(255,255,255,.17)"/><rect x="5" width="5" height="108" fill="rgba(0,0,0,.21)"/></pattern>
-      <pattern id="haz" width="22" height="14" patternUnits="userSpaceOnUse" patternTransform="skewX(-35)"><rect width="22" height="14" fill="#F2C318"/><rect width="11" height="14" fill="#161616"/></pattern>
-      <pattern id="truss" width="30" height="30" patternUnits="userSpaceOnUse"><path d="M0 0L30 30M30 0L0 30" stroke="rgba(0,0,0,.45)" stroke-width="3"/><path d="M0 15H30" stroke="rgba(255,255,255,.1)" stroke-width="2"/></pattern>
-      <filter id="blur8" x="-20%" y="-50%" width="140%" height="200%"><feGaussianBlur stdDeviation="8"/></filter>
-      <symbol id="cont" viewBox="0 0 260 108">
-        <rect width="260" height="108" fill="currentColor"/>
-        <rect width="260" height="108" fill="url(#corr)"/>
-        <rect width="260" height="108" fill="url(#gBox)"/>
-        <rect y="0" width="260" height="7" fill="rgba(0,0,0,.3)"/><rect y="101" width="260" height="7" fill="rgba(0,0,0,.4)"/>
-        <rect y="7" width="260" height="1.5" fill="rgba(255,255,255,.3)"/>
-        <rect x="0" width="11" height="108" fill="rgba(0,0,0,.28)"/><rect x="249" width="11" height="108" fill="rgba(0,0,0,.28)"/>
-        <rect x="11" width="1.5" height="108" fill="rgba(255,255,255,.18)"/>
-        <g fill="#232427"><rect width="16" height="12" rx="2"/><rect x="244" width="16" height="12" rx="2"/><rect y="96" width="16" height="12" rx="2"/><rect x="244" y="96" width="16" height="12" rx="2"/></g>
-        <g fill="rgba(255,255,255,.35)"><circle cx="8" cy="6" r="2"/><circle cx="252" cy="6" r="2"/><circle cx="8" cy="102" r="2"/><circle cx="252" cy="102" r="2"/></g>
-      </symbol>
-      <symbol id="wheel" viewBox="-36 -36 72 72">
-        <circle r="34" fill="#0B0B0C"/><circle r="34" fill="none" stroke="#1E1F21" stroke-width="3"/>
-        <circle r="28" fill="#161719"/><path d="M-26 -10A28 28 0 0 1 4 -28" stroke="rgba(255,255,255,.16)" stroke-width="3" fill="none" stroke-linecap="round"/>
-        <circle r="17" fill="url(#gRim)"/><circle r="17" fill="none" stroke="#3B3E43" stroke-width="2"/>
-        <circle r="8" fill="#3C4045"/><circle r="3.5" fill="#B9BDC2"/>
-        <g fill="#2F3338"><circle cx="12" cy="0" r="1.8"/><circle cx="8.5" cy="8.5" r="1.8"/><circle cx="0" cy="12" r="1.8"/><circle cx="-8.5" cy="8.5" r="1.8"/><circle cx="-12" cy="0" r="1.8"/><circle cx="-8.5" cy="-8.5" r="1.8"/><circle cx="0" cy="-12" r="1.8"/><circle cx="8.5" cy="-8.5" r="1.8"/></g>
-      </symbol>
-    </defs>
-
-    <!-- ground -->
-    <rect x="-300" y="620" width="2200" height="160" fill="url(#gGround)"/>
-    <rect x="-300" y="619" width="2200" height="2" fill="#4A4C52"/>
-    <rect x="-300" y="640" width="2200" height="1" fill="rgba(255,255,255,.07)"/>
-    <g stroke="rgba(255,255,255,.14)" stroke-width="3"><path d="M0 700H110M200 700H310M400 700H510M600 700H710M800 700H910M1000 700H1110M1200 700H1310M1400 700H1510"/></g>
-
-    <!-- crane: lattice legs, box girder, cabin -->
-    <g id="crane">
-      <rect x="56" y="150" width="40" height="470" fill="url(#gSteelV)"/><rect x="56" y="150" width="40" height="470" fill="url(#truss)"/>
-      <rect x="1296" y="150" width="40" height="470" fill="url(#gSteelV)"/><rect x="1296" y="150" width="40" height="470" fill="url(#truss)"/>
-      <rect x="40" y="126" width="1312" height="40" fill="url(#gSteel)"/>
-      <rect x="40" y="126" width="1312" height="40" fill="url(#truss)" opacity=".35"/>
-      <rect x="40" y="126" width="1312" height="3" fill="rgba(255,255,255,.35)"/>
-      <rect x="40" y="166" width="1312" height="7" fill="url(#haz)"/>
-      <rect x="150" y="104" width="120" height="24" rx="3" fill="url(#gSteel)"/><rect x="156" y="110" width="40" height="12" rx="2" fill="url(#gGlass)"/>
-      <g id="bogieL"><rect x="38" y="584" width="76" height="36" rx="4" fill="#17181B"/><use href="#wheel" x="52" y="604" width="28" height="28" transform="translate(-14 -14)"/><use href="#wheel" x="98" y="604" width="28" height="28" transform="translate(-14 -14)"/></g>
-      <g id="bogieR"><rect x="1278" y="584" width="76" height="36" rx="4" fill="#17181B"/><use href="#wheel" x="1292" y="604" width="28" height="28" transform="translate(-14 -14)"/><use href="#wheel" x="1338" y="604" width="28" height="28" transform="translate(-14 -14)"/></g>
-    </g>
-
-    <!-- stack (blue + red below, grey above) -->
-    <use href="#cont" x="150" y="512" width="260" height="108" style="color:#1C3F96"/>
-    <use href="#cont" x="430" y="512" width="260" height="108" style="color:#D8381F"/>
-    <use href="#cont" x="150" y="404" width="260" height="108" style="color:#E7EAEE"/>
-    <text x="280" y="581" text-anchor="middle" font-family="Georgia,'Times New Roman',serif" font-weight="700" font-size="30" letter-spacing="3" fill="#fff" opacity=".92">H-LINK</text>
-    <text x="560" y="581" text-anchor="middle" font-family="Georgia,'Times New Roman',serif" font-weight="700" font-size="30" letter-spacing="3" fill="#fff" opacity=".92">H-LINK</text>
-
-    <!-- cable, trolley, spreader -->
-    <line id="cab1" x1="170" y1="173" x2="170" y2="230" stroke="#15161A" stroke-width="3.5"/>
-    <line id="cab2" x1="390" y1="173" x2="390" y2="230" stroke="#15161A" stroke-width="3.5"/>
-    <g id="trolley"><rect x="186" y="170" width="148" height="30" rx="4" fill="url(#gSteel)"/><rect x="186" y="170" width="148" height="3" fill="rgba(255,255,255,.3)"/><use href="#wheel" x="210" y="202" width="22" height="22" transform="translate(-11 -11)"/><use href="#wheel" x="310" y="202" width="22" height="22" transform="translate(-11 -11)"/><circle cx="260" cy="186" r="9" fill="#101113"/><circle cx="260" cy="186" r="4" fill="#F2C318"/></g>
-    <g id="spr">
-      <rect x="146" y="226" width="268" height="20" rx="3" fill="url(#gSteel)"/><rect x="146" y="226" width="268" height="3" fill="rgba(255,255,255,.3)"/>
-      <rect x="146" y="238" width="268" height="8" fill="url(#haz)"/>
-      <path d="M146 246L162 262H178L190 246Z M414 246L398 262H382L370 246Z" fill="#17181B"/>
-    </g>
-
-    <!-- cargo: the box that is lifted -->
-    <g id="cargo">
-      <use href="#cont" x="150" y="296" width="260" height="108" style="color:#C9CDD2"/>
-      <text x="280" y="364" text-anchor="middle" font-family="Georgia,'Times New Roman',serif" font-weight="700" font-size="32" letter-spacing="3"><tspan fill="#E4002B">H</tspan><tspan fill="#16181C">-LINK</tspan></text>
-    </g>
-
-    <!-- truck -->
-    <g id="truck">
-      <ellipse cx="300" cy="626" rx="340" ry="9" fill="#000" opacity=".55" filter="url(#blur8)"/>
-      <!-- trailer frame -->
-      <rect x="-4" y="550" width="438" height="15" fill="url(#gSteel)"/>
-      <rect x="-4" y="550" width="438" height="2" fill="rgba(255,255,255,.28)"/>
-      <g fill="#1A1B1E"><rect x="30" y="565" width="10" height="12"/><rect x="110" y="565" width="10" height="12"/><rect x="190" y="565" width="10" height="12"/><rect x="270" y="565" width="10" height="12"/><rect x="350" y="565" width="10" height="12"/></g>
-      <rect x="4" y="577" width="320" height="5" fill="#222327"/>
-      <g fill="#262729"><rect x="18" y="542" width="14" height="8"/><rect x="270" y="542" width="14" height="8"/></g>
-      <rect x="-10" y="546" width="9" height="30" rx="2" fill="#17181B"/><rect x="-10" y="552" width="9" height="6" fill="#E4311F"/><rect x="-10" y="564" width="9" height="6" fill="#E9E9E6"/>
-      <!-- landing legs -->
-      <rect x="338" y="565" width="9" height="42" fill="#2A2C30"/><rect x="330" y="605" width="25" height="5" fill="#17181B"/>
-      <!-- wheels: trailer axles -->
-      <use href="#wheel" x="58" y="592" width="68" height="68" transform="translate(-34 -34)"/>
-      <use href="#wheel" x="112" y="592" width="68" height="68" transform="translate(-34 -34)"/>
-      <use href="#wheel" x="166" y="592" width="68" height="68" transform="translate(-34 -34)"/>
-      <!-- fifth wheel + tractor frame -->
-      <rect x="424" y="548" width="176" height="16" fill="url(#gSteel)"/>
-      <rect x="418" y="540" width="62" height="10" rx="2" fill="#1B1C1F"/>
-      <path d="M432 546 Q438 520 452 520" stroke="#3A3C40" stroke-width="3" fill="none"/>
-      <!-- exhaust stack -->
-      <rect x="452" y="372" width="9" height="76" rx="3" fill="url(#gTank)"/><rect x="450" y="368" width="13" height="8" rx="3" fill="#3A3D42"/>
-      <!-- cab -->
-      <path d="M448 548 V466 Q448 440 474 438 H540 Q556 438 564 454 L590 506 V548 Z" fill="url(#gCab)"/>
-      <path d="M446 466 Q446 424 478 420 H510 Q524 420 530 432 L536 442 H452 Z" fill="#2A2C31"/>
-      <path d="M446 466 Q446 424 478 420 H510" stroke="rgba(255,255,255,.28)" stroke-width="2" fill="none"/>
-      <path d="M472 452 H520 L554 506 H472 Z" fill="url(#gGlass)"/>
-      <path d="M472 452 H520 L554 506 H472 Z" fill="none" stroke="#0A0B0D" stroke-width="3"/>
-      <path d="M486 456 L506 456 L478 500 L472 500 L472 470 Z" fill="rgba(255,255,255,.14)"/>
-      <path d="M558 458 L584 506" stroke="#0A0B0D" stroke-width="3"/>
-      <path d="M514 452 V546" stroke="rgba(255,255,255,.13)" stroke-width="2"/>
-      <rect x="490" y="512" width="18" height="4" rx="2" fill="#8E9298"/>
-      <rect x="448" y="528" width="142" height="13" fill="#E4311F"/><rect x="448" y="541" width="142" height="2" fill="rgba(255,255,255,.8)"/>
-      <path d="M572 470 L592 470 L592 494 L572 494 Z" fill="none"/>
-      <rect x="574" y="456" width="10" height="40" rx="3" fill="#1A1C20"/><rect x="571" y="452" width="16" height="6" rx="2" fill="#2B2E33"/>
-      <path d="M588 514 H598 V532 H588 Z" fill="#FFF6D8"/><ellipse cx="640" cy="523" rx="70" ry="22" fill="url(#gBeam)" opacity=".55"/>
-      <rect x="586" y="540" width="14" height="10" rx="2" fill="#17181B"/>
-      <!-- fuel tank and steps -->
-      <rect x="468" y="552" width="56" height="30" rx="14" fill="url(#gTank)"/><rect x="474" y="557" width="44" height="3" rx="1.5" fill="rgba(255,255,255,.6)"/>
-      <rect x="528" y="556" width="24" height="5" fill="#1A1B1E"/><rect x="528" y="566" width="24" height="5" fill="#1A1B1E"/>
-      <!-- mudguards + tractor wheels -->
-      <path d="M458 598 A40 40 0 0 1 538 598" stroke="#141517" stroke-width="7" fill="none"/>
-      <path d="M526 598 A40 40 0 0 1 606 598" stroke="#141517" stroke-width="7" fill="none"/>
-      <use href="#wheel" x="498" y="592" width="68" height="68" transform="translate(-34 -34)"/>
-      <use href="#wheel" x="566" y="592" width="68" height="68" transform="translate(-34 -34)"/>
-    </g>
-  </svg>
 </section>
 
 <!-- ===== scene 2 ===== -->
@@ -447,7 +332,6 @@ button{cursor:pointer}
       <p>生産、加工、物流、貿易、そして買い手。つなぎ目で起きる手間と不安を、H-LINKが引き受けます。</p>
       <figure class="wh"><img src="img/warehouse.webp" width="1500" height="844" alt="高い棚にパレットが整然と並ぶ倉庫と、フォークリフト" loading="lazy"></figure>
     </div>
-    <div class="road" id="road" aria-hidden="true"><img src="img/road-truck.webp" width="270" height="480" alt="" loading="lazy"></div>
     <div class="s3-r">
       <div class="feat"><span class="kan" aria-hidden="true">窓</span><h3>One contact<small>窓口を一本化</small></h3><p>複数の生産者・会社への連絡を、H-LINKがまとめます。</p></div>
       <div class="feat"><span class="kan" aria-hidden="true">務</span><h3>Paperwork to port<small>実務までまとめて</small></h3><p>書類、通関、物流の手配まで対応します。</p></div>
@@ -456,12 +340,10 @@ button{cursor:pointer}
   </div>
 </section>
 
-<!-- ===== scene 4 ===== -->
-<section class="s4" id="world" aria-labelledby="s4-h">
-  <div class="waves" aria-hidden="true"></div>
-  <div class="ship-w" id="shipW" aria-hidden="true">
-    <div class="foam l"></div><div class="foam r"></div>
-    <svg viewBox="0 0 300 980" id="ship"><defs>
+<!-- ===== the ascent: sea, sky, plane ===== -->
+<section class="asc" id="world" aria-label="海から空へ、世界の食卓へ">
+  <canvas id="gl" aria-hidden="true"></canvas>
+  <div class="shipL" id="shipL" aria-hidden="true"><img class="shipPhoto" src="img/ship-top.webp" alt="" onerror="this.remove()"><svg viewBox="0 0 300 980" id="ship" focusable="false"><defs>
         <linearGradient id="hullG" x1="0" x2="1"><stop offset="0" stop-color="#0A1226"/><stop offset=".5" stop-color="#1B2A4E"/><stop offset="1" stop-color="#0A1226"/></linearGradient>
         <linearGradient id="deckG" x1="0" x2="1"><stop offset="0" stop-color="#2A3347"/><stop offset=".5" stop-color="#465169"/><stop offset="1" stop-color="#2A3347"/></linearGradient>
         <linearGradient id="houseG" x1="0" x2="1"><stop offset="0" stop-color="#C9D2E3"/><stop offset=".5" stop-color="#FFFFFF"/><stop offset="1" stop-color="#B7C1D6"/></linearGradient>
@@ -484,30 +366,11 @@ button{cursor:pointer}
       <g fill="#7C879D"><rect x="84" y="790" width="34" height="18" rx="3"/><rect x="182" y="790" width="34" height="18" rx="3"/><circle cx="150" cy="850" r="16"/><rect x="138" y="720" width="24" height="16" rx="3"/></g>
       <g fill="#C3CCDD"><circle cx="84" cy="799" r="5"/><circle cx="216" cy="799" r="5"/><circle cx="150" cy="850" r="8"/></g>
       <path d="M150 700 V930" stroke="rgba(255,255,255,.25)" stroke-width="2" stroke-dasharray="6 8"/>
-    </svg>
-  </div>
-  <div class="s4-t"><div class="s4-sticky">
-    <h2 class="en" id="s4-h"><span class="gl" data-text="LOGISTICS THAT&#10;WORKS AS HARD&#10;AS YOU DO.">Logistics that<br>works as hard<br>as you do.</span></h2>
-    <p class="jp-h">世界の食卓まで、止まらず届ける。</p>
-    <div class="callouts" id="callouts">
-      <div class="callout"><h3>産地の顔が見える</h3><p>北海道の生産者とメーカーの商品を、背景まで海外の買い手にお伝えします。</p></div>
-      <div class="callout"><h3>条件に合う提案</h3><p>品目、数量、価格帯に合わせて、候補をご提案します。</p></div>
-      <div class="callout"><h3>出荷まで見届ける</h3><p>書類と物流を整え、出荷までしっかり調整します。</p></div>
-    </div>
-  </div></div>
-</section>
-
-<!-- ===== air ===== -->
-<section class="air" id="air" aria-labelledby="air-h">
-  <div class="air-sticky">
-    <video class="air-v" id="airV" autoplay muted loop playsinline preload="metadata" poster="img/air-poster.jpg" aria-hidden="true"><source src="video/air.mp4" type="video/mp4"></video>
-    <div class="air-in wrap">
-      <h2 class="en" id="air-h"><span class="gl" data-text="BY SEA.&#10;BY AIR.">By sea.<br>By air.</span></h2>
-      <p class="jp-h">海からも、空からも。</p>
-      <p class="air-p">輸送手段は、品目や納期に合わせてご相談ください。</p>
-      <a class="btn-w" href="#contact" data-pick="producer">無料で相談する</a>
-    </div>
-  </div>
+    </svg></div>
+  <video class="airV" id="airV" muted loop playsinline preload="auto" poster="img/air-poster.jpg" aria-hidden="true"><source src="video/air.mp4" type="video/mp4"></video>
+  <div class="cap capA" id="capA"><h2 class="en">By sea.</h2><p class="jp-h">海から、世界へ。</p></div>
+  <div class="cap capB" id="capB"><h2 class="en">Into the sky.</h2><p class="jp-h">そして、空へ。</p></div>
+  <div class="cap capC" id="capC"><h2 class="en">By air.</h2><p class="jp-h">空からも、世界へ。</p><p class="cap-p">輸送手段は、品目や納期に合わせてご相談ください。</p><a class="btn-w" href="#contact" data-pick="producer">無料で相談する</a></div>
 </section>
 
 <!-- ===== scene 5 ===== -->
@@ -632,7 +495,7 @@ if ("IntersectionObserver" in window && !reduce) {
 if ("IntersectionObserver" in window) {
   const nav = $(".nav");
   const nio = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) nav.classList.toggle("dk", e.target.dataset.nav === "1"); }), { rootMargin: "0px 0px -94% 0px" });
-  [["#s0", 1], ["#s1", 0], ["#services", 1], ["#reliability", 0], ["#world", 1], ["#contact", 0], [".air", 1], [".ft", 1]].forEach(([q, v]) => { const el = $(q); el.dataset.nav = v; nio.observe(el); });
+  [["#s0", 1], ["#services", 1], ["#reliability", 0], ["#world", 1], ["#contact", 0], [".ft", 1]].forEach(([q, v]) => { const el = $(q); el.dataset.nav = v; nio.observe(el); });
 }
 /* sticky CTA: after scene 1, hidden over the form */
 if ("IntersectionObserver" in window) {
@@ -641,59 +504,165 @@ if ("IntersectionObserver" in window) {
   new IntersectionObserver((es) => { formIn = es[0].isIntersecting; upd(); }, { threshold: .1 }).observe($("#contact"));
 }
 
-/* ---- the journey ---- */
+/* ---- the ascent: one camera rises from the sea, through the cloud deck, to the plane ---- */
+(() => {
+  const root = $("#world"), cv = $("#gl"), shipL = $("#shipL"), vid = $("#airV");
+  const caps = { a: $("#capA"), b: $("#capB"), c: $("#capC") };
+  const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+  const sm = (a, b, x) => { x = clamp((x - a) / (b - a)); return x * x * (3 - 2 * x); };
+  const SHIP_H = .6, CAM0 = 1, DECK = 4.6;
+  const camAt = (p) => ({ h: CAM0 + 6.4 * sm(.2, .9, p), pitch: 1.2 * Math.sin(Math.PI * sm(.06, .62, p)) });
+
+  /* ---- WebGL: sea, wake, sunset sky, cloud deck ---- */
+  const FS = `precision highp float;
+uniform vec2 u_res; uniform float u_t, u_h, u_pitch, u_fov, u_deck;
+float hash(vec2 p){p=fract(p*vec2(123.34,456.21));p+=dot(p,p+45.32);return fract(p.x*p.y);}
+float noise(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(hash(i),hash(i+vec2(1,0)),f.x),mix(hash(i+vec2(0,1)),hash(i+vec2(1,1)),f.x),f.y);}
+float fbm(vec2 p){float a=.5,s=0.;for(int i=0;i<5;i++){s+=a*noise(p);p=p*2.03+vec2(17.1,9.7);a*=.5;}return s;}
+float fbm3(vec2 p){float a=.5,s=0.;for(int i=0;i<3;i++){s+=a*noise(p);p=p*2.03+vec2(17.1,9.7);a*=.5;}return s;}
+const vec3 SUN=vec3(.62,.09,.78);
+vec3 sky(vec3 rd){
+  float h=clamp(rd.y,0.,1.);
+  vec3 c=mix(vec3(1.,.60,.28),vec3(.62,.64,.86),smoothstep(0.,.16,h));
+  c=mix(c,vec3(.14,.30,.70),smoothstep(.10,.75,h));
+  vec3 sd=normalize(SUN); float s=max(dot(rd,sd),0.);
+  c+=vec3(1.,.66,.30)*pow(s,5.)*.6+vec3(1.,.88,.62)*pow(s,260.)*3.;
+  return c;
+}
+float wake(vec2 p,float t){
+  float z=p.y, x=abs(p.x);
+  float back=-0.62-z, res=0.;
+  if(back>0.){
+    float w=.14+back*.2;
+    float len=smoothstep(8.,0.,back);
+    float turb=fbm3(vec2(p.x*9.,(z+t*1.3)*1.6));
+    float inner=smoothstep(w*.75,0.,x)*(.5+.5*turb);
+    float arms=smoothstep(.075,0.,abs(x-w))*smoothstep(.22,.68,turb+.18);
+    res=(inner*.75+arms*1.1)*len;
+  }
+  float hull=smoothstep(.05,0.,abs(x-.235))*step(abs(z),.8)*.14*fbm3(vec2(p.x*20.,(z+t*1.3)*3.));
+  float bow=smoothstep(.28,0.,length(vec2(p.x*.9,z-.9)))*.85;
+  return clamp(res+hull+bow,0.,1.);
+}
+vec3 sea(vec3 ro,vec3 rd){
+  float t=-ro.y/rd.y; vec3 p=ro+rd*t; vec2 q=p.xz;
+  float e=.03;
+  float h0=fbm(q*2.6+vec2(0.,u_t*.55))+.5*fbm(q*6.-u_t*.4);
+  float hx=fbm((q+vec2(e,0.))*2.6+vec2(0.,u_t*.55))+.5*fbm((q+vec2(e,0.))*6.-u_t*.4);
+  float hz=fbm((q+vec2(0.,e))*2.6+vec2(0.,u_t*.55))+.5*fbm((q+vec2(0.,e))*6.-u_t*.4);
+  vec3 n=normalize(vec3(-(hx-h0)*.55,1.,-(hz-h0)*.55));
+  float fres=pow(1.-max(dot(n,-rd),0.),3.);
+  vec3 deep=mix(vec3(.01,.07,.17),vec3(.02,.20,.34),h0*.9);
+  vec3 refl=sky(reflect(rd,n));
+  vec3 c=mix(deep,refl,clamp(fres*.95+.05,0.,1.));
+  float gl=pow(max(dot(reflect(rd,n),normalize(SUN)),0.),60.);
+  c+=vec3(1.,.72,.42)*gl*.9;
+  float f=wake(q,u_t);
+  float tex=fbm3(q*14.+vec2(0.,u_t*.8));
+  c=mix(c,vec3(.78,.95,1.)*(.75+.35*tex),f*(.55+.45*tex));
+  float fog=1.-exp(-t*.06);
+  return mix(c,vec3(1.,.62,.32)*.9,fog*.9);
+}
+void main(){
+  vec2 uv=(gl_FragCoord.xy-.5*u_res)/(.5*u_res.y);
+  float cp=cos(u_pitch), sp=sin(u_pitch);
+  vec3 f=vec3(0.,-cp,sp), r=vec3(1.,0.,0.), u=vec3(0.,sp,cp);
+  vec3 rd=normalize(f+(r*uv.x+u*uv.y)*u_fov);
+  vec3 ro=vec3(0.,u_h,0.);
+  vec3 col = rd.y<-.0008 ? sea(ro,rd) : sky(rd);
+  float tD=(u_deck-ro.y)/rd.y;
+  if(tD>0.){
+    vec3 p=ro+rd*tD; vec2 c=p.xz*.8+vec2(u_t*.012,u_t*.06);
+    float d=fbm(c)*.62+fbm(c*2.4+vec2(0.,u_t*.03))*.38;
+    float th=smoothstep(.40,.64,d);
+    float lit=smoothstep(.3,.75,fbm(c*1.7+3.));
+    vec3 cc=mix(vec3(.22,.20,.30),vec3(1.,.74,.40),lit);
+    cc=mix(cc,vec3(1.,.93,.80),smoothstep(.62,.9,d)*.7);
+    float fade=exp(-tD*.03);
+    if(ro.y>u_deck) col=mix(col*.3,vec3(.13,.12,.19),smoothstep(.0,.55,u_pitch<.5?1.-u_pitch*1.2:0.));
+    col=mix(col,cc,th*fade);
+  }
+  float mist=exp(-abs(u_h-u_deck)*1.5);
+  col=mix(col,vec3(1.,.88,.70)*(.82+.3*fbm3(uv*3.+u_t*.15)),clamp(mist*.9,0.,.92));
+  col=pow(col,vec3(.95));
+  vec2 vq=gl_FragCoord.xy/u_res; col*=mix(.78,1.,pow(16.*vq.x*vq.y*(1.-vq.x)*(1.-vq.y),.22));
+  gl_FragColor=vec4(col,1.);
+}`;
+  let gl = null, U = {}, ok = false;
+  try {
+    gl = cv.getContext("webgl", { antialias: false, powerPreference: "high-performance" });
+    if (gl) {
+      const mk = (type, src) => { const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s); if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s)); return s; };
+      const pr = gl.createProgram();
+      gl.attachShader(pr, mk(gl.VERTEX_SHADER, "attribute vec2 a;void main(){gl_Position=vec4(a,0.,1.);}"));
+      gl.attachShader(pr, mk(gl.FRAGMENT_SHADER, FS));
+      gl.linkProgram(pr); gl.useProgram(pr);
+      const b = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, b);
+      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+      const a = gl.getAttribLocation(pr, "a"); gl.enableVertexAttribArray(a); gl.vertexAttribPointer(a, 2, gl.FLOAT, false, 0, 0);
+      ["u_res", "u_t", "u_h", "u_pitch", "u_fov", "u_deck"].forEach((n) => (U[n] = gl.getUniformLocation(pr, n)));
+      ok = true;
+    }
+  } catch (e) { ok = false; }
+
+  let W = 0, H = 0;
+  const resize = () => {
+    const sc = Math.min(devicePixelRatio || 1, 1.5) * (innerWidth < 700 ? .55 : .8);
+    W = Math.max(2, Math.round(innerWidth * sc)); H = Math.max(2, Math.round(innerHeight * sc));
+    cv.width = W; cv.height = H; if (ok) gl.viewport(0, 0, W, H);
+    shipL.style.height = (SHIP_H * innerHeight) + "px";
+  };
+  resize(); addEventListener("resize", resize);
+
+  let target = 0, shown = 0, visible = true, t0 = performance.now();
+  const apply = (p) => {
+    const c = camAt(p);
+    const sc = CAM0 / c.h, shipA = 1 - sm(.06, .2, p);
+    shipL.style.opacity = shipA;
+    const tt = performance.now() / 1000;
+    shipL.style.transform = `translateY(${(-p * 120 + Math.sin(tt * 1.3) * 2).toFixed(1)}px) rotate(${(Math.sin(tt * .9) * .35).toFixed(2)}deg) scale(${sc.toFixed(4)})`;
+    shipL.style.visibility = shipA < .01 ? "hidden" : "visible";
+    const va = sm(.74, .9, p);
+    vid.style.opacity = va; vid.style.transform = `scale(${(.9 + .16 * sm(.74, 1, p)).toFixed(4)})`;
+    if (va > .02 && vid.paused) vid.play().catch(() => {}); else if (va <= .02 && !vid.paused) vid.pause();
+    const o = { a: 1 - sm(.1, .2, p), b: sm(.3, .38, p) * (1 - sm(.5, .58, p)), c: sm(.86, .95, p) };
+    caps.a.style.opacity = o.a; caps.a.style.transform = `translateY(${(-sm(.1, .22, p) * 40).toFixed(1)}px)`;
+    caps.b.style.opacity = o.b; caps.b.style.transform = `translateY(${((.5 - sm(.3, .58, p)) * 60).toFixed(1)}px)`;
+    caps.c.style.opacity = o.c; root.style.setProperty("--vig", sm(.82,.95,p).toFixed(3)); caps.c.classList.toggle("on", o.c > .4);
+    return c;
+  };
+  const frame = (now) => {
+    if (visible) {
+      shown += (target - shown) * .09;
+      const c = apply(shown);
+      if (ok) {
+        gl.uniform2f(U.u_res, W, H); gl.uniform1f(U.u_t, (now - t0) / 1000);
+        gl.uniform1f(U.u_h, c.h); gl.uniform1f(U.u_pitch, c.pitch);
+        gl.uniform1f(U.u_fov, 0.8 / SHIP_H / CAM0 * CAM0); gl.uniform1f(U.u_deck, DECK);
+        gl.drawArrays(gl.TRIANGLES, 0, 3);
+      }
+    }
+    requestAnimationFrame(frame);
+  };
+  if ("IntersectionObserver" in window) new IntersectionObserver((es) => { visible = es[0].isIntersecting; }, { rootMargin: "20% 0px" }).observe(root);
+
+  /* the page scrolls the camera; the sea keeps moving on its own */
+  if (window.gsap && window.ScrollTrigger && !reduce) {
+    gsap.registerPlugin(ScrollTrigger);
+    ScrollTrigger.create({ trigger: root, start: "top top", end: () => "+=" + innerHeight * 7, pin: true, scrub: true, anticipatePin: 1, onUpdate: (st) => { target = st.progress; } });
+    requestAnimationFrame(frame);
+  } else {
+    /* no motion: show the final frame, a still plane over the clouds */
+    root.classList.add("static"); target = shown = .95;
+    if (ok) { requestAnimationFrame(frame); setTimeout(() => { visible = false; }, 600); }
+  }
+  window.__asc = { set: (p) => { target = shown = p; } };
+})();
+
+/* ---- scroll motion elsewhere ---- */
 if (window.gsap && window.ScrollTrigger && !reduce) {
   gsap.registerPlugin(ScrollTrigger);
-  const spr = $("#spr"), trolley = $("#trolley"), cargo = $("#cargo"), truck = $("#truck"), c1 = $("#cab1"), c2 = $("#cab2"), speed = $("#speed");
-  const base = { x: 0 };
-  /* cables follow the spreader: lines run from the beam to the top of the spreader */
-  const cables = () => {
-    const x = gsap.getProperty(spr, "x"), y = 230 + gsap.getProperty(spr, "y");
-    c1.setAttribute("x1", 170 + x); c1.setAttribute("x2", 170 + x); c1.setAttribute("y2", y);
-    c2.setAttribute("x1", 390 + x); c2.setAttribute("x2", 390 + x); c2.setAttribute("y2", y);
-  };
-  gsap.set(truck, { x: 700 });
-  const ez = "power2.inOut";
-  const tl = gsap.timeline({
-    defaults: { ease: ez }, onUpdate: cables,
-    scrollTrigger: { trigger: "#s1", start: "top top", end: () => "+=" + innerHeight * 5.2, pin: true, scrub: .7, anticipatePin: 1 }
-  });
-  tl.to(spr, { y: 52, duration: 1.5 })                                   /* spreader down onto the grey box */
-    .to({}, { duration: .3 })
-    .to([spr, cargo], { y: (i) => (i === 0 ? 0 : -52), duration: 1.5 })  /* lift together */
-    .to([spr, trolley, cargo], { x: 570, duration: 2.6 })                  /* traverse to the truck */
-    .to(spr, { y: 196, duration: 1.5 }, ">0.1")
-    .to(cargo, { y: 144, duration: 1.5 }, "<")                             /* set the box on the trailer */
-    .to(spr, { y: 0, duration: 1.1 })
-    .to({}, { duration: .3 })
-    .to(truck, { x: 1800, duration: 3.2, ease: "power2.in" }, ">")
-    .to(cargo, { x: 570 + 1100, duration: 3.2, ease: "power2.in" }, "<")
-    .to({ s: 0 }, { s: 88, duration: 3.2, ease: "power2.in", onUpdate() { speed.textContent = String(Math.round(this.targets()[0].s)).padStart(2, "0") + " KM/H"; } }, "<");
-  /* a stationary beat at the end so the page does not jump the moment the truck leaves */
-  tl.to({}, { duration: .4 });
-
-  /* phones: the camera pans along the action instead of showing the whole yard at thumbnail size */
-  if (matchMedia("(max-width: 700px)").matches) {
-    const svg = $("#stage"), vb = { x: 40 };
-    const set = () => svg.setAttribute("viewBox", `${vb.x} 0 620 760`);
-    set();
-    tl.to(vb, { x: 560, duration: 2.6, ease: ez, onUpdate: set }, 3.3)
-      .to(vb, { x: 1010, duration: 3.2, ease: "power2.in", onUpdate: set }, 8.9);
-  }
-
-  /* sea: headline gives way to three short promises as the ship passes */
-  const s4 = $(".s4"); s4.classList.add("cj");
-  const items = $$("#callouts .callout"), head = $$(".s4-sticky > .en, .s4-sticky > .jp-h");
-  const t4 = gsap.timeline({ defaults: { ease: "none" }, scrollTrigger: { trigger: s4, start: "top 20%", end: "bottom 85%", scrub: .6 } });
-  t4.to(head, { opacity: 0, y: -40, duration: 1 }, 1.2);
-  items.forEach((el, i) => { const at = 2.4 + i * 2.2; t4.fromTo(el, { opacity: 0, y: 40 }, { opacity: 1, y: 0, duration: .8 }, at).to(el, { opacity: 0, y: -40, duration: .8 }, at + 1.5); });
-
-  /* the road photograph and the wide photographs drift slower than the page */
-  gsap.fromTo("#road img", { yPercent: -5 }, { yPercent: 5, ease: "none", scrollTrigger: { trigger: "#reliability", start: "top bottom", end: "bottom top", scrub: .6 } });
   $$(".band img").forEach((img) => gsap.fromTo(img, { yPercent: -6 }, { yPercent: 6, ease: "none", scrollTrigger: { trigger: img.parentElement, start: "top bottom", end: "bottom top", scrub: .6 } }));
-  gsap.fromTo("#airV", { scale: 1 }, { scale: 1.16, ease: "none", scrollTrigger: { trigger: ".air", start: "top top", end: "bottom bottom", scrub: .6 } });
-  /* sea: the ship slides past slowly, the wake follows it */
-  gsap.fromTo("#shipW", { y: -520 }, { y: () => $(".s4").offsetHeight - 120, ease: "none", scrollTrigger: { trigger: ".s4", start: "top bottom", end: "bottom top", scrub: .8, invalidateOnRefresh: true } });
 }
 </script>
 </body>
