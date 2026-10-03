@@ -76,7 +76,7 @@ button{cursor:pointer}
 .s1{position:relative;height:100dvh;min-height:560px;background:var(--paper);overflow:hidden}
 .ghostword{position:absolute;left:50%;top:44%;translate:-50% -50%;font:400 clamp(70px,14.5vw,270px)/1 var(--en);letter-spacing:.02em;color:#E6E6E3;white-space:nowrap;user-select:none;pointer-events:none}
 .s1-t{position:absolute;left:var(--gut);top:clamp(78px,10vh,110px);z-index:3;max-width:min(900px,86vw)}
-.s1 h1{font:900 clamp(28px,3.7vw,56px)/1.25 var(--jp);letter-spacing:.02em;word-break:auto-phrase;text-wrap:balance}
+.s1 .sh{font:900 clamp(28px,3.7vw,56px)/1.25 var(--jp);letter-spacing:.02em;word-break:auto-phrase;text-wrap:balance}
 .s1 p.sub{margin-top:12px;color:var(--mute);max-width:44em;font-size:clamp(14px,1.2vw,16px)}
 .speed{position:absolute;left:var(--gut);bottom:calc(100% - 100% + 20px);font:400 11px/1 var(--en);letter-spacing:.14em;color:#8A8A87;z-index:3}
 .stage{position:absolute;left:0;right:0;bottom:0;width:100%;height:auto;display:block}
@@ -138,6 +138,50 @@ button{cursor:pointer}
 .s4-t .jp-h{margin-inline:auto;max-width:20em;text-shadow:0 4px 40px rgba(4,20,90,.5)}
 .s4-sticky{position:sticky;top:0;height:100dvh;display:grid;place-items:center;align-content:center;gap:0}
 
+
+/* ---------- scene 0: night-to-blue opener ---------- */
+.s0{position:relative;min-height:100dvh;display:grid;align-items:end;overflow:hidden;isolation:isolate;color:#fff;background:linear-gradient(180deg,#04051C 0%,#080C45 42%,#1626C9 100%)}
+.orb{position:absolute;z-index:-1;right:-34vmin;top:12vh;width:132vmin;height:132vmin;border-radius:50%;background:radial-gradient(circle at 68% 72%,#010108 38%,#070A3A 72%,#10187A 100%);box-shadow:-14px -18px 70px rgba(255,150,86,.62),inset 12px 14px 44px rgba(255,176,110,.5),0 0 220px rgba(80,90,255,.35)}
+.orb::after{content:"";position:absolute;inset:0;border-radius:50%;background:radial-gradient(circle at 24% 22%,rgba(255,214,160,.55),transparent 22%);mix-blend-mode:screen}
+.dots{position:absolute;inset:0;z-index:-1;opacity:.5;background-image:radial-gradient(rgba(255,255,255,.55) 1px,transparent 1.4px);background-size:34px 34px;-webkit-mask-image:radial-gradient(60% 50% at 70% 30%,#000,transparent 75%);mask-image:radial-gradient(60% 50% at 70% 30%,#000,transparent 75%)}
+.s0-in{width:100%;max-width:1360px;margin-inline:auto;padding:130px var(--gut) clamp(48px,8vh,96px);display:grid;gap:20px}
+.s0 .eyebrow{font:400 12px/1 var(--en);letter-spacing:.2em;text-transform:uppercase;color:#C9D2FF}
+.s0 h1{font:400 clamp(24px,6.6vw,104px)/1.04 var(--en);letter-spacing:.01em;text-transform:uppercase;max-width:11em}
+.s0 h1 .b{background:linear-gradient(90deg,#fff,#8FA6FF);-webkit-background-clip:text;background-clip:text;color:transparent}
+.s0 .jp{font:900 clamp(20px,2.4vw,34px)/1.5 var(--jp);letter-spacing:.04em}
+.s0 p.lead{color:#C9D2F5;max-width:30em;font-size:clamp(14px,1.2vw,16px)}
+.s0-cta{display:flex;flex-wrap:wrap;gap:12px;margin-top:6px}
+.btn-w{display:inline-flex;align-items:center;justify-content:center;min-height:54px;padding:0 32px;border-radius:999px;background:#fff;color:#0B0B0C;font:700 14px/1 var(--jp);letter-spacing:.12em;transition:transform .4s var(--out),background .4s var(--out)}
+.btn-w:hover{background:#DCE3FF}.btn-w:active{transform:scale(.97)}
+.s0 .btn-o{color:#fff;border-color:rgba(255,255,255,.6)}
+.s0 .btn-o:hover{background:#fff;color:#0B0B0C}
+.s0 .reveal{opacity:0;transform:translateY(26px);animation:up2 1.1s var(--out) forwards}
+@keyframes up2{to{opacity:1;transform:none}}
+
+/* vertical call-to-action tab */
+.vtab{position:fixed;right:0;top:50%;z-index:58;translate:0 -50%;writing-mode:vertical-rl;white-space:nowrap;padding:22px 12px;background:#1B2BE0;color:#fff;font:700 14px/1 var(--jp);letter-spacing:.3em;border-radius:10px 0 0 10px;box-shadow:-8px 8px 30px rgba(10,20,120,.45);transition:transform .5s var(--out),opacity .4s}
+.vtab:hover{transform:translateX(-4px)}
+.vtab.off{opacity:0;pointer-events:none;transform:translateX(30px)}
+@media (max-width:899px){.vtab{padding:16px 9px;font-size:12px}}
+
+/* ---------- sea: deep navy, turquoise foam, callouts ---------- */
+.s4{background:linear-gradient(180deg,#041636 0%,#06306F 55%,#0A47B8 100%)}
+.waves{opacity:.55}
+.foam{position:absolute;top:-30%;bottom:-6%;width:46%;z-index:-1;pointer-events:none;
+  background:
+    radial-gradient(closest-side,rgba(235,252,255,.95),rgba(150,230,255,.5) 52%,transparent 74%) 0 0/74px 96px,
+    radial-gradient(closest-side,rgba(210,246,255,.85),rgba(90,200,255,.35) 55%,transparent 76%) 30px 44px/58px 78px;
+  -webkit-mask-image:linear-gradient(90deg,transparent,#000 28%,#000 60%,transparent);mask-image:linear-gradient(90deg,transparent,#000 28%,#000 60%,transparent);
+  filter:url(#rough);animation:foamUp 6s linear infinite;opacity:.9}
+.foam.l{right:96%}.foam.r{left:96%;-webkit-mask-image:linear-gradient(270deg,transparent,#000 28%,#000 60%,transparent);mask-image:linear-gradient(270deg,transparent,#000 28%,#000 60%,transparent)}
+@keyframes foamUp{to{background-position:0 -192px,30px -112px}}
+.wake{display:none}
+.callouts{margin-top:28px;display:grid;gap:22px;max-width:26em;margin-inline:auto}
+.callout h3{font:900 clamp(20px,2.2vw,28px)/1.4 var(--jp);letter-spacing:.04em}
+.callout p{margin-top:6px;color:#D6E2FF;font-size:15px}
+.cj .callouts{position:absolute;left:0;right:0;top:56%;margin:0 auto;display:block;width:min(26em,86vw)}
+.cj .callout{position:absolute;left:0;right:0;opacity:0;text-align:center;text-shadow:0 2px 24px rgba(3,14,60,.8)}
+
 /* ---------- scene 5: contact ---------- */
 .s5{position:relative;background:var(--paper);padding-block:clamp(90px,11vw,180px);overflow:hidden}
 .plane{position:absolute;left:34vw;top:-5vw;width:min(58vw,780px);opacity:.9;pointer-events:none;rotate:-14deg;will-change:transform}
@@ -184,27 +228,41 @@ button{cursor:pointer}
 @media (min-width:900px){.bar{display:none}}
 
 @media (max-width:700px){.stage{height:58vh}.ghostword{top:34%}}
-@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}.road::before,.waves{animation:none}.gl.on::before,.gl.on::after{animation:none}*{transition-duration:.01ms!important}}
+@media (prefers-reduced-motion:reduce){.s0 .reveal{animation:none;opacity:1;transform:none}.foam{animation:none}html{scroll-behavior:auto}.road::before,.waves{animation:none}.gl.on::before,.gl.on::after{animation:none}*{transition-duration:.01ms!important}}
 </style>
 </head>
 <body>
 <a class="skip" href="#contact">お問い合わせへ移動</a>
 
-<header class="nav">
+<header class="nav dk">
   <a class="logo" href="#top" aria-label="H-LINK トップへ"><img class="lg-d" src="img/logo-dark.png" width="520" height="77" alt="H-LINK"><img class="lg-l" src="img/logo-light.png" width="520" height="78" alt="" aria-hidden="true"></a>
   <div class="nav-r">
     <nav class="nav-links" aria-label="メインメニュー"><a href="#services">Services</a><a href="#reliability">Route</a><a href="#world">World</a></nav>
     <a class="pill" href="#contact">無料で相談する</a>
   </div>
 </header>
+<a class="vtab" id="vtab" href="#contact">無料で相談</a>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><filter id="rough" x="-10%" y="-10%" width="120%" height="120%"><feTurbulence type="fractalNoise" baseFrequency=".035" numOctaves="3" seed="4" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="46"/></filter></svg>
 
 <main id="top">
+<!-- ===== scene 0 ===== -->
+<section class="s0" id="s0" aria-labelledby="h1">
+  <div class="orb" aria-hidden="true"></div><div class="dots" aria-hidden="true"></div>
+  <div class="s0-in">
+    <p class="eyebrow reveal" style="animation-delay:.1s">One window, from Hokkaido</p>
+    <h1 id="h1" class="reveal" style="animation-delay:.25s">From Hokkaido<br>to the <span class="b">world.</span></h1>
+    <p class="jp reveal" style="animation-delay:.4s">北海道の食を、世界の食卓へ。</p>
+    <p class="lead reveal" style="animation-delay:.55s">生産者・メーカーと海外バイヤーを、輸出の実務までつなぐ会社です。ご相談は無料です。</p>
+    <div class="s0-cta reveal" style="animation-delay:.7s"><a class="btn-w" href="#contact">無料で相談する</a><a class="btn-o" href="#s1"><span>事業を見る</span></a></div>
+  </div>
+</section>
+
 <!-- ===== scene 1 ===== -->
-<section class="s1" id="s1" aria-labelledby="h1">
+<section class="s1" id="s1" aria-labelledby="h1b">
   <div class="ghostword" aria-hidden="true">HOKKAIDO</div>
   <div class="s1-t">
-    <h1 id="h1">北海道の食を、<br>世界の食卓へ。</h1>
-    <p class="sub">生産者・メーカーと海外バイヤーを、輸出の実務までつなぐ会社です。</p>
+    <h2 class="sh" id="h1b">産地で積んで、<br>世界へ運ぶ。</h2>
+    <p class="sub">荷役から出荷まで、窓口はひとつ。</p>
   </div>
   <div class="speed" id="speed" aria-hidden="true">00 KM/H</div>
 
@@ -400,7 +458,7 @@ button{cursor:pointer}
 <section class="s4" id="world" aria-labelledby="s4-h">
   <div class="waves" aria-hidden="true"></div>
   <div class="ship-w" id="shipW" aria-hidden="true">
-    <div class="wake"></div>
+    <div class="foam l"></div><div class="foam r"></div>
     <svg viewBox="0 0 300 980" id="ship"><defs>
         <linearGradient id="hullG" x1="0" x2="1"><stop offset="0" stop-color="#0A1226"/><stop offset=".5" stop-color="#1B2A4E"/><stop offset="1" stop-color="#0A1226"/></linearGradient>
         <linearGradient id="deckG" x1="0" x2="1"><stop offset="0" stop-color="#2A3347"/><stop offset=".5" stop-color="#465169"/><stop offset="1" stop-color="#2A3347"/></linearGradient>
@@ -429,6 +487,11 @@ button{cursor:pointer}
   <div class="s4-t"><div class="s4-sticky">
     <h2 class="en" id="s4-h"><span class="gl" data-text="LOGISTICS THAT&#10;WORKS AS HARD&#10;AS YOU DO.">Logistics that<br>works as hard<br>as you do.</span></h2>
     <p class="jp-h">世界の食卓まで、止まらず届ける。</p>
+    <div class="callouts" id="callouts">
+      <div class="callout"><h3>産地の顔が見える</h3><p>北海道の生産者とメーカーの商品を、背景まで海外の買い手にお伝えします。</p></div>
+      <div class="callout"><h3>条件に合う提案</h3><p>品目、数量、価格帯に合わせて、候補をご提案します。</p></div>
+      <div class="callout"><h3>出荷まで見届ける</h3><p>書類と物流を整え、出荷までしっかり調整します。</p></div>
+    </div>
   </div></div>
 </section>
 
@@ -578,12 +641,12 @@ if ("IntersectionObserver" in window && !reduce) {
 if ("IntersectionObserver" in window) {
   const nav = $(".nav");
   const nio = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) nav.classList.toggle("dk", e.target.dataset.nav === "1"); }), { rootMargin: "0px 0px -94% 0px" });
-  [["#s1", 0], ["#services", 1], ["#reliability", 0], ["#world", 1], ["#contact", 0], [".ft", 1]].forEach(([q, v]) => { const el = $(q); el.dataset.nav = v; nio.observe(el); });
+  [["#s0", 1], ["#s1", 0], ["#services", 1], ["#reliability", 0], ["#world", 1], ["#contact", 0], [".ft", 1]].forEach(([q, v]) => { const el = $(q); el.dataset.nav = v; nio.observe(el); });
 }
 /* sticky CTA: after scene 1, hidden over the form */
 if ("IntersectionObserver" in window) {
-  const bar = $("#bar"); let top = true, formIn = false; const upd = () => bar.classList.toggle("on", !top && !formIn);
-  new IntersectionObserver((es) => { top = es[0].isIntersecting; upd(); }).observe($("#s1"));
+  const bar = $("#bar"), vt = $("#vtab"); let top = true, formIn = false; const upd = () => { bar.classList.toggle("on", !top && !formIn); vt.classList.toggle("off", formIn); };
+  new IntersectionObserver((es) => { top = es[0].isIntersecting; upd(); }).observe($("#s0"));
   new IntersectionObserver((es) => { formIn = es[0].isIntersecting; upd(); }, { threshold: .1 }).observe($("#contact"));
 }
 
@@ -626,6 +689,13 @@ if (window.gsap && window.ScrollTrigger && !reduce) {
     tl.to(vb, { x: 560, duration: 2.6, ease: ez, onUpdate: set }, 3.3)
       .to(vb, { x: 1010, duration: 3.2, ease: "power2.in", onUpdate: set }, 8.9);
   }
+
+  /* sea: headline gives way to three short promises as the ship passes */
+  const s4 = $(".s4"); s4.classList.add("cj");
+  const items = $$("#callouts .callout"), head = $$(".s4-sticky > .en, .s4-sticky > .jp-h");
+  const t4 = gsap.timeline({ defaults: { ease: "none" }, scrollTrigger: { trigger: s4, start: "top 20%", end: "bottom 85%", scrub: .6 } });
+  t4.to(head, { opacity: 0, y: -40, duration: 1 }, 1.2);
+  items.forEach((el, i) => { const at = 2.4 + i * 2.2; t4.fromTo(el, { opacity: 0, y: 40 }, { opacity: 1, y: 0, duration: .8 }, at).to(el, { opacity: 0, y: -40, duration: .8 }, at + 1.5); });
 
   /* the truck reappears from above on the road in scene 3 */
   const road = $("#road");
