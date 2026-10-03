@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { Eye, EyeOff, LogIn } from 'lucide-react';
-import { useAuth } from '../lib/auth.tsx';
+import { DEMO, useAuth } from '../lib/auth.tsx';
 
-export function Login({ notice }: { notice?: string }) {
+export function Login({ notice, demo }: { notice?: string; demo?: boolean }) {
   const { login, loginTotp } = useAuth();
   const [step, setStep] = useState<'pw' | 'code'>('pw');
   const [code, setCode] = useState('');
@@ -33,6 +33,13 @@ export function Login({ notice }: { notice?: string }) {
           if ('error' in r) { setErr(r.error); setPw(''); setBusy(false); }
         }}>
           <h1>ログイン</h1>
+          {demo && (
+            <div className="alert warn demo" role="note">
+              <b>デモ画面です（実際の認証ではありません）</b>
+              <>ID：<code className="mono">{DEMO.id}</code>　パスワード：<code className="mono">{DEMO.password}</code>
+                <button type="button" className="btn" onClick={() => { setId(DEMO.id); setPw(DEMO.password); }}>入力する</button></>
+            </div>
+          )}
           {notice && !err && <div className="alert warn" role="status">{notice}</div>}
           {err && <div className="alert danger" role="alert">{err}</div>}
           <label className="field">社員ID
@@ -55,6 +62,13 @@ export function Login({ notice }: { notice?: string }) {
           if (m) { setErr(m); setCode(''); setBusy(false); if (/最初から|時間切れ/.test(m)) setStep('pw'); }
         }}>
           <h1>認証コードの入力</h1>
+          {demo && (
+            <div className="alert warn demo" role="note">
+              <b>デモ画面です（実際の認証ではありません）</b>
+              <>認証コード：<code className="mono">{DEMO.code}</code>
+                <button type="button" className="btn" onClick={() => setCode(DEMO.code)}>入力する</button></>
+            </div>
+          )}
           <p className="muted" style={{ margin: 0 }}>スマートフォンの認証アプリ（Google Authenticator、Microsoft Authenticator など）に表示されている6桁の数字を入力してください。</p>
           {err && <div className="alert danger" role="alert">{err}</div>}
           <label className="field">認証コード（6桁）
@@ -65,6 +79,7 @@ export function Login({ notice }: { notice?: string }) {
           <p className="muted hint">スマートフォンを紛失した・機種変更した場合は、管理者に二段階認証の解除を依頼してください。</p>
         </form>
         )}
+        <p className="ver muted">版 {__APP_VERSION__}</p>
       </main>
     </div>
   );

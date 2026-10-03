@@ -27,8 +27,8 @@ function Gate() {
   const { state, retry } = useAuth();
   useEffect(() => {
     // ログアウト時に前のユーザーの暗い表示などが残らないよう、テーマ以外の画面状態は持ち越さない
-    if (state.status === 'anon') location.hash = '';
-  }, [state.status]);
+    if (state.status === 'anon' || (state.status === 'local' && !state.loggedIn)) location.hash = '';
+  }, [state.status, state.status === 'local' && state.loggedIn]);
   if (state.status === 'loading') return <div className="center muted" role="status">読み込み中…</div>;
   if (state.status === 'error') return (
     <div className="center"><div className="card" style={{ padding: 24, maxWidth: 420 }}>
@@ -38,6 +38,7 @@ function Gate() {
     </div></div>
   );
   if (state.status === 'anon') return <Login notice={state.notice} />;
+  if (state.status === 'local' && !state.loggedIn) return <Login demo />;
   if (state.status === 'in' && state.user.mustChange) return <ForceChange name={state.user.name} />;
   if (state.status === 'in' && state.user.needTotp) return <TotpSetup name={state.user.name} />;
   return <Shell server={state.status === 'in'} user={state.status === 'in' ? state.user : null} />;
@@ -112,7 +113,12 @@ function Shell({ server, user }: { server: boolean; user: User | null }) {
             <div className="who"><b>{user.name}</b><small>{user.id}・{user.role === 'admin' ? '管理者' : '一般'}</small></div>
             <button className="nav" onClick={() => void logout()} title="ログアウト"><LogOut size={17} /><span className="label">ログアウト</span></button>
           </div>
-        ) : <div className="whoami"><div className="who"><small>デモ版（ログインなし・データはこのブラウザ内）</small></div></div>}
+        ) : (
+          <div className="whoami">
+            <div className="who"><b>デモ</b><small>実際の認証ではありません・データはこのブラウザ内</small></div>
+            <button className="nav" onClick={() => void logout()} title="ログアウト"><LogOut size={17} /><span className="label">ログアウト</span></button>
+          </div>
+        )}
       </nav>
 
       <main className="main">

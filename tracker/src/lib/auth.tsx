@@ -2,11 +2,15 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 
 export type Role = 'admin' | 'staff';
 export interface User { id: string; name: string; role: Role; mustChange: boolean; totp: boolean; needTotp: boolean; disabled?: boolean; locked?: boolean }
+// デモ版（サーバーなし）専用。実際の認証ではないため、値は画面に表示する
+export const DEMO = { id: 'demo', password: 'Demo-Pass-2026', code: '123456' };
+const demoGet = () => { try { return sessionStorage.getItem('hlink-demo-in') === '1'; } catch { return false; } };
+const demoSet = (v: boolean) => { try { if (v) sessionStorage.setItem('hlink-demo-in', '1'); else sessionStorage.removeItem('hlink-demo-in'); } catch { /* noop */ } };
 export type LoginResult = { ok: true } | { totp: true } | { error: string };
 export type AuthState =
   | { status: 'loading' }
   | { status: 'error' }
-  | { status: 'local' }                       // サーバーなし（静的配信・デモ）。ログインなし・データはブラウザ内
+  | { status: 'local'; loggedIn: boolean }   // サーバーなし（静的配信・デモ）。デモ用のログイン画面を出す。実際の認証ではなく、データはブラウザ内
   | { status: 'anon'; notice?: string }
   | { status: 'in'; user: User };
 
@@ -38,7 +42,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const r = await call('GET', '/api/me');
       if (r.status === 200 && r.data?.user) setState({ status: 'in', user: r.data.user });
       else if (r.status === 401 && r.data) setState({ status: 'anon' });
-      else if ((r.status === 200 || r.status === 404) && r.data === null) setState({ status: 'local' }); // JSONを返さない静的配信＝サーバー機能なし。502等はエラー扱い
+      else if ((r.status === 200 || r.status === 404) && r.data === null) setState({ status: 'local', loggedIn: demoGet() }); // JSONを返さない静的配信＝サーバー機能なし。502等はエラー扱い
       else setState({ status: 'error' });
     } catch { setState({ status: 'error' }); }
   }, []);
@@ -53,6 +57,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     state, retry: () => void probe(),
     setUser: (user) => setState({ status: 'in', user }),
     login: async (id, pw) => {
+      if (state.status === 'local') return id === DEMO.id && pw === DEMO.password ? { totp: true } : { error: 'IDまたはパスワードが違います（デモ用の値は画面に表示されています）' };
       try {
         const r = await call('POST', '/api/login', { id, password: pw });
         if (r.ok && r.data?.totp) return { totp: true };
@@ -61,13 +66,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } catch { return { error: 'サーバーに接続できません。ネットワークを確認してください。' }; }
     },
     loginTotp: async (code) => {
+      if (state.status === 'local') { if (code.replace(/\s/g, '') !== DEMO.code) return '認証コードが違います（デモ用のコードは画面に表示されています）'; demoSet(true); setState({ status: 'local', loggedIn: true }); return ''; }
       try {
         const r = await call('POST', '/api/login/totp', { code });
         if (r.ok) { setState({ status: 'in', user: r.data.user }); return ''; }
         return r.data?.error ?? 'ログインできませんでした';
       } catch { return 'サーバーに接続できません。ネットワークを確認してください。'; }
     },
-    logout: async () => { try { await call('POST', '/api/logout'); } catch { /* 切断でも画面は戻す */ } setState({ status: 'anon' }); },
+    logout: async () => { if (state.status === 'local') { demoSet(false); setState({ status: 'local', loggedIn: false }); return; } try { await call('POST', '/api/logout'); } catch { /* 切断でも画面は戻す */ } setState({ status: 'anon' }); },
   }), [state, probe]);
 
   return <AuthCtx.Provider value={value}>{children}</AuthCtx.Provider>;

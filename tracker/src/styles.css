@@ -169,3 +169,8 @@ tbody tr[data-sev="1"] td:first-child { box-shadow: inset 4px 0 0 var(--warn); }
 .qrbox img { image-rendering: pixelated; max-width: 100%; height: auto; }
 .secretkey { display: block; background: var(--surface-2); padding: 8px 10px; border-radius: 6px; letter-spacing: .08em; user-select: all; word-break: break-all; }
 .input.code { font-size: 20px; letter-spacing: .25em; text-align: center; }
+
+.demo b { display: block; margin-bottom: 4px; } .demo .btn { margin-left: 8px; } .demo code { background: var(--surface); padding: 1px 6px; border-radius: 4px; user-select: all; }
+.demo .btn { padding: 3px 10px; font-size: 13px; }
+.ver { font-size: 11px; margin: 0; text-align: center; position: absolute; bottom: 12px; left: 0; right: 0; }
+.login-main { position: relative; }
