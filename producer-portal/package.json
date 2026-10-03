@@ -1,0 +1,12 @@
+{
+  "name": "hlink-producer-portal",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "H-LINK 生産者ポータル（出荷・売上管理ダッシュボード）。依存パッケージなし（Node.js 20+）",
+  "scripts": {
+    "start": "node server.mjs",
+    "test": "node --test test/*.test.mjs"
+  },
+  "engines": { "node": ">=20" }
+}

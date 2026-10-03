@@ -1,0 +1,23 @@
+name: H-LINK Producer Portal
+
+on:
+  push:
+    paths: ['producer-portal/**', '.github/workflows/producer-portal.yml']
+  pull_request:
+    paths: ['producer-portal/**', '.github/workflows/producer-portal.yml']
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: producer-portal
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm test
