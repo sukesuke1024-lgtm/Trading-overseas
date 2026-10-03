@@ -6,13 +6,13 @@ import { AlertPill, ModePill, Status, portName } from '../components/bits.tsx';
 import { DetailPanel } from '../components/DetailPanel.tsx';
 
 interface Props {
-  list: Shipment[]; selected: string | null; onSelect: (no: string | null) => void;
+  list: Shipment[]; canDelete: boolean; selected: string | null; onSelect: (no: string | null) => void;
   onNew: (no?: string) => void; onEdit: (s: Shipment) => void; onAdvance: (s: Shipment) => void; onDelete: (no: string) => void;
 }
 
 const hit = (s: Shipment, q: string) => !q || [s.containerNo, s.bookingNo, s.blNo, s.lot, s.producer, s.buyer, s.vessel, s.carrier].some((v) => (v ?? '').toLowerCase().includes(q));
 
-export function Shipments({ list, selected, onSelect, onNew, onEdit, onAdvance, onDelete }: Props) {
+export function Shipments({ list, canDelete, selected, onSelect, onNew, onEdit, onAdvance, onDelete }: Props) {
   const [q, setQ] = useState('');
   const [mode, setMode] = useState('');
   const [state, setState] = useState('open');
@@ -73,7 +73,7 @@ export function Shipments({ list, selected, onSelect, onNew, onEdit, onAdvance, 
             </table>
           )}
         </div>
-        {sel && <DetailPanel s={sel} all={list} onEdit={() => onEdit(sel)} onAdvance={() => onAdvance(sel)} onDelete={() => { onDelete(sel.containerNo); onSelect(null); }} onSelect={onSelect} />}
+        {sel && <DetailPanel s={sel} all={list} canDelete={canDelete} onEdit={() => onEdit(sel)} onAdvance={() => onAdvance(sel)} onDelete={() => { onDelete(sel.containerNo); onSelect(null); }} onSelect={onSelect} />}
       </div>
     </>
   );

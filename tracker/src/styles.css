@@ -139,3 +139,27 @@ dialog::backdrop { background: rgba(0,0,0,.45); }
 
 tbody tr[data-sev="2"] td:first-child { box-shadow: inset 4px 0 0 var(--bad); }
 tbody tr[data-sev="1"] td:first-child { box-shadow: inset 4px 0 0 var(--warn); }
+
+/* ログイン */
+.center { min-height: 100vh; display: grid; place-items: center; padding: 16px; }
+.login { min-height: 100vh; display: grid; grid-template-columns: minmax(280px, 42%) minmax(0, 1fr); }
+.login-brand { background: var(--side); color: #d7d7d7; padding: 48px 40px; display: flex; flex-direction: column; justify-content: center; gap: 18px; }
+.login-brand p { margin: 0; font-size: 18px; color: #fff; }
+.login-brand ul { margin: 0; padding-left: 18px; color: #a9a9a9; } .login-brand li { margin: 6px 0; }
+.brand.big { font-size: 20px; padding: 0 0 8px; } .brand.big i { width: 34px; height: 34px; font-size: 17px; }
+.login-main { display: grid; place-items: center; padding: 24px 16px; }
+.login-card { width: min(400px, 100%); display: flex; flex-direction: column; gap: 14px; }
+.login-card h1 { font-size: 22px; }
+.login-card .field .input { font-size: 15px; padding: 10px 12px; }
+.pwrow { display: flex; gap: 6px; } .pwrow .input { flex: 1; }
+.btn.icon { padding: 0 10px; } .btn.wide { justify-content: center; padding: 11px 12px; }
+.alert.good { background: var(--good-soft); color: var(--good); }
+.whoami { border-top: 1px solid #26262a; margin-top: 8px; padding-top: 8px; display: flex; flex-direction: column; gap: 2px; }
+.who { padding: 4px 10px; color: #fff; } .who b { display: block; font-size: 13px; } .who small { color: #9a9a9a; font-size: 11px; }
+.tempbox { padding: 14px 16px; margin-bottom: 16px; border-color: var(--warn); display: flex; flex-direction: column; gap: 8px; }
+.pwshow { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; } .pwshow code { font-size: 18px; letter-spacing: .05em; background: var(--surface-2); padding: 6px 10px; border-radius: 6px; user-select: all; }
+.rowact { display: flex; gap: 6px; flex-wrap: wrap; } .rowact .btn { padding: 4px 9px; font-size: 13px; }
+@media (max-width: 800px) {
+  .login { grid-template-columns: minmax(0, 1fr); } .login-brand { padding: 20px 16px; } .login-brand ul { display: none; }
+  .whoami { flex-direction: row; align-items: center; border: 0; margin: 0; padding: 0; } .who { display: none; }
+}

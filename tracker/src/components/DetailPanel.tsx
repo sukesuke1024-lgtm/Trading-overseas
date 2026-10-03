@@ -6,10 +6,10 @@ import { ModePill, RouteMap, portName, stageLabel } from './bits.tsx';
 
 interface Props {
   s: Shipment; all: Shipment[];
-  onEdit: () => void; onAdvance: () => void; onDelete: () => void; onSelect: (no: string) => void;
+  canDelete: boolean; onEdit: () => void; onAdvance: () => void; onDelete: () => void; onSelect: (no: string) => void;
 }
 
-export function DetailPanel({ s, all, onEdit, onAdvance, onDelete, onSelect }: Props) {
+export function DetailPanel({ s, all, canDelete, onEdit, onAdvance, onDelete, onSelect }: Props) {
   const [armed, setArmed] = useState(false);
   useEffect(() => { setArmed(false); }, [s.containerNo]);
   useEffect(() => { if (!armed) return; const t = setTimeout(() => setArmed(false), 4000); return () => clearTimeout(t); }, [armed]);
@@ -40,6 +40,7 @@ export function DetailPanel({ s, all, onEdit, onAdvance, onDelete, onSelect }: P
         <F k="B/L・HAWB" v={s.blNo} /><F k="フリータイム終了" v={s.freeTimeEnd} />
         <F k="ロット" v={s.lot} /><F k="生産者" v={s.producer} />
         <F k="取引先" v={s.buyer} /><F k="最終取得" v={s.checkedAt?.slice(0, 16).replace('T', ' ')} />
+        {s.updatedBy && <F k="最終更新" v={`${s.updatedBy}　${(s.updatedAt ?? '').slice(0, 16).replace('T', ' ')}`} />}
         <div style={{ gridColumn: '1 / -1' }}><dt>備考</dt><dd>{s.note || '—'}</dd></div>
       </dl>
       {same.length > 0 && (
@@ -56,9 +57,11 @@ export function DetailPanel({ s, all, onEdit, onAdvance, onDelete, onSelect }: P
       <div className="actions">
         <button className="btn primary" onClick={onEdit}><Pencil size={15} />編集</button>
         <button className="btn" onClick={onAdvance} disabled={idx >= 6}><ArrowRight size={15} />次の工程へ</button>
-        <button className={`btn danger${armed ? ' armed' : ''}`} onClick={() => (armed ? onDelete() : setArmed(true))}>
-          <Trash2 size={15} />{armed ? 'もう一度押すと削除' : '削除'}
-        </button>
+        {canDelete && (
+          <button className={`btn danger${armed ? ' armed' : ''}`} onClick={() => (armed ? onDelete() : setArmed(true))}>
+            <Trash2 size={15} />{armed ? 'もう一度押すと削除' : '削除'}
+          </button>
+        )}
       </div>
     </aside>
   );

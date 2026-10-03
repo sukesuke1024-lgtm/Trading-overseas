@@ -8,6 +8,7 @@ export interface Shipment {
   lot?: string; producer?: string; buyer?: string; note?: string;
   exception?: boolean; exceptionNote?: string; lastEventAt?: string; checkedAt?: string;
   position?: { lat: number; lon: number }; events?: TrackEvent[];
+  updatedBy?: string; updatedAt?: string;
 }
 export interface Alert { level: 'danger' | 'warn'; text: string }
 export interface Candidate { mode: Mode; carrier: string; valid: boolean }

@@ -8,31 +8,47 @@
 ```bash
 cd tracker
 npm install
-npm run dev                                   # 開発（http://localhost:5173、/api は :8080 へ中継）
 npm run build                                 # 本番ビルド → dist/
-TRACK17_KEY=xxxx TRACKER_TOKEN=長い文字列 npm start   # 配信 + 追跡中継 → http://localhost:8080
-npm test && npm run typecheck                 # ロジックのテスト / 型チェック
+TRACK17_KEY=xxxx npm start                    # 配信 + 認証 + 追跡中継 → http://localhost:8080
+npm test && npm run typecheck                 # ロジック・サーバー(認証/権限)のテスト / 型チェック
+npm run dev                                   # 画面の開発（http://localhost:5173、/api は :8080 へ中継。先に npm start も起動）
 ```
-`npm start` は画面(`dist/`)と追跡の中継(`/api/track`)を同じ口で配信する。キーなしで起動すれば手入力モード。
+初回起動時、**初期管理者のIDとパスワードがコンソールに一度だけ表示**される（`TRACKER_ADMIN_ID` / `TRACKER_ADMIN_PASSWORD` で指定可）。初回ログインでパスワード変更を強制する。
+
+| 環境変数 | 内容 |
+|---|---|
+| `DATA_DIR` | データ保存先（既定 `tracker/data`）。**定期的にバックアップする** |
+| `TRACK17_KEY` | 17TRACK のAPIキー（宅配の自動取得）。未設定なら手入力 |
+| `COOKIE_SECURE=1` | https 配下で必須（Cookie に Secure を付ける） |
+| `TRUST_PROXY=1` | リバースプロキシの `X-Forwarded-For` を信用（IP単位の試行制限用） |
+| `PORT` | 既定 8080 |
+
+## ログイン・権限
+- 社員ID＋パスワード。パスワードは scrypt でハッシュ化して保存。10文字以上・英字と数字を含む。
+- 5回失敗で15分ロック。セッションはサーバー側保持（HttpOnly / SameSite=Strict）、最終操作から2時間・最長12時間で失効。ログアウト・無効化・パスワード変更で即失効。
+- 変更系APIは CSRF 対策（専用ヘッダ必須・Origin 検証）。CSP などのセキュリティヘッダ付き。
+- 権限は2つ。**管理者**（全操作・ユーザー管理・荷物の削除・操作履歴）／**一般**（荷物の登録・編集・更新）。最後の管理者は無効化・降格できない。
+- ログイン、失敗、ロック、荷物の登録/更新/削除、ユーザー操作は `audit.log` に記録（パスワードは記録しない）。
 
 ## 構成
 | パス | 役割 |
 |---|---|
 | `src/lib/core.js` | 番号の判別・検査数字・工程・アラート・CSV（UI非依存、テスト対象） |
-| `src/lib/store.ts` | 荷物・設定の保存（ブラウザ内 localStorage）。移行・バックアップ記録 |
-| `src/lib/api.ts` | 中継サーバー経由の更新 |
-| `src/pages/` | ダッシュボード・荷物一覧・設定・使い方 |
-| `src/components/` | 詳細パネル・登録フォーム・地図・表示部品 |
-| `server/relay.cjs` | 依存なしの配信＋中継。17TRACK 連携、Bearer認証、`dist/` 外は配信しない |
+| `src/lib/auth.tsx` | ログイン状態・API呼び出し（401で自動的にログインへ戻す） |
+| `src/lib/store.ts` | 荷物の保存（サーバー版はAPI、サーバーなしのデモはブラウザ内） |
+| `src/pages/` | ログイン・パスワード変更・ダッシュボード・荷物一覧・ユーザー管理・設定・使い方 |
+| `server/app.cjs` | 依存なしのサーバー本体（認証・権限・荷物・監査ログ・画面配信） |
+| `server/relay.cjs` | 起動と追跡サービス連携（17TRACK）。海上・航空は `providers` に追加する |
 | `docs/MANUAL.md` | 操作マニュアル（アプリ内の「使い方」の原本） |
 
 ## 追跡の接続状況
 | 手段 | 状況 |
 |---|---|
 | 国内宅配・国際宅配 | 17TRACK 連携を実装。**模擬応答で確認済み、実APIでの検証は未実施** |
-| 海上コンテナ・航空貨物 | 未接続（ShipsGo 等の契約後、`server/relay.cjs` の `PROVIDERS.sea / air` に追加）。それまでは手入力 |
+| 海上コンテナ・航空貨物 | 未接続（ShipsGo 等の契約後、`server/relay.cjs` の `providers.sea / air` に追加）。それまでは手入力 |
 
-## 方針と制約
-- 荷物データはブラウザ内保存。複数人で共有する段階でサーバー保存（DB・ログイン・変更履歴）へ移行する。
-- 追跡サービスに送るのは追跡番号だけ。APIキーはサーバーの環境変数にだけ置く。
-- 社内LAN／VPN内で使う。インターネットへ直接公開しない。
+## 制約と今後
+- 単一サーバー・JSONファイル保存（数千件規模まで）。同時編集は後勝ち（履歴で追える）。件数や同時利用が増えたらDB（SQLite/PostgreSQL）へ移行する。
+- 二段階認証（TOTP）は未実装。社内LAN/VPN内での利用を前提にしている。外部公開する場合は必須。
+- サーバーが再起動すると、全員ログインし直しになる。
+- サーバーのない静的配信では、ログインなしのデモ（データはブラウザ内）として動く。実運用では使わない。
