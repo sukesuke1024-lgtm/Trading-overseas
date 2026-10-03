@@ -2,7 +2,7 @@ name: Recruitment LP
 
 on:
   push:
-    branches: [main, claude/overseas-buyer-sales-recruitment-video-idqyvw, claude/inspiring-brown-txfuq8]
+    branches: [main, claude/overseas-buyer-sales-recruitment-video-idqyvw]
     paths: ['lp/**', 'portal/**', 'crm/**', 'producer-portal/**', 'recruit-video/out/**', '.github/workflows/lp.yml']
   pull_request:
     paths: ['lp/**', 'recruit-video/out/**', '.github/workflows/lp.yml']
