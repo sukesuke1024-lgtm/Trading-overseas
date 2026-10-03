@@ -11,6 +11,7 @@ const crypto = require('crypto');
 const { URL } = require('url');
 
 const MODES = new Set(['sea', 'air', 'hokkaido', 'mainland', 'intl']);
+const MEANS = new Set(['ship', 'plane', 'truck', 'parcel']);
 const STAGES = ['booked', 'picked_up', 'departed', 'in_transit', 'arrived', 'customs', 'delivered'];
 const STR_FIELDS = ['dealId', 'bookingNo', 'blNo', 'carrier', 'vessel', 'voyage', 'pol', 'pod', 'etd', 'eta', 'freeTimeEnd', 'lot', 'producer', 'buyer', 'note', 'exceptionNote', 'lastEventAt', 'checkedAt'];
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.ico': 'image/x-icon', '.json': 'application/json; charset=utf-8', '.woff2': 'font/woff2' };
@@ -82,6 +83,7 @@ function cleanShipment(s) {
   if (!/^[A-Z0-9]{5,40}$/.test(no) || !MODES.has(mode)) return null;
   const o = { mode, containerNo: no, stage: STAGES.includes(s.stage) ? s.stage : 'booked' };
   for (const k of STR_FIELDS) if (typeof s[k] === 'string' && s[k].length <= 500) o[k] = s[k];
+  if (MEANS.has(s.means)) o.means = s.means;
   if (typeof s.exception === 'boolean') o.exception = s.exception;
   if (s.position && Number.isFinite(s.position.lat) && Number.isFinite(s.position.lon)) o.position = { lat: s.position.lat, lon: s.position.lon };
   if (Array.isArray(s.events)) {

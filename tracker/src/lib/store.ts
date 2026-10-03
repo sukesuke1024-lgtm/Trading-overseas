@@ -17,7 +17,7 @@ function sample(): Shipment[] {
     { mode: 'air', containerNo: '13112345675', pol: 'NRT', pod: 'LAX', etd: day(-1), eta: day(1), stage: 'in_transit', lot: 'LOT-2610-A', producer: 'サンプル水産', buyer: 'LA Demo Inc', note: '生鮮・空輸（サンプル）' },
     { mode: 'hokkaido', containerNo: '100000000004', carrier: 'ヤマト運輸', dealId: 'D-0001', eta: day(1), stage: 'in_transit', lot: 'LOT-2609-C', buyer: '国内サンプル商店', note: 'サンプル' },
     { mode: 'sea', containerNo: 'MSKU0000000', pol: 'JPNGO', pod: 'HKHKG', etd: day(-12), eta: day(-2), stage: 'in_transit', lot: 'LOT-2609-C', buyer: 'HK Demo Ltd', note: 'ETA超過の例（番号は架空）' },
-    { mode: 'mainland', containerNo: '200000000001', carrier: '佐川急便', eta: day(2), stage: 'in_transit', lot: 'LOT-2610-B', buyer: '東京サンプル商事', note: '道外宛（サンプル）' },
+    { mode: 'mainland', means: 'ship', containerNo: '200000000001', carrier: 'フェリー便（サンプル）', eta: day(2), stage: 'in_transit', lot: 'LOT-2610-B', buyer: '東京サンプル商事', note: '道外宛・フェリー輸送（サンプル）' },
   ];
 }
 

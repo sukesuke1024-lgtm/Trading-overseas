@@ -1,11 +1,27 @@
+import { Ship, Plane, Truck, Package } from 'lucide-react';
 import * as C from '../lib/core.js';
 import type { Shipment } from '../lib/core.js';
 
 export const portName = (c?: string) => (c && C.PORTS[c]?.name) || c || '—';
 export const stageLabel = (s: Shipment) => C.stageLabels(s.mode)[C.stageIndex(s.stage)].label;
 
-export function ModePill({ mode }: { mode: Shipment['mode'] }) {
-  return <span className="pill mode" title={C.MODES[mode].name}>{C.MODES[mode].short}</span>;
+const MEANS_ICON = { ship: Ship, plane: Plane, truck: Truck, parcel: Package };
+
+// 手段はアイコン（船・飛行機・トラック・宅配便）、場所は文字（海外・道外・道内）で示す
+export function ModePill({ mode, means }: { mode: string; means?: string }) {
+  const m = C.meansOf({ mode, means });
+  const area = C.areaOf(mode);
+  const Icon = MEANS_ICON[m];
+  return (
+    <span className={`mpill a-${area}`} title={`${C.AREAS[area]}・${C.MEANS[m]}`}>
+      <Icon size={14} aria-hidden="true" /><span>{C.AREAS[area]}</span><span className="sr">（{C.MEANS[m]}）</span>
+    </span>
+  );
+}
+
+export function MeansIcon({ m, size = 16 }: { m: keyof typeof MEANS_ICON; size?: number }) {
+  const Icon = MEANS_ICON[m];
+  return <Icon size={size} aria-hidden="true" />;
 }
 
 export function Seg({ s }: { s: Shipment }) {

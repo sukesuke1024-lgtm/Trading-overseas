@@ -201,3 +201,13 @@ button.card.kpi { border: 1px solid var(--border); cursor: pointer; } button.car
 .logout-wrap { min-height: 60vh; display: grid; place-items: center; } .logout-card { padding: 32px 28px; max-width: 460px; text-align: center; display: grid; gap: 10px; justify-items: center; }
 .logout-card ul { text-align: left; margin: 0; padding-left: 18px; } .logout-card h1 { font-size: 20px; }
 .kpis { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+
+/* 手段はアイコン、場所は文字 */
+.mpill { display: inline-flex; align-items: center; gap: 5px; border-radius: 6px; padding: 2px 8px 2px 6px; font-size: 12px; font-weight: 700; color: #fff; white-space: nowrap; background: var(--navy-700); }
+.mpill.a-overseas { background: var(--navy-800); }
+.mpill.a-mainland { background: #1d5a9e; }
+.mpill.a-hokkaido { background: #0e7490; }
+.areas { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+.area { padding: 14px 16px; } .area-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; } .area-head b { font-size: 16px; }
+.area-n { font-size: 26px; font-weight: 700; font-variant-numeric: tabular-nums; } .area-n small { font-size: 12px; font-weight: 400; color: var(--text-3); }
+.area-means { display: flex; gap: 12px; flex-wrap: wrap; color: var(--text-2); } .area-means span { display: inline-flex; align-items: center; gap: 4px; } .area-means .zero { color: var(--text-3); opacity: .55; }

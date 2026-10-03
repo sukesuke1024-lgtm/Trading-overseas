@@ -1,7 +1,7 @@
 import { CheckCircle2, Phone } from 'lucide-react';
 import * as C from '../lib/core.js';
 import type { Shipment } from '../lib/core.js';
-import { AlertPill, ModePill, Status, portName } from '../components/bits.tsx';
+import { AlertPill, MeansIcon, ModePill, Status, portName } from '../components/bits.tsx';
 import { INC_SEV, sevRank, type Contact, type Incident } from '../lib/domain.ts';
 import { telHref } from './Contacts.tsx';
 
@@ -14,7 +14,7 @@ export function Dashboard({ list, incidents, contacts, onOpen, onOpenIncidents, 
   const arriving = active
     .filter((s) => { const d = C.daysToEta(s); return d != null && d >= 0 && d <= 7; })
     .sort((a, b) => String(a.eta).localeCompare(String(b.eta)));
-  const byMode = (Object.keys(C.MODES) as (keyof typeof C.MODES)[]).map((m) => ({ m, n: active.filter((s) => s.mode === m).length }));
+  const areas = (['overseas', 'mainland', 'hokkaido'] as const).map((a) => ({ a, items: active.filter((s) => C.areaOf(s.mode) === a) }));
 
   return (
     <>
@@ -63,7 +63,7 @@ export function Dashboard({ list, incidents, contacts, onOpen, onOpenIncidents, 
               <tbody>
                 {todo.map((s) => (
                   <tr key={s.containerNo} onClick={() => onOpen(s.containerNo)}>
-                    <td><ModePill mode={s.mode} /></td><td className="no">{s.containerNo}</td>
+                    <td><ModePill mode={s.mode} means={s.means} /></td><td className="no">{s.containerNo}</td>
                     <td><AlertPill s={s} /></td><td className="hide-sm">{s.buyer || s.lot || '—'}</td><td className="hide-sm"><Status s={s} /></td>
                   </tr>
                 ))}
@@ -82,7 +82,7 @@ export function Dashboard({ list, incidents, contacts, onOpen, onOpenIncidents, 
               <tbody>
                 {arriving.map((s) => (
                   <tr key={s.containerNo} onClick={() => onOpen(s.containerNo)}>
-                    <td><ModePill mode={s.mode} /></td><td className="no">{s.containerNo}</td>
+                    <td><ModePill mode={s.mode} means={s.means} /></td><td className="no">{s.containerNo}</td>
                     <td>{s.pol || s.pod ? `${portName(s.pol)} → ${portName(s.pod)}` : s.carrier || '—'}</td>
                     <td>{s.eta}</td><td className="hide-sm">{s.buyer || '—'}</td>
                   </tr>
@@ -94,9 +94,19 @@ export function Dashboard({ list, incidents, contacts, onOpen, onOpenIncidents, 
       </section>
 
       <section className="section">
-        <h2>輸送手段別の輸送中</h2>
-        <div className="card" style={{ padding: 14, display: 'flex', gap: 24, flexWrap: 'wrap' }}>
-          {byMode.map(({ m, n }) => <div key={m}><ModePill mode={m} /> {C.MODES[m].name}　<b>{n}</b> 件</div>)}
+        <h2>場所別の輸送中</h2>
+        <div className="areas">
+          {areas.map(({ a, items }) => (
+            <div key={a} className="card area">
+              <div className="area-head"><b>{C.AREAS[a]}</b><span className="area-n">{items.length}<small> 件</small></span></div>
+              <div className="area-means">
+                {(['ship', 'plane', 'truck', 'parcel'] as const).map((m) => {
+                  const n = items.filter((s) => C.meansOf(s) === m).length;
+                  return <span key={m} className={n ? '' : 'zero'} title={C.MEANS[m]}><MeansIcon m={m} />{C.MEANS[m]} <b>{n}</b></span>;
+                })}
+              </div>
+            </div>
+          ))}
         </div>
       </section>
     </>

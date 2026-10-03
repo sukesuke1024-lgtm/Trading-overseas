@@ -42,7 +42,7 @@ export function Incidents({ incidents, shipments, contacts, canDelete, onReport,
               <tbody>
                 {auto.map((s) => (
                   <tr key={s.containerNo} style={{ cursor: 'default' }}>
-                    <td><ModePill mode={s.mode} /></td>
+                    <td><ModePill mode={s.mode} means={s.means} /></td>
                     <td className="no"><button className="link mono" onClick={() => onOpenShipment(s.containerNo)}>{s.containerNo}</button></td>
                     <td>{C.alertsFor(s).filter((a) => a.level === 'danger').map((a) => a.text).join(' / ')}</td>
                     <td style={{ textAlign: 'right' }}><button className="btn" onClick={() => onReport({ shipmentNo: s.containerNo, dealId: s.dealId, title: C.alertsFor(s)[0].text, type: s.exception ? 'damage' : 'delay', severity: 'high' })}>問題として報告</button></td>

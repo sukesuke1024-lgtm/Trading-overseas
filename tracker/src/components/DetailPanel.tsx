@@ -27,7 +27,7 @@ export function DetailPanel({ s, all, deal, incidents, onReport, onOpenDeal, onO
     <aside className="card detail" aria-label="荷物の詳細">
       <h2>{s.containerNo}</h2>
       <div className="muted" style={{ marginTop: 4 }}>
-        <ModePill mode={s.mode} /> {carrier && `${carrier}　`}{stageLabel(s)}
+        <ModePill mode={s.mode} means={s.means} /> {carrier && `${carrier}　`}{stageLabel(s)}
         {left != null && idx < 4 ? `　到着まで ${left} 日` : ''}
       </div>
       {incidents.length > 0 && (
@@ -59,7 +59,7 @@ export function DetailPanel({ s, all, deal, incidents, onReport, onOpenDeal, onO
       {same.length > 0 && (
         <div>
           <div className="muted" style={{ fontSize: 12 }}>同じロットの荷物</div>
-          <div className="chips">{same.map((o) => <button key={o.containerNo} className="chip" onClick={() => onSelect(o.containerNo)}>{o.containerNo}（{C.MODES[o.mode].short}）</button>)}</div>
+          <div className="chips">{same.map((o) => <button key={o.containerNo} className="chip" onClick={() => onSelect(o.containerNo)}>{o.containerNo}<ModePill mode={o.mode} means={o.means} /></button>)}</div>
         </div>
       )}
       {s.events && s.events.length > 0 && (

@@ -85,9 +85,10 @@ test('csv roundtrip and mode inference', () => {
 });
 
 test('国内宅配は道内/道外に分かれ、旧データ(domestic)は道内へ移行', () => {
-  assert.deepEqual(Object.keys(C.MODES), ['sea', 'air', 'hokkaido', 'mainland', 'intl']);
+  assert.deepEqual(Object.keys(C.MODES).sort(), ['air', 'hokkaido', 'intl', 'mainland', 'sea']);
   assert.equal(C.MODES.hokkaido.short, '道内');
   assert.equal(C.MODES.mainland.short, '道外');
+  assert.equal(C.MODES.sea.short, '海外');
   assert.equal(C.migrate({ containerNo: 'X', mode: 'domestic', stage: 'booked' }).mode, 'hokkaido');
   assert.equal(C.validFor('mainland', '100000000004'), true);
   assert.equal(C.parseCsv('mode,containerNo\ndomestic,100000000004')[0].mode, 'hokkaido');
@@ -96,4 +97,27 @@ test('国内宅配は道内/道外に分かれ、旧データ(domestic)は道内
   const t = Date.parse('2026-10-04T00:00:00Z');
   assert.ok(C.alertsFor({ ...base, mode: 'hokkaido' }, t).some((a) => /動きがありません/.test(a.text)));
   assert.ok(!C.alertsFor({ ...base, mode: 'mainland' }, t).some((a) => /動きがありません/.test(a.text)));
+});
+
+test('場所(海外・道外・道内)×手段(船・飛行機・トラック・宅配便)', () => {
+  assert.deepEqual(Object.values(C.AREAS), ['海外', '道外', '道内']);
+  // 場所
+  assert.equal(C.areaOf('sea'), 'overseas'); assert.equal(C.areaOf('air'), 'overseas'); assert.equal(C.areaOf('intl'), 'overseas');
+  assert.equal(C.areaOf('mainland'), 'mainland'); assert.equal(C.areaOf('hokkaido'), 'hokkaido'); assert.equal(C.areaOf('domestic'), 'hokkaido');
+  // 既定の手段
+  assert.equal(C.meansOf({ mode: 'sea' }), 'ship'); assert.equal(C.meansOf({ mode: 'air' }), 'plane');
+  assert.equal(C.meansOf({ mode: 'hokkaido' }), 'truck'); assert.equal(C.meansOf({ mode: 'intl' }), 'parcel');
+  // 道外へ船（フェリー）・道内へトラック・海外へ飛行機
+  assert.equal(C.meansOf({ mode: 'mainland', means: 'ship' }), 'ship');
+  assert.equal(C.meansOf({ mode: 'mainland', means: 'bogus' }), 'truck');
+  // 場所と手段から追跡の方法を決める
+  assert.equal(C.resolveMode('overseas', 'ship'), 'sea'); assert.equal(C.resolveMode('overseas', 'plane'), 'air');
+  assert.equal(C.resolveMode('overseas', 'parcel'), 'intl'); assert.equal(C.resolveMode('overseas', 'truck'), 'intl');
+  assert.equal(C.resolveMode('mainland', 'ship'), 'mainland'); assert.equal(C.resolveMode('hokkaido', 'plane'), 'hokkaido');
+  // 既定と同じ手段は保存しない
+  assert.equal(C.normalizeMeans('sea', 'ship'), undefined); assert.equal(C.normalizeMeans('mainland', 'ship'), 'ship');
+  assert.equal(C.normalizeMeans('mainland', 'nonsense'), undefined);
+  // CSVでも手段が往復する
+  const back = C.parseCsv(C.toCsv([{ mode: 'mainland', means: 'ship', containerNo: '200000000001', stage: 'booked' }]));
+  assert.equal(back[0].means, 'ship');
 });

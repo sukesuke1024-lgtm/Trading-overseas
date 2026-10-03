@@ -16,14 +16,15 @@ const hit = (s: Shipment, q: string) => !q || [s.containerNo, s.bookingNo, s.blN
 
 export function Shipments({ list, deals, incidents, canDelete, selected, onSelect, onReport, onOpenDeal, onOpenIncidents, onNew, onEdit, onAdvance, onDelete }: Props) {
   const [q, setQ] = useState('');
-  const [mode, setMode] = useState('');
+  const [area, setArea] = useState('');
+  const [means, setMeans] = useState('');
   const [state, setState] = useState('open');
   const [quick, setQuick] = useState('');
 
   const rows = useMemo(() => list.filter((s) => {
     const done = C.stageIndex(s.stage) >= 6;
-    return hit(s, q.trim().toLowerCase()) && (!mode || s.mode === mode) && (state === 'all' || (state === 'open' ? !done : done));
-  }), [list, q, mode, state]);
+    return hit(s, q.trim().toLowerCase()) && (!area || C.areaOf(s.mode) === area) && (!means || C.meansOf(s) === means) && (state === 'all' || (state === 'open' ? !done : done));
+  }), [list, q, area, means, state]);
   const sel = list.find((s) => s.containerNo === selected) ?? null;
 
   return (
@@ -46,9 +47,13 @@ export function Shipments({ list, deals, incidents, canDelete, selected, onSelec
           <Search size={15} style={{ position: 'absolute', left: 10, top: 11, color: 'var(--text-3)' }} aria-hidden="true" />
           <input className="input" style={{ width: '100%', paddingLeft: 32 }} value={q} onChange={(e) => setQ(e.target.value)} placeholder="番号・B/L・ロット・生産者・取引先で検索" />
         </label>
-        <select className="select" value={mode} onChange={(e) => setMode(e.target.value)} aria-label="輸送手段">
-          <option value="">全手段</option>
-          {Object.entries(C.MODES).map(([m, v]) => <option key={m} value={m}>{v.name}</option>)}
+        <select className="select" value={area} onChange={(e) => setArea(e.target.value)} aria-label="場所">
+          <option value="">全ての場所</option>
+          {Object.entries(C.AREAS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+        </select>
+        <select className="select" value={means} onChange={(e) => setMeans(e.target.value)} aria-label="手段">
+          <option value="">全ての手段</option>
+          {Object.entries(C.MEANS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
         </select>
         <select className="select" value={state} onChange={(e) => setState(e.target.value)} aria-label="状態">
           <option value="open">輸送中</option><option value="done">完了</option><option value="all">すべて</option>
@@ -63,7 +68,7 @@ export function Shipments({ list, deals, incidents, canDelete, selected, onSelec
               <tbody>
                 {rows.map((s) => (
                   <tr key={s.containerNo} data-sev={C.severity(s)} aria-selected={s.containerNo === selected} onClick={() => onSelect(s.containerNo)}>
-                    <td><ModePill mode={s.mode} /></td>
+                    <td><ModePill mode={s.mode} means={s.means} /></td>
                     <td className="no">{s.containerNo}</td>
                     <td className="hide-sm" style={{ whiteSpace: 'nowrap' }}>{s.pol || s.pod ? `${portName(s.pol)} → ${portName(s.pod)}` : s.carrier || '—'}</td>
                     <td style={{ whiteSpace: 'nowrap' }}>{s.eta || '—'}</td>

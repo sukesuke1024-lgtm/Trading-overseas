@@ -83,7 +83,7 @@ export function Deals({ deals, shipments, incidents, canDelete, save, remove, se
             <div className="muted" style={{ fontSize: 12 }}>紐付く荷物（{linked.length}件）</div>
             {linked.length === 0 ? <p className="muted hint">まだありません。荷物の登録・編集で、この取引を選んでください。</p> : (
               <ul className="mini">{linked.map((s) => (
-                <li key={s.containerNo}><button className="link" onClick={() => onOpenShipment(s.containerNo)}><ModePill mode={s.mode} /> <span className="mono">{s.containerNo}</span></button> <Status s={s} /></li>
+                <li key={s.containerNo}><button className="link" onClick={() => onOpenShipment(s.containerNo)}><ModePill mode={s.mode} means={s.means} /> <span className="mono">{s.containerNo}</span></button> <Status s={s} /></li>
               ))}</ul>
             )}
             {incs.length > 0 && <p className="hint" style={{ color: 'var(--bad)' }}>この取引に関する問題が {incs.filter((i) => i.status === 'open').length} 件対応中です（全{incs.length}件）。</p>}

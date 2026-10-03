@@ -271,6 +271,9 @@ test('国内宅配は道内/道外。旧データ(domestic)は道内として受
   const t = await boot(); const a = await loginAdmin(t);
   const r1 = await a('POST', '/api/shipments', { shipment: { mode: 'mainland', containerNo: '100000000004', stage: 'booked' } });
   assert.equal(r1.json.shipment.mode, 'mainland');
+  const r3 = await a('POST', '/api/shipments', { shipment: { mode: 'mainland', means: 'ship', containerNo: '200000000001', stage: 'booked' } });
+  assert.equal(r3.json.shipment.means, 'ship');
+  assert.equal('means' in (await a('POST', '/api/shipments', { shipment: { mode: 'sea', means: 'rocket', containerNo: 'CSQU3054383', stage: 'booked' } })).json.shipment, false);
   const r2 = await a('POST', '/api/shipments', { shipment: { mode: 'domestic', containerNo: '123456789012', stage: 'booked', dealId: 'D-0001' } });
   assert.equal(r2.json.shipment.mode, 'hokkaido'); assert.equal(r2.json.shipment.dealId, 'D-0001');
   t.close();

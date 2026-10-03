@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import * as C from '../lib/core.js';
-import type { Mode, Shipment } from '../lib/core.js';
+import type { Area, Means, Mode, Shipment } from '../lib/core.js';
 import type { Deal } from '../lib/domain.ts';
 
 interface Props { initial: Partial<Shipment> | null; deals: Deal[]; existing: boolean; onSave: (s: Shipment) => void; onClose: () => void }
@@ -33,6 +33,12 @@ export function ShipmentForm({ initial, deals, existing, onSave, onClose }: Prop
       </select>
     </label>
   );
+  const meansNow = C.meansOf({ mode, means: f.means });
+  // 場所と手段から追跡の方法(mode)を決める。海外は手段で決まり、国内は場所で決まる（手段は表示用）
+  const setPlace = (area: Area, means: Means) => {
+    const m = C.resolveMode(area, means);
+    setF((cur) => ({ ...cur, mode: m, means: C.normalizeMeans(m, means), stage: cur.stage }));
+  };
   const valid = no ? C.validFor(mode, no) : null;
 
   return (
@@ -48,14 +54,19 @@ export function ShipmentForm({ initial, deals, existing, onSave, onClose }: Prop
             <input className="input mono" value={f.containerNo ?? ''} readOnly={existing} required autoFocus
               onChange={(e) => {
                 const v = e.target.value; const d = C.detect(v)[0];
-                setF((cur) => ({ ...cur, containerNo: v, ...(d && !existing ? { mode: C.defaultMode(d.mode), carrier: d.mode === 'sea' || d.mode === 'air' ? cur.carrier : d.carrier } : {}) }));
+                setF((cur) => ({ ...cur, containerNo: v, ...(d && !existing ? { mode: C.defaultMode(d.mode), means: undefined, carrier: d.mode === 'sea' || d.mode === 'air' ? cur.carrier : d.carrier } : {}) }));
               }} />
-            {valid === true && <span className="hint good">番号の形式を確認しました{cand ? `（${C.MODES[C.defaultMode(cand.mode)].name}${cand.carrier ? '・' + cand.carrier : ''}）` : ''}</span>}
+            {valid === true && <span className="hint good">番号の形式を確認しました{cand ? `（${C.AREAS[C.areaOf(cand.mode)]}・${C.MEANS[C.defaultMeans(C.defaultMode(cand.mode))]}${cand.carrier ? '・' + cand.carrier : ''}）` : ''}</span>}
             {valid === false && <span className="hint bad">この輸送手段の番号形式（検査数字）と一致しません。入力ミスがないか確認してください。</span>}
           </label>
-          <label className="field">輸送手段
-            <select className="select" value={mode} onChange={set('mode')}>
-              {Object.entries(C.MODES).map(([m, v]) => <option key={m} value={m}>{v.name}</option>)}
+          <label className="field">場所
+            <select className="select" value={C.areaOf(mode)} onChange={(e) => setPlace(e.target.value as Area, meansNow)}>
+              {Object.entries(C.AREAS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+            </select>
+          </label>
+          <label className="field">手段（アイコンで表示されます）
+            <select className="select" value={meansNow} onChange={(e) => setPlace(C.areaOf(mode), e.target.value as Means)}>
+              {Object.entries(C.MEANS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
             </select>
           </label>
           <label className="field">状態

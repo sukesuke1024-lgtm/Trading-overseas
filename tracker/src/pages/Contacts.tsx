@@ -17,7 +17,7 @@ export function ContactCard({ c }: { c: Contact }) {
       {c.phone && <a className="btn call" href={telHref(c.phone)}><Phone size={16} aria-hidden="true" />{c.phone}</a>}
       {c.email && <div><a className="link" href={`mailto:${c.email}`}><Mail size={13} aria-hidden="true" /> {c.email}</a></div>}
       {c.hours && !c.always && <div className="muted hint">受付：{c.hours}</div>}
-      {c.modes && c.modes.length > 0 && <div className="muted hint">対象：{c.modes.map((m) => C.MODES[m as keyof typeof C.MODES]?.short ?? m).join('・')}</div>}
+      {c.modes && c.modes.length > 0 && <div className="muted hint">対象：{c.modes.map((m) => C.MODES[m as keyof typeof C.MODES]?.name ?? m).join('・')}</div>}
       {c.note && <div className="muted hint">{c.note}</div>}
     </div>
   );

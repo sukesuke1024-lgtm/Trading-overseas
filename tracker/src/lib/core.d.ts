@@ -1,8 +1,10 @@
 export type Mode = 'sea' | 'air' | 'hokkaido' | 'mainland' | 'intl';
+export type Area = 'overseas' | 'mainland' | 'hokkaido';
+export type Means = 'ship' | 'plane' | 'truck' | 'parcel';
 export type StageKey = 'booked' | 'picked_up' | 'departed' | 'in_transit' | 'arrived' | 'customs' | 'delivered';
 export interface TrackEvent { at: string; text: string; place?: string }
 export interface Shipment {
-  mode: Mode; containerNo: string; stage: StageKey;
+  mode: Mode; means?: Means; containerNo: string; stage: StageKey;
   bookingNo?: string; blNo?: string; carrier?: string; vessel?: string; voyage?: string;
   pol?: string; pod?: string; etd?: string; eta?: string; freeTimeEnd?: string;
   lot?: string; dealId?: string; producer?: string; buyer?: string; note?: string;
@@ -37,3 +39,10 @@ export function defaultMode(mode: string): Mode;
 export function applyUpdate(s: Shipment, up: Partial<Shipment> & { now?: number }): { shipment: Shipment; changed: boolean };
 export function toCsv(list: Shipment[]): string;
 export function parseCsv(text: string): Shipment[];
+export const AREAS: Record<Area, string>;
+export const MEANS: Record<Means, string>;
+export function areaOf(mode: string): Area;
+export function defaultMeans(mode: string): Means;
+export function meansOf(s: { mode: string; means?: string }): Means;
+export function resolveMode(area: Area, means: Means): Mode;
+export function normalizeMeans(mode: string, means?: string): Means | undefined;
