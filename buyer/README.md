@@ -20,7 +20,7 @@ cd buyer && python3 -m http.server 8000   # http://localhost:8000
 - データは localStorage に保存（サイドバー下の「デモデータを初期化」で復元）。
 - 商品写真は一部のみ。`app.js` の `PRODUCTS` の `img` に画像パスを入れると差し替えできます。
 
-## 公開について
+## 公開について（デモ版・関係者限定）
 
-社外秘のため、GitHub Pages などへの公開は設定していません（公開先が決まるまで `lp.yml` には含めていません）。
-`guide.html` と `assets/qr.*` のURLは仮のものです。公開先が決まったら差し替えてQRを作り直してください。
+Pages 等の一般公開はしていません。claude.ai の非公開アーティファクトとして置いてあり、閲覧できるのは所有者と、共有設定で許可された人だけです。
+URL: https://claude.ai/artifact/GQEAH7myvqNHzLgjx8Zahg （QR: `assets/qr.svg`、マニュアル: `guide.html` / `docs/*.pdf`）

@@ -205,7 +205,7 @@ function orderModal(pid, defQty) {
     $('#oGo', root).onclick = () => {
       const n = +q.value;
       if (!(n >= moq(p))) { toast(`最小ロットは ${moq(p)}${p.unit} です`); q.focus(); return; }
-      const o = createOrder(pid, n); close(); toast(`注文を受け付けました（${o.no}）`); location.hash = '#/orders';
+      const o = createOrder(pid, n); close(); toast(`注文を受け付けました（${o.no}）`); navigate('#/orders');
     };
   });
 }
@@ -314,7 +314,7 @@ views.home.mount = root => {
     const p = new URLSearchParams();
     const q = $('#hsQ', root).value.trim(), c = $('#hsC', root).value, o = $('#hsO', root).value;
     if (q) p.set('q', q); if (c) p.set('cat', c); if (o) p.set('origin', o);
-    location.hash = '#/search' + (p.toString() ? '?' + p : '');
+    navigate('#/search' + (p.toString() ? '?' + p : ''));
   };
   $$('[data-reorder]', root).forEach(b => b.onclick = () => orderModal(b.dataset.reorder));
 };
@@ -425,7 +425,7 @@ views.product.mount = root => {
   q.oninput = upd; upd();
   const need = () => { if (+q.value >= moq(p)) return true; toast(`最小ロットは ${moq(p)}${p.unit} です`); q.focus(); return false; };
   $('#bQuote', root).onclick = () => quoteModal(p.id);
-  $('#bSample', root).onclick = () => { location.hash = `#/sample/${p.id}`; };
+  $('#bSample', root).onclick = () => { navigate(`#/sample/${p.id}`); };
   $('#bOrder', root).onclick = () => { if (need()) orderModal(p.id, +q.value); };
   bindFavs(root);
 };
@@ -479,7 +479,7 @@ views.requests = () => `<div class="page"><div class="page-head"><div><h1>見積
   </tbody></table></div></div></div>`;
 views.requests.mount = root => {
   $$('[data-tab]', root).forEach(b => b.onclick = () => { reqTab = b.dataset.tab; render(); });
-  $$('[data-go]', root).forEach(tr => tr.onclick = () => { location.hash = tr.dataset.go; });
+  $$('[data-go]', root).forEach(tr => tr.onclick = () => { navigate(tr.dataset.go); });
 };
 
 /* 04 Favorites & reorder */
@@ -498,7 +498,7 @@ views.favorites.mount = root => {
   $$('[data-reorder]', root).forEach(b => b.onclick = () => orderModal(b.dataset.reorder));
   $$('[data-oneclick]', root).forEach(b => b.onclick = () => {
     const [pid, qty] = b.dataset.oneclick.split(':'); const o = createOrder(pid, +qty);
-    toast(`前回と同じ内容で再注文しました（${o.no}）`); location.hash = '#/orders';
+    toast(`前回と同じ内容で再注文しました（${o.no}）`); navigate('#/orders');
   });
   bindFavs(root);
 };
@@ -514,8 +514,8 @@ const autoReply = t => {
 };
 views.messages = () => {
   const to = route.q.get('to');
-  if (to && appliedHash !== location.hash) {
-    appliedHash = location.hash;
+  if (to && appliedHash !== cur) {
+    appliedHash = cur;
     let th = S.threads.find(t => t.id === to);
     if (!th && SUP[to]) { th = { id: to, sup: SUP[to], role: 'サプライヤー', unread: 0, msgs: [] }; S.threads.push(th); save(); }
     if (th) activeThread = th.id;
@@ -625,7 +625,7 @@ $('#bellBtn').onclick = e => {
   pop.innerHTML = `<h4>通知<button id="readAll">すべて既読にする</button></h4><ul>${S.notifs.length ? S.notifs.slice(0, 12).map((n, i) => `<li class="${n.read ? '' : 'unread'}" data-n="${i}" style="cursor:pointer"><div>${esc(n.msg)}<small>${fmtDate(n.date)} ${fmtDT(n.date)}</small></div></li>`).join('') : '<li>通知はありません</li>'}</ul>`;
   pop.hidden = false; $('#bellBtn').setAttribute('aria-expanded', 'true');
   $('#readAll', pop).onclick = () => { S.notifs.forEach(n => n.read = true); save(); refreshChrome(); closeBell(); };
-  $$('[data-n]', pop).forEach(li => li.onclick = () => { const n = S.notifs[+li.dataset.n]; n.read = true; save(); refreshChrome(); closeBell(); if (n.to) location.hash = n.to; });
+  $$('[data-n]', pop).forEach(li => li.onclick = () => { const n = S.notifs[+li.dataset.n]; n.read = true; save(); refreshChrome(); closeBell(); if (n.to) navigate(n.to); });
 };
 document.addEventListener('click', e => { if (!e.target.closest('.pop-wrap')) closeBell(); });
 
@@ -633,18 +633,37 @@ const side = $('#side'), scrim = $('#scrim');
 function closeMenu() { side.classList.remove('open'); scrim.hidden = true; $('#menuBtn').setAttribute('aria-expanded', 'false'); }
 $('#menuBtn').onclick = () => { const o = side.classList.toggle('open'); scrim.hidden = !o; $('#menuBtn').setAttribute('aria-expanded', o); };
 scrim.onclick = closeMenu;
-$('#topSearch').onsubmit = e => { e.preventDefault(); const v = $('#topQ').value.trim(); location.hash = '#/search' + (v ? '?q=' + encodeURIComponent(v) : ''); };
+$('#topSearch').onsubmit = e => { e.preventDefault(); const v = $('#topQ').value.trim(); navigate('#/search' + (v ? '?q=' + encodeURIComponent(v) : '')); };
 $('#resetDemo').onclick = () => {
-  if (!confirm('お気に入り・注文・メッセージなどのデモデータを初期状態に戻します。よろしいですか？')) return;
-  try { localStorage.removeItem(KEY); } catch { /* ignore */ }
-  S = seed(); SF = null; activeThread = null; save(); refreshChrome(); toast('デモデータを初期化しました'); location.hash = '#/'; render();
+  openModal(`<h3>デモデータを初期化</h3><p class="pmeta">お気に入り・注文・メッセージなどを初期状態に戻します。</p>
+    <div class="foot"><button class="btn ghost" data-close>キャンセル</button><button class="btn" id="rsGo">初期化する</button></div>`, (root, close) => {
+    $('#rsGo', root).onclick = () => {
+      try { localStorage.removeItem(KEY); } catch { /* ignore */ }
+      S = seed(); SF = null; activeThread = null; save(); refreshChrome(); close(); toast('デモデータを初期化しました'); navigate('#/');
+    };
+  });
 };
 
 /* ---------- router ---------- */
 const TITLES = { home: 'ダッシュボード', categories: 'カテゴリー', search: '商品検索', product: '商品詳細', sample: 'サンプル依頼', requests: '見積・サンプル依頼', favorites: 'お気に入り・再注文', messages: 'メッセージ', orders: '発注履歴', account: 'アカウント設定' };
 const NAV_OF = { home: 'home', categories: 'categories', search: 'search', product: 'search', sample: 'search', requests: 'requests', favorites: 'favorites', messages: 'messages', orders: 'orders', account: 'account' };
+let cur = '';
+try { cur = location.hash; } catch { /* sandboxed */ }
+function onRoute() { parse(); appliedHash = ''; if (route.name !== 'sample') SF = null; closeMenu(); closeBell(); render(); }
+function navigate(to) {
+  to = String(to).replace(/^#?/, '#');
+  if (to === cur) { render(); return; }
+  cur = to;
+  try { history.pushState(null, '', to); } catch { /* sandboxed frame: keep route in memory */ }
+  onRoute();
+}
+document.addEventListener('click', e => {
+  const a = e.target.closest('a[href^="#/"]');
+  if (!a || e.defaultPrevented || e.metaKey || e.ctrlKey) return;
+  e.preventDefault(); navigate(a.getAttribute('href'));
+});
 function parse() {
-  const h = location.hash.replace(/^#\/?/, ''), [path, qs] = h.split('?');
+  const h = cur.replace(/^#\/?/, ''), [path, qs] = h.split('?');
   const parts = path.split('/').filter(Boolean).map(decodeURIComponent);
   route.name = parts[0] && views[parts[0]] ? parts[0] : 'home';
   route.args = parts.slice(1); route.q = new URLSearchParams(qs || '');
@@ -659,5 +678,7 @@ function render(keepScroll) {
   $$('[data-nav]').forEach(a => { const on = a.dataset.nav === NAV_OF[route.name]; a.classList.toggle('active', on); on ? a.setAttribute('aria-current', 'page') : a.removeAttribute('aria-current'); });
   if (!keepScroll) window.scrollTo(0, 0);
 }
-window.addEventListener('hashchange', () => { parse(); appliedHash = ''; if (route.name !== 'sample') SF = null; closeMenu(); closeBell(); render(); });
+const fromUrl = () => { try { cur = location.hash; } catch { /* ignore */ } onRoute(); };
+window.addEventListener('hashchange', fromUrl);
+window.addEventListener('popstate', fromUrl);
 parse(); refreshChrome(); render();
