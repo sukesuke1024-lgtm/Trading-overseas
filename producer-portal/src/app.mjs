@@ -4,14 +4,15 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import crypto from 'node:crypto';
-import { Sessions, RateLimiter, parseCookies, safeEqual, verifyPassword, hashPassword, passwordProblem, DUMMY_HASH, SECURITY_HEADERS } from './security.mjs';
+import { Sessions, RateLimiter, parseCookies, safeEqual, verifyPassword, hashPassword, passwordProblem, maskIp, DUMMY_HASH, SECURITY_HEADERS } from './security.mjs';
+import { computeDashboard, computeSettlements, computeSales } from './logic.mjs';
 
 const PUBLIC = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'public');
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.png': 'image/png', '.svg': 'image/svg+xml', '.ico': 'image/x-icon' };
 const COOKIE = 'hl_sid';
 const MAX_FAILS = 5, LOCK_MS = 15 * 60e3;
 const FLOW = { '注文確定': '出荷準備中', '出荷準備中': '出荷済み' }; // 生産者が進められる状態遷移
-const monthOf = (offset = 0) => { const d = new Date(); d.setUTCDate(1); d.setUTCMonth(d.getUTCMonth() + offset); return d.toISOString().slice(0, 7); };
+const CATEGORIES = ['grain', 'veg', 'fruit', 'bean', 'other'];
 
 class HttpError extends Error { constructor(status, message, extra) { super(message); this.status = status; this.extra = extra; } }
 const str = (v, max, label, { required = true } = {}) => {
@@ -27,8 +28,8 @@ const int = (v, min, max, label) => {
 };
 const dateStr = (v, label) => { if (typeof v !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(v) || Number.isNaN(Date.parse(v))) throw new HttpError(400, `${label}は日付（YYYY-MM-DD）で入力してください。`); return v; };
 
-export function createApp(store, { secureCookie = false, trustProxy = false, loginIpMax = 20 } = {}) {
-  const sessions = new Sessions();
+export function createApp(store, { secureCookie = false, trustProxy = false, loginIpMax = 20, idleMs = 30 * 60e3 } = {}) {
+  const sessions = new Sessions({ idleMs });
   const loginIpLimit = new RateLimiter(loginIpMax, 10 * 60e3);
   const apiLimit = new RateLimiter(300, 60e3);
   const timer = setInterval(() => { sessions.sweep(); loginIpLimit.sweep(); apiLimit.sweep(); }, 60e3); timer.unref();
@@ -87,23 +88,30 @@ export function createApp(store, { secureCookie = false, trustProxy = false, log
       }
       const ok = verifyPassword(pw, p ? p.pw : DUMMY_HASH) && !!p;
       if (!ok) {
-        if (p) { p.failed++; if (p.failed >= MAX_FAILS) { p.lockUntil = now + LOCK_MS; p.failed = 0; store.audit(id, 'locked', ip); } store.audit(id, 'login_failed', ip); store.save(); }
+        if (p) {
+          p.failed++; store.audit(id, 'login_failed', ip);
+          const justLocked = p.failed >= MAX_FAILS;
+          if (justLocked) { p.lockUntil = now + LOCK_MS; p.failed = 0; store.audit(id, 'locked', ip); }
+          store.save();
+          if (justLocked) throw new HttpError(423, 'ログインに5回失敗したため、アカウントを15分間ロックしました。', { retryAfter: LOCK_MS / 1000 });
+        }
         throw generic();
       }
       p.failed = 0; p.lockUntil = 0;
       sessions.destroy(token); // セッション固定化対策：ログインのたびに新しいIDを発行
-      const t = sessions.create(p.id, !!p.mustChange);
+      const prev = [...store.db.audit].reverse().find((a) => a.producerId === p.id && a.action === 'login');
+      const t = sessions.create(p.id, !!p.mustChange, { prevLogin: prev ? { at: prev.at, ip: maskIp(prev.ip) } : null });
       store.audit(p.id, 'login', ip); store.save();
       setCookie(res, t, 12 * 3600);
       const s = sessions.get(t);
-      return out(200, { ok: true, csrf: s.csrf, mustChange: s.mustChange, producer: { id: p.id, name: p.name, owner: p.owner } });
+      return out(200, { ok: true, csrf: s.csrf, mustChange: s.mustChange, idleMs, prevLogin: s.prevLogin, producer: { id: p.id, name: p.name, owner: p.owner } });
     }
 
     const sess = sessions.get(token);
     if (url.pathname === '/api/me' && method === 'GET') {
       if (!sess) return out(401, { error: 'ログインが必要です。' });
       const p = store.producer(sess.producerId);
-      return out(200, { csrf: sess.csrf, mustChange: sess.mustChange, producer: { id: p.id, name: p.name, owner: p.owner, email: p.email } });
+      return out(200, { csrf: sess.csrf, mustChange: sess.mustChange, idleMs, prevLogin: sess.prevLogin, producer: { id: p.id, name: p.name, owner: p.owner, email: p.email } });
     }
     if (!sess) throw new HttpError(401, 'ログインの有効期限が切れました。もう一度ログインしてください。');
 
@@ -116,6 +124,14 @@ export function createApp(store, { secureCookie = false, trustProxy = false, log
     }
 
     const p = store.producer(sess.producerId);
+    if (url.pathname === '/api/logout-all' && method === 'POST') {
+      sessions.destroyAllFor(p.id); store.audit(p.id, 'logout_all', ip); store.save(); setCookie(res, '', 0);
+      return out(200, { ok: true });
+    }
+    if (url.pathname === '/api/account' && method === 'GET') {
+      const history = store.db.audit.filter((a) => a.producerId === p.id && ['login', 'login_failed', 'locked', 'logout', 'logout_all', 'password_changed'].includes(a.action)).slice(-15).reverse().map((a) => ({ at: a.at, action: a.action, ip: maskIp(a.ip) }));
+      return out(200, { producer: { id: p.id, name: p.name, owner: p.owner, email: p.email }, history, idleMinutes: Math.round(idleMs / 60e3) });
+    }
     if (url.pathname === '/api/password' && method === 'POST') {
       const b = await readJson(req);
       if (typeof b.current !== 'string' || !verifyPassword(b.current, p.pw)) throw new HttpError(400, '現在のパスワードが正しくありません。');
@@ -133,27 +149,10 @@ export function createApp(store, { secureCookie = false, trustProxy = false, log
     const m = (re) => url.pathname.match(re);
     let r;
 
-    if (url.pathname === '/api/dashboard' && method === 'GET') {
-      const cur = monthOf(0), prev = monthOf(-1);
-      const sum = (key) => d.orders.filter((o) => o.date.startsWith(key)).reduce((s, o) => s + o.amount, 0);
-      const cnt = (key) => d.orders.filter((o) => o.date.startsWith(key)).length;
-      const pct = (a, b) => (b ? Math.round(((a - b) / b) * 100) : null);
-      const months = Array.from({ length: 7 }, (_, i) => monthOf(i - 6));
-      const upcoming = d.settlements.find((s) => s.status === '振込予定') || d.settlements.at(-1);
-      const unread = store.db.notices.filter((n) => !d.read.includes(n.id)).length;
-      return out(200, {
-        orders: { count: cnt(cur), diff: pct(cnt(cur), cnt(prev)) },
-        shipments: d.orders.filter((o) => o.status === '出荷準備中' || o.status === '注文確定').length,
-        sales: { amount: sum(cur), diff: pct(sum(cur), sum(prev)) },
-        payout: upcoming ? { amount: upcoming.payout, month: upcoming.month } : { amount: 0, month: cur },
-        chart: months.map((k) => ({ month: k, amount: sum(k) })),
-        recent: [...d.orders].sort((a, b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id)).slice(0, 5),
-        unread,
-        lowStock: d.products.filter((x) => x.stock <= x.safety).length,
-      });
-    }
+    if (url.pathname === '/api/dashboard' && method === 'GET') return out(200, computeDashboard(d, store.db.notices.filter((n) => !d.read.includes(n.id)).length));
 
     // 注文
+    if ((r = m(/^\/api\/orders\/(O\d{5})$/)) && method === 'GET') { const o = d.orders.find((x) => x.id === r[1]); if (!o) throw new HttpError(404, '注文が見つかりません。'); return out(200, { order: o }); }
     if (url.pathname === '/api/orders' && method === 'GET') return out(200, { orders: [...d.orders].sort((a, b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id)) });
     if ((r = m(/^\/api\/orders\/(O\d{5})\/advance$/)) && method === 'POST') {
       const o = d.orders.find((x) => x.id === r[1]);
@@ -167,7 +166,7 @@ export function createApp(store, { secureCookie = false, trustProxy = false, log
 
     // 商品
     if (url.pathname === '/api/products' && method === 'GET') return out(200, { products: d.products });
-    const productFields = (b) => ({ name: str(b.name, 60, '商品名'), spec: str(b.spec, 60, '規格', { required: false }), price: int(b.price, 0, 10_000_000, '単価'), unit: str(b.unit, 6, '単位'), safety: int(b.safety ?? 0, 0, 100000, '安全在庫'), stock: int(b.stock ?? 0, 0, 1_000_000, '在庫数'), emoji: str(b.emoji ?? '🌱', 4, '絵文字', { required: false }) || '🌱' });
+    const productFields = (b) => ({ name: str(b.name, 60, '商品名'), spec: str(b.spec, 60, '規格', { required: false }), price: int(b.price, 0, 10_000_000, '単価'), unit: str(b.unit, 6, '単位'), safety: int(b.safety ?? 0, 0, 100000, '安全在庫'), stock: int(b.stock ?? 0, 0, 1_000_000, '在庫数'), category: CATEGORIES.includes(b.category) ? b.category : 'other' });
     if (url.pathname === '/api/products' && method === 'POST') {
       if (d.products.length >= 200) throw new HttpError(409, '登録できる商品数の上限です。');
       const pr = { id: `PR${crypto.randomBytes(4).toString('hex')}`, ...productFields(await readJson(req)) };
@@ -203,14 +202,10 @@ export function createApp(store, { secureCookie = false, trustProxy = false, log
     }
 
     // 売上・精算
-    if (url.pathname === '/api/sales' && method === 'GET') {
-      const byMonth = {}; const byProduct = {};
-      for (const o of d.orders) { const k = o.date.slice(0, 7); byMonth[k] = (byMonth[k] || 0) + o.amount; byProduct[o.product] = (byProduct[o.product] || 0) + o.amount; }
-      return out(200, { months: Object.keys(byMonth).sort().map((k) => ({ month: k, amount: byMonth[k] })), products: Object.entries(byProduct).map(([name, amount]) => ({ name, amount })).sort((a, b) => b.amount - a.amount) });
-    }
-    if (url.pathname === '/api/settlements' && method === 'GET') return out(200, { settlements: [...d.settlements].sort((a, b) => b.month.localeCompare(a.month)) });
+    if (url.pathname === '/api/sales' && method === 'GET') return out(200, computeSales(d));
+    if (url.pathname === '/api/settlements' && method === 'GET') return out(200, { settlements: computeSettlements(d.orders).reverse() });
     if ((r = m(/^\/api\/settlements\/(\d{4}-\d{2})\/csv$/)) && method === 'GET') {
-      const s = d.settlements.find((x) => x.month === r[1]);
+      const s = computeSettlements(d.orders).find((x) => x.month === r[1]);
       if (!s) throw new HttpError(404, '精算が見つかりません。');
       const esc = (v) => { let t = String(v); if (/^[=+\-@\t\r]/.test(t)) t = "'" + t; return `"${t.replace(/"/g, '""')}"`; }; // CSVインジェクション対策
       const rows = [['注文番号', '注文日', '取引先', '商品', '数量', '金額']].concat(d.orders.filter((o) => o.date.startsWith(s.month)).map((o) => [o.id, o.date, o.buyer, o.product, `${o.qty}${o.unit}`, o.amount]));
@@ -247,7 +242,7 @@ export function createApp(store, { secureCookie = false, trustProxy = false, log
     fs.readFile(file, (err, buf) => {
       if (err) return send(res, 404, 'Not Found');
       const ext = path.extname(file);
-      send(res, 200, buf, { 'Content-Type': TYPES[ext] || 'application/octet-stream', 'Cache-Control': ext === '.html' ? 'no-cache' : 'public, max-age=3600' });
+      send(res, 200, buf, { 'Content-Type': TYPES[ext] || 'application/octet-stream', 'Cache-Control': ext === '.html' ? 'no-store' : 'no-cache' });
     });
   }
 

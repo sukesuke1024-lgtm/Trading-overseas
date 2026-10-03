@@ -37,10 +37,10 @@ export class Sessions {
   constructor({ idleMs = 30 * 60e3, absoluteMs = 12 * 3600e3 } = {}) {
     this.idleMs = idleMs; this.absoluteMs = absoluteMs; this.map = new Map();
   }
-  create(producerId, mustChange) {
+  create(producerId, mustChange, extra = {}) {
     const token = crypto.randomBytes(32).toString('base64url');
     const now = Date.now();
-    this.map.set(sha(token), { producerId, mustChange, csrf: crypto.randomBytes(24).toString('base64url'), created: now, seen: now });
+    this.map.set(sha(token), { producerId, mustChange, csrf: crypto.randomBytes(24).toString('base64url'), created: now, seen: now, ...extra });
     return token;
   }
   get(token) {
@@ -97,3 +97,11 @@ export const SECURITY_HEADERS = {
   'Cross-Origin-Opener-Policy': 'same-origin',
   'Cross-Origin-Resource-Policy': 'same-origin',
 };
+
+/** 表示用にIPを一部伏せる（192.168.*.* / 2001:db8:*） */
+export function maskIp(ip = '') {
+  const v = String(ip).replace(/^::ffff:/, '');
+  if (v.includes('.')) return v.split('.').slice(0, 2).join('.') + '.*.*';
+  if (v.includes(':')) return v.split(':').slice(0, 2).join(':') + ':*';
+  return '-';
+}

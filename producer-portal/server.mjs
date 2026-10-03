@@ -16,5 +16,5 @@ if (created) {
 const prod = process.env.NODE_ENV === 'production';
 const port = Number(process.env.PORT) || 3100;
 // 本番は HTTPS（リバースプロキシ）配下で運用し、Cookie に Secure を付ける
-createApp(store, { secureCookie: prod || process.env.PORTAL_SECURE_COOKIE === '1', trustProxy: process.env.PORTAL_TRUST_PROXY === '1' })
+createApp(store, { secureCookie: prod || process.env.PORTAL_SECURE_COOKIE === '1', trustProxy: process.env.PORTAL_TRUST_PROXY === '1', idleMs: Number(process.env.PORTAL_IDLE_MS) || 30 * 60e3 })
   .listen(port, process.env.HOST || '127.0.0.1', () => console.log(`H-LINK 生産者ポータル: http://${process.env.HOST || '127.0.0.1'}:${port}`));

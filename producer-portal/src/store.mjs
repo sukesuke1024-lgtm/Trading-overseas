@@ -30,7 +30,6 @@ export class Store {
 
 const ymd = (d) => d.toISOString().slice(0, 10);
 const addDays = (n) => { const d = new Date(); d.setUTCDate(d.getUTCDate() + n); return d; };
-const monthKey = (offset) => { const d = new Date(); d.setUTCDate(1); d.setUTCMonth(d.getUTCMonth() + offset); return d.toISOString().slice(0, 7); };
 
 export function seed(initialPassword) {
   const pw = hashPassword(initialPassword);
@@ -51,22 +50,23 @@ export function seed(initialPassword) {
 function seedProducer(scale, pid) {
   const rnd = (() => { let s = [...pid].reduce((a, c) => a * 31 + c.charCodeAt(0), 7) >>> 0; return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 2 ** 32); })();
   const products = [
-    { id: 'PR1', name: '減農薬コシヒカリ', spec: '玄米 30kg', price: 14500, stock: 120, safety: 40, unit: '袋', emoji: '🌾' },
-    { id: 'PR2', name: '完熟トマト', spec: '4kg箱', price: 3200, stock: 85, safety: 30, unit: '箱', emoji: '🍅' },
-    { id: 'PR3', name: '黒豆（丹波種）', spec: '1kg袋 ×10', price: 9800, stock: 14, safety: 20, unit: '箱', emoji: '🫘' },
-    { id: 'PR4', name: 'シャインマスカット', spec: '2房 約1.2kg', price: 5400, stock: 36, safety: 25, unit: '箱', emoji: '🍇' },
+    { id: 'PR1', name: '減農薬コシヒカリ', spec: '玄米 30kg', price: 14500, stock: 120, safety: 40, unit: '袋', category: 'grain' },
+    { id: 'PR2', name: '完熟トマト', spec: '4kg箱', price: 3200, stock: 85, safety: 30, unit: '箱', category: 'veg' },
+    { id: 'PR3', name: '黒豆（丹波種）', spec: '1kg袋 ×10', price: 9800, stock: 14, safety: 20, unit: '箱', category: 'bean' },
+    { id: 'PR4', name: 'シャインマスカット', spec: '2房 約1.2kg', price: 5400, stock: 36, safety: 25, unit: '箱', category: 'fruit' },
   ];
   const buyers = ['株式会社グッドマート', '札幌フーズ', '東京食材センター', 'みらい市場', '大阪フードリンク'];
   const orders = [];
   let seq = 1;
   // 過去7か月分 + 直近（月ごとに増加傾向）
   for (let m = -6; m <= 0; m++) {
-    const n = Math.round((6 + (m + 6) * 2.2) * scale);
+    const base = Math.round((6 + (m + 6) * 2.2) * scale);
+    const n = m === 0 ? Math.max(2, Math.round((base * new Date().getUTCDate()) / 30)) : base; // 今月は経過日数ぶん
     for (let i = 0; i < n; i++) {
       const pr = products[Math.floor(rnd() * products.length)];
       const qty = 5 + Math.floor(rnd() * 30);
       const d = new Date(); d.setUTCDate(1); d.setUTCMonth(d.getUTCMonth() + m);
-      const maxDay = m === 0 ? Math.max(1, new Date().getUTCDate() - 6) : 27;
+      const maxDay = m === 0 ? Math.max(1, new Date().getUTCDate()) : 27;
       d.setUTCDate(1 + Math.floor(rnd() * maxDay));
       orders.push({ id: `O${String(seq++).padStart(5, '0')}`, date: ymd(d), buyer: buyers[Math.floor(rnd() * buyers.length)], productId: pr.id, product: pr.name, qty, unit: pr.unit, amount: qty * pr.price, status: '納品完了', shipDate: ymd(new Date(d.getTime() + 2 * 864e5)) });
     }
@@ -78,14 +78,6 @@ function seedProducer(scale, pid) {
     const qty = [24, 10, 30, 15, 20][i];
     orders.push({ id: `O${String(seq++).padStart(5, '0')}`, date: ymd(addDays(off)), buyer: buyers[i], productId: pr.id, product: pr.name, qty, unit: pr.unit, amount: qty * pr.price, status, shipDate: ymd(addDays(ship)) });
   });
-  const settlements = [];
-  for (let m = -3; m <= 0; m++) {
-    const key = monthKey(m);
-    const sales = orders.filter((o) => o.date.startsWith(key)).reduce((s, o) => s + o.amount, 0);
-    const fee = Math.round(sales * 0.08);
-    const dt = new Date(key + '-01T00:00:00Z'); dt.setUTCMonth(dt.getUTCMonth() + 1); dt.setUTCDate(0);
-    settlements.push({ month: key, sales, fee, payout: sales - fee, status: m === 0 ? '集計中' : (m === -1 ? '振込予定' : '振込済み'), transferDate: ymd(dt) });
-  }
   const lots = products.map((p, i) => ({ id: `L${i + 1}`, lot: `${new Date().getUTCFullYear()}-${String(i + 1).padStart(3, '0')}`, productId: p.id, product: p.name, field: ['第1圃場', '第2ハウス', '北圃場', '果樹園A'][i], harvestDate: ymd(addDays(-10 - i * 3)), shipDate: ymd(addDays(-6 - i * 3)), note: '残留農薬検査済み' }));
-  return { products, orders, settlements, lots, tickets: [], read: [] };
+  return { products, orders, lots, tickets: [], read: [] };
 }

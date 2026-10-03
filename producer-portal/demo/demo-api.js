@@ -1,17 +1,23 @@
-// GitHub Pages 用デモ：/api/* をブラウザ内（localStorage）で擬似的に処理します。
+// GitHub Pages / 共有ページ用デモ：/api/* をブラウザ内（localStorage）で擬似的に処理します。
+// 数値の計算は src/logic.mjs（logic.js として同梱）をサーバーと共通で使います。
 // ※ 認証・CSRF・ロックなどのセキュリティ機能は本物ではありません（デモ専用）。
 (() => {
-  const KEY = 'hlink-producer-demo-v1', SES = 'hlink-producer-demo-session';
+  const KEY = 'hlink-producer-demo-v2', SES = 'hlink-producer-demo-session', IDLE = 30 * 60e3;
+  const CATEGORIES = ['grain', 'veg', 'fruit', 'bean', 'other'];
   const realFetch = window.fetch.bind(window);
-  let db = null;
-  const load = async () => { if (db) return db; try { db = JSON.parse(localStorage.getItem(KEY)); } catch { /* 破損 */ } if (!db) db = await (await realFetch(new URL('demo-data.json', document.baseURI))).json(); return db; };
+  let db = null, mem = null, hist = [];
+  const load = async () => {
+    if (db) return db;
+    try { db = JSON.parse(localStorage.getItem(KEY)); } catch { /* 破損・無効 */ }
+    if (!db) { const el = document.getElementById('demo-data'); db = el ? JSON.parse(el.textContent) : await (await realFetch(new URL('demo-data.json', document.baseURI))).json(); }
+    return db;
+  };
   const save = () => { try { localStorage.setItem(KEY, JSON.stringify(db)); } catch { /* 容量/無効 */ } };
   const J = (status, body, headers = {}) => new Response(typeof body === 'string' ? body : JSON.stringify(body), { status, headers: typeof body === 'string' ? headers : { 'Content-Type': 'application/json', ...headers } });
   const err = (s, m, extra) => J(s, { error: m, ...extra });
-  const ymd = (d) => d.toISOString().slice(0, 10);
-  const monthOf = (o = 0) => { const d = new Date(); d.setUTCDate(1); d.setUTCMonth(d.getUTCMonth() + o); return d.toISOString().slice(0, 7); };
+  const sid = () => { try { return sessionStorage.getItem(SES) || mem; } catch { return mem; } };
+  const log = (action) => { hist.push({ at: new Date().toISOString(), action, ip: '192.168.*.*' }); };
   const FLOW = { '注文確定': '出荷準備中', '出荷準備中': '出荷済み' };
-  const sid = () => { try { return sessionStorage.getItem(SES); } catch { return null; } };
   const need = (v, n, l) => { if (typeof v !== 'string' || !v.trim()) throw new Error(`${l}を入力してください。`); if (v.length > n) throw new Error(`${l}は${n}文字以内にしてください。`); return v.trim(); };
   const num = (v, l) => { if (!Number.isInteger(v) || v < 0 || v > 10_000_000) throw new Error(`${l}は0以上の整数で入力してください。`); return v; };
 
@@ -20,26 +26,24 @@
     if (path === '/api/login' && method === 'POST') {
       const id = String(body.id || '').trim().toUpperCase();
       const p = db.producers.find((x) => x.id === id);
-      if (!p || body.password !== 'demo') return err(401, '生産者IDまたはパスワードが正しくありません。（デモ：パスワードは demo）');
-      sessionStorage.setItem(SES, id);
-      return J(200, { ok: true, csrf: 'demo', mustChange: false, producer: { id: p.id, name: p.name, owner: p.owner } });
+      if (!p || body.password !== 'demo') return err(401, '生産者IDまたはパスワードが正しくありません。');
+      const prev = [...hist].reverse().find((a) => a.action === 'login');
+      mem = id; try { sessionStorage.setItem(SES, id); } catch { /* 無効 */ }
+      log('login');
+      return J(200, { ok: true, csrf: 'demo', mustChange: false, idleMs: IDLE, prevLogin: prev ? { at: prev.at, ip: prev.ip } : null, producer: { id: p.id, name: p.name, owner: p.owner } });
     }
     const pid = sid(), p = db.producers.find((x) => x.id === pid);
-    if (path === '/api/me') return p ? J(200, { csrf: 'demo', mustChange: false, producer: { id: p.id, name: p.name, owner: p.owner, email: p.email } }) : err(401, 'ログインが必要です。');
+    if (path === '/api/me') return p ? J(200, { csrf: 'demo', mustChange: false, idleMs: IDLE, prevLogin: null, producer: { id: p.id, name: p.name, owner: p.owner, email: p.email } }) : err(401, 'ログインが必要です。');
     if (!p) return err(401, 'ログインの有効期限が切れました。もう一度ログインしてください。');
-    if (path === '/api/logout') { sessionStorage.removeItem(SES); return J(200, { ok: true }); }
+    const end = () => { mem = null; try { sessionStorage.removeItem(SES); } catch { /* 無効 */ } };
+    if (path === '/api/logout') { log('logout'); end(); return J(200, { ok: true }); }
+    if (path === '/api/logout-all') { log('logout_all'); end(); return J(200, { ok: true }); }
     if (path === '/api/password') return J(200, { ok: true }); // デモでは変更しない
+    if (path === '/api/account') return J(200, { producer: { id: p.id, name: p.name, owner: p.owner, email: p.email }, history: [...hist].reverse().slice(0, 15), idleMinutes: IDLE / 60e3 });
     const d = db.data[p.id]; let r;
     try {
-      if (path === '/api/dashboard') {
-        const cur = monthOf(0), prev = monthOf(-1);
-        const sum = (k) => d.orders.filter((o) => o.date.startsWith(k)).reduce((s, o) => s + o.amount, 0);
-        const cnt = (k) => d.orders.filter((o) => o.date.startsWith(k)).length;
-        const pct = (a, b) => (b ? Math.round(((a - b) / b) * 100) : null);
-        const up = d.settlements.find((s) => s.status === '振込予定') || d.settlements.at(-1);
-        return J(200, { orders: { count: cnt(cur), diff: pct(cnt(cur), cnt(prev)) }, shipments: d.orders.filter((o) => o.status === '出荷準備中' || o.status === '注文確定').length, sales: { amount: sum(cur), diff: pct(sum(cur), sum(prev)) }, payout: up ? { amount: up.payout, month: up.month } : { amount: 0, month: cur },
-          chart: Array.from({ length: 7 }, (_, i) => monthOf(i - 6)).map((k) => ({ month: k, amount: sum(k) })), recent: [...d.orders].sort((a, b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id)).slice(0, 5), unread: db.notices.filter((n) => !d.read.includes(n.id)).length, lowStock: d.products.filter((x) => x.stock <= x.safety).length });
-      }
+      if (path === '/api/dashboard') return J(200, computeDashboard(d, db.notices.filter((n) => !d.read.includes(n.id)).length));
+      if ((r = path.match(/^\/api\/orders\/(O\d{5})$/)) && method === 'GET') { const o = d.orders.find((x) => x.id === r[1]); return o ? J(200, { order: o }) : err(404, '注文が見つかりません。'); }
       if (path === '/api/orders') return J(200, { orders: [...d.orders].sort((a, b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id)) });
       if ((r = path.match(/^\/api\/orders\/(O\d{5})\/advance$/))) {
         const o = d.orders.find((x) => x.id === r[1]); if (!o) return err(404, '注文が見つかりません。');
@@ -48,7 +52,7 @@
         o.status = next; save(); return J(200, { order: o });
       }
       if (path === '/api/products' && method === 'GET') return J(200, { products: d.products });
-      const pf = (b) => ({ name: need(b.name, 60, '商品名'), spec: String(b.spec || '').slice(0, 60), price: num(b.price, '単価'), unit: need(b.unit, 6, '単位'), safety: num(b.safety ?? 0, '安全在庫'), stock: num(b.stock ?? 0, '在庫数'), emoji: String(b.emoji || '🌱').slice(0, 4) });
+      const pf = (b) => ({ name: need(b.name, 60, '商品名'), spec: String(b.spec || '').slice(0, 60), price: num(b.price, '単価'), unit: need(b.unit, 6, '単位'), safety: num(b.safety ?? 0, '安全在庫'), stock: num(b.stock ?? 0, '在庫数'), category: CATEGORIES.includes(b.category) ? b.category : 'other' });
       if (path === '/api/products' && method === 'POST') { const pr = { id: `PR${Math.random().toString(16).slice(2, 10)}`, ...pf(body) }; d.products.push(pr); save(); return J(201, { product: pr }); }
       if ((r = path.match(/^\/api\/products\/(PR\w+)$/))) {
         const pr = d.products.find((x) => x.id === r[1]); if (!pr) return err(404, '商品が見つかりません。');
@@ -63,10 +67,10 @@
         const lot = { id: `L${Math.random().toString(16).slice(2, 10)}`, lot: need(body.lot, 30, 'ロット番号'), productId: pr.id, product: pr.name, field: need(body.field, 40, '圃場・産地'), harvestDate: body.harvestDate, shipDate: body.shipDate || '', note: String(body.note || '').slice(0, 200) };
         d.lots.push(lot); save(); return J(201, { lot });
       }
-      if (path === '/api/sales') { const bm = {}, bp = {}; for (const o of d.orders) { const k = o.date.slice(0, 7); bm[k] = (bm[k] || 0) + o.amount; bp[o.product] = (bp[o.product] || 0) + o.amount; } return J(200, { months: Object.keys(bm).sort().map((k) => ({ month: k, amount: bm[k] })), products: Object.entries(bp).map(([name, amount]) => ({ name, amount })).sort((a, b) => b.amount - a.amount) }); }
-      if (path === '/api/settlements') return J(200, { settlements: [...d.settlements].sort((a, b) => b.month.localeCompare(a.month)) });
+      if (path === '/api/sales') return J(200, computeSales(d));
+      if (path === '/api/settlements') return J(200, { settlements: computeSettlements(d.orders).reverse() });
       if ((r = path.match(/^\/api\/settlements\/(\d{4}-\d{2})\/csv$/))) {
-        const s = d.settlements.find((x) => x.month === r[1]); if (!s) return err(404, '精算が見つかりません。');
+        const s = computeSettlements(d.orders).find((x) => x.month === r[1]); if (!s) return err(404, '精算が見つかりません。');
         const esc = (v) => `"${String(v).replace(/"/g, '""')}"`;
         const rows = [['注文番号', '注文日', '取引先', '商品', '数量', '金額']].concat(d.orders.filter((o) => o.date.startsWith(s.month)).map((o) => [o.id, o.date, o.buyer, o.product, `${o.qty}${o.unit}`, o.amount]), [['売上合計', '', '', '', '', s.sales], ['手数料(8%)', '', '', '', '', -s.fee], ['振込額', '', '', '', '', s.payout]]);
         return J(200, '﻿' + rows.map((x) => x.map(esc).join(',')).join('\r\n'), { 'Content-Type': 'text/csv; charset=utf-8' });
