@@ -1,0 +1,5 @@
+{
+  "name": "hlink-tracker",
+  "private": true,
+  "scripts": { "test": "node --test test/core.test.mjs" }
+}
